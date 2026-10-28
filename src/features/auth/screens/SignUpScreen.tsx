@@ -9,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type TextInputInstance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -35,13 +36,9 @@ function passwordScore(pw: string) {
   return s;
 }
 
-// Ô nhập tự viết theo đúng mẫu LoginField: label in hoa, ô nền xanh nhạt
-// bo 12, icon Ionicons bên trái, right node bên phải. Field của Ui không
-// chắc đã forward onSubmitEditing/returnKeyType nên không dùng nó ở đây,
-// nhờ vậy phím Enter mới nối chuỗi các ô và submit được.
 type AuthFieldProps = {
   label: string;
-  icon: any;
+  icon: keyof typeof Ionicons.glyphMap;
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
@@ -52,8 +49,12 @@ type AuthFieldProps = {
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
   onSubmitEditing?: () => void;
   blurOnSubmit?: boolean;
-  inputRef?: React.RefObject<TextInput | null>;
+  inputRef?: React.RefObject<TextInputInstance | null>;
 };
+
+function focusInput(inputRef: React.RefObject<TextInputInstance | null>) {
+  setTimeout(() => inputRef.current?.focus(), 50);
+}
 
 function AuthField({
   label,
@@ -107,10 +108,10 @@ export default function SignUpScreen() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const nameRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const confirmRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
+  const confirmRef = useRef<TextInputInstance>(null);
 
   const score = passwordScore(password);
   const confirmOk = confirm.length > 0 && confirm === password;
@@ -177,7 +178,10 @@ export default function SignUpScreen() {
           style={{ flex: 1, backgroundColor: colors.white }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView contentContainerStyle={styles.root}>
+          <ScrollView
+            contentContainerStyle={styles.root}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.header}>
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Ionicons name="chevron-back" size={32} color={colors.ink} />
@@ -217,7 +221,7 @@ export default function SignUpScreen() {
               placeholder="Nguyễn Văn A"
               autoCapitalize="words"
               returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
+              onSubmitEditing={() => focusInput(emailRef)}
               blurOnSubmit={false}
             />
             <AuthField
@@ -230,7 +234,7 @@ export default function SignUpScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
+              onSubmitEditing={() => focusInput(passwordRef)}
               blurOnSubmit={false}
             />
             <View style={styles.passLabelRow}>
@@ -248,7 +252,7 @@ export default function SignUpScreen() {
               placeholder="AuraVital#2025"
               secureTextEntry={!showPass}
               returnKeyType="next"
-              onSubmitEditing={() => confirmRef.current?.focus()}
+              onSubmitEditing={() => focusInput(confirmRef)}
               blurOnSubmit={false}
               right={
                 <TouchableOpacity onPress={() => setShowPass(!showPass)}>

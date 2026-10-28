@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PillButton } from '../../../components/ui/Ui';
 import { colors } from '../../../theme/colors';
@@ -42,7 +36,7 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.root}>
       <Image
-        source={require('../../../../assets/images/onboarding.jpg')}
+        source={require('../../../../assets/images/onboarding.png')}
         style={styles.background}
         resizeMode='cover'
       />
@@ -61,7 +55,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.brand}>
           <Image
-            source={require('../../../../assets/images/logo.jpg')}
+            source={require('../../../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode='contain'
           />

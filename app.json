@@ -4,7 +4,7 @@
     "slug": "AuraVital",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.jpg",
+    "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
@@ -15,8 +15,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.jpg",
-        "backgroundImage": "./assets/images/onboarding.jpg",
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundImage": "./assets/images/onboarding.png",
         "backgroundColor": "#E6F4FE"
       },
       "predictiveBackGestureEnabled": false,
@@ -27,13 +27,13 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/logo.jpg"
+      "favicon": "./assets/images/logo.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.jpg",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -62,7 +62,9 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font",
+      "expo-asset"
     ]
   }
 }

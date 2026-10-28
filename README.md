@@ -155,6 +155,14 @@ npm run ios
 npm run web
 ```
 
+Các lệnh `start`, `android` và `ios` sử dụng Expo Go. Nếu điện thoại không kết nối được máy phát triển qua cùng mạng Wi-Fi, thử tạo tunnel:
+
+```bash
+npx expo start --go --tunnel
+```
+
+Chỉ dùng `npx expo start --dev-client` khi đã cài development build của ứng dụng trên thiết bị.
+
 ## Cấu hình Supabase
 
 ### Chạy Supabase local (tùy chọn)

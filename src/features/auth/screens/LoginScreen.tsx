@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type TextInputInstance,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,8 +37,12 @@ type LoginFieldProps = {
   returnKeyType?: 'default' | 'next' | 'go' | 'done' | 'search' | 'send';
   onSubmitEditing?: () => void;
   blurOnSubmit?: boolean;
-  inputRef?: React.RefObject<TextInput | null>;
+  inputRef?: React.RefObject<TextInputInstance | null>;
 };
+
+function focusInput(inputRef: React.RefObject<TextInputInstance | null>) {
+  setTimeout(() => inputRef.current?.focus(), 50);
+}
 
 function LoginField({
   label,
@@ -87,7 +92,7 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const submit = async () => {
     if (submitting) return;
@@ -144,8 +149,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       const avail: any = await biometricAvailable();
-      const ok =
-        typeof avail === 'boolean' ? avail : Boolean(avail?.available);
+      const ok = typeof avail === 'boolean' ? avail : Boolean(avail?.available);
       if (!ok) {
         const reason =
           typeof avail === 'object' && avail?.reason
@@ -183,9 +187,12 @@ export default function LoginScreen() {
           style={{ flex: 1, backgroundColor: BG }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView contentContainerStyle={styles.root}>
+          <ScrollView
+            contentContainerStyle={styles.root}
+            keyboardShouldPersistTaps='handled'
+          >
             <Image
-              source={require('../../../../assets/images/logo.jpg')}
+              source={require('../../../../assets/images/logo.png')}
               style={styles.logo}
               resizeMode='contain'
             />
@@ -210,7 +217,7 @@ export default function LoginScreen() {
                 placeholder='name@gmail.com'
                 keyboardType='email-address'
                 returnKeyType='next'
-                onSubmitEditing={() => passwordRef.current?.focus()}
+                onSubmitEditing={() => focusInput(passwordRef)}
                 blurOnSubmit={false}
               />
               <LoginField
@@ -249,10 +256,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.loginBtn,
-                  submitting ? { opacity: 0.6 } : null,
-                ]}
+                style={[styles.loginBtn, submitting ? { opacity: 0.6 } : null]}
                 onPress={submit}
                 disabled={submitting}
                 activeOpacity={0.85}
@@ -263,10 +267,7 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.faceIdBtn,
-                submitting ? { opacity: 0.6 } : null,
-              ]}
+              style={[styles.faceIdBtn, submitting ? { opacity: 0.6 } : null]}
               onPress={handleBiometric}
               disabled={submitting}
             >
@@ -288,10 +289,7 @@ export default function LoginScreen() {
 
             <View style={styles.socialRow}>
               <TouchableOpacity
-                style={[
-                  styles.socialBtn,
-                  submitting ? { opacity: 0.6 } : null,
-                ]}
+                style={[styles.socialBtn, submitting ? { opacity: 0.6 } : null]}
                 onPress={() => handleSocial('google')}
                 disabled={submitting}
               >
@@ -299,10 +297,7 @@ export default function LoginScreen() {
                 <Text style={styles.socialText}>Google</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.socialBtn,
-                  submitting ? { opacity: 0.6 } : null,
-                ]}
+                style={[styles.socialBtn, submitting ? { opacity: 0.6 } : null]}
                 onPress={() => handleSocial('apple')}
                 disabled={submitting}
               >
