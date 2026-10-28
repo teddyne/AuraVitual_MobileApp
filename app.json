@@ -42,7 +42,12 @@
       "@react-native-community/datetimepicker",
       "expo-image",
       "expo-video",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true
+        }
+      ],
       [
         "expo-camera",
         {

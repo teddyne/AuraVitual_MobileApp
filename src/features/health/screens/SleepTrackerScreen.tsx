@@ -203,6 +203,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     try {
       alarmPlayer.pause();
       alarmPlayer.seekTo(0);
+      alarmPlayer.setActiveForLockScreen(false);
     } catch {}
   };
   const playRain = async () => {
@@ -223,7 +224,17 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   };
   const playAlarm = useCallback(async () => {
     try {
-      if (!alarmPlayer.playing) alarmPlayer.play();
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+        interruptionMode: 'doNotMix',
+      });
+      alarmPlayer.setActiveForLockScreen(true, {
+        title: 'Báo thức thức dậy',
+        artist: 'AuraVital',
+      });
+      alarmPlayer.seekTo(0);
+      alarmPlayer.play();
     } catch (e) {
       console.warn('Cannot play alarm sound', e);
     }
@@ -270,7 +281,13 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   }, [rainPlayer]);
 
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'doNotMix',
+    }).catch((e) => {
+      console.warn('Cannot configure alarm audio mode', e);
+    });
     return () => {
       stopRain();
       stopAlarm();
