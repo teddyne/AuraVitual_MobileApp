@@ -2,6 +2,7 @@
   "expo": {
     "name": "AuraVital",
     "slug": "AuraVital",
+    "scheme": "auravital",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",

@@ -29,6 +29,12 @@ import {
   type Profile,
 } from '../../../lib/auravitalApi';
 import { getNutritionDay } from '../../../lib/nutritionApi';
+import { getReceivedRequests } from '../../../lib/familyApi';
+import { syncReminderNotifications } from '../../../lib/reminders';
+import {
+  appendHistory,
+  countUnreadHistory,
+} from '../../../lib/notificationHistory';
 import {
   HighlightCards,
   HomeArticles,
@@ -46,8 +52,7 @@ import { computeWakeAt } from '../../../lib/sleepSession';
 
 const SESSION_KEY = '@auravital:sleep_session';
 const MODE_KEY = '@auravital:sleep_mode';
-const NOTIF_KEY = '@auravital:notifications';
-const READ_ALL_KEY = '@auravital:notifications_read_all';
+const READ_KEY = '@auravital:notifications_read';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const toKey = (d: Date) =>
@@ -236,15 +241,48 @@ export default function HomeScreen({ navigation }: any) {
       } else {
         setWakePrompt(null);
       }
+      // Cột mốc: lần đầu trong ngày thấy bước chân đạt mục tiêu thì
+      // ghi 1 dòng lịch sử (dedupeKey theo ngày nên load lại cũng
+      // không ghi thêm). Chỉ xét ngày hôm nay, không xét ngày cũ.
+      if (dateKey === toKey(new Date())) {
+        try {
+          const m: any = value(1, null);
+          const steps = m?.steps != null ? Number(m.steps) : null;
+          const goal =
+            loadedProfile?.step_goal != null
+              ? Number(loadedProfile.step_goal)
+              : null;
+          if (steps != null && goal != null && steps >= goal) {
+            await appendHistory({
+              kind: 'milestone',
+              category: 'CỘT MỐC SỨC SỐNG',
+              title: 'Chúc mừng mục tiêu vận động!',
+              body: `Bạn đã đạt ${steps} bước hôm nay, vượt mục tiêu ${goal} bước.`,
+              icon: '🏆',
+              iconBg: '#FFF3E0',
+              firedAt: Date.now(),
+              dedupeKey: `milestone-steps-${dateKey}`,
+            });
+          }
+        } catch {}
+      }
+      // Chấm chuông (bản làm lại 2/11/2026): hiện khi còn lịch sử
+      // chưa đọc HOẶC còn lời mời chưa xử lý. Không còn gắn với nút
+      // "Đã đọc tất cả" theo ngày nữa: bấm nút đó chỉ đánh dấu đã đọc
+      // các dòng hiện có, thông báo mới tới vẫn hiện chấm lại.
+      // Tính lại mỗi lần load trang chủ (kể cả khi quay về từ màn khác).
       try {
-        const notifRaw = await AsyncStorage.getItem(NOTIF_KEY);
-        const readAllAt = await AsyncStorage.getItem(READ_ALL_KEY);
-        let on = false;
-        if (notifRaw) {
-          const n = JSON.parse(notifRaw);
-          on = !!n.enabled && readAllAt !== todayKey;
-        }
-        setBellDot(on);
+        const unreadHistory = await countUnreadHistory();
+        let unreadInvite = false;
+        try {
+          const readRaw = await AsyncStorage.getItem(READ_KEY);
+          const readIds: string[] = readRaw ? JSON.parse(readRaw) : [];
+          const received = await getReceivedRequests();
+          unreadInvite = received.some(
+            (r) => !readIds.includes(`invite:${r.id}`),
+          );
+        } catch {}
+        setBellDot(unreadHistory > 0 || unreadInvite);
       } catch {
         setBellDot(false);
       }
@@ -257,9 +295,9 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     if (firstLoad.current) {
       firstLoad.current = false;
-      load(true);
+      void load(true);
     } else {
-      load(false);
+      void load(false);
     }
   }, [load]);
 
@@ -269,7 +307,7 @@ export default function HomeScreen({ navigation }: any) {
         firstFocus.current = false;
         return;
       }
-      load(false);
+      void load(false);
     }, [load]),
   );
 
@@ -299,7 +337,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    load(false);
+    void load(false);
   }, [load]);
 
   const changeDay = (delta: number) => {
@@ -428,7 +466,7 @@ export default function HomeScreen({ navigation }: any) {
     await AsyncStorage.removeItem(SESSION_KEY);
     await AsyncStorage.setItem(MODE_KEY, '0');
     setWakePrompt(null);
-    load(false);
+    void load(false);
   };
 
   if (loading && !profile) {
@@ -512,6 +550,9 @@ export default function HomeScreen({ navigation }: any) {
       setMetric((prev) =>
         prev ? { ...prev, water_ml: next } : ({ water_ml: next } as Metric),
       );
+      // Ghi nước xong thì đồng bộ lại nhắc: nếu vừa đủ mục tiêu thì
+      // hủy hết nhắc nước còn lại trong ngày.
+      syncReminderNotifications().catch(() => {});
     } catch (e: any) {
       Alert.alert(
         tr(

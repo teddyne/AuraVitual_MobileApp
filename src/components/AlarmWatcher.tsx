@@ -17,28 +17,104 @@ import {
   cancelSnoozeNotification,
 } from '../lib/sleepSession';
 import { navigationRef } from '../lib/navigationRef';
+import { useToast } from './NotificationToast';
+import { syncReminderNotifications } from '../lib/reminders';
+import {
+  reconcilePresentedNotifications,
+  recordDeliveredNotification,
+} from '../lib/notificationHistory';
+import { getProfile, getTodayMetric } from '../lib/auravitalApi';
+
+// Điều hướng từ dữ liệu đính kèm trong thông báo (data.screen).
+// Khi app vừa khởi động lạnh, navigation có thể chưa sẵn sàng nên
+// thử lại tối đa 5 giây thay vì bỏ qua lần bấm đó.
+function routeFromNotification(data: any, attempt = 0) {
+  if (!data) return;
+  if (!navigationRef.isReady()) {
+    if (attempt < 10) {
+      setTimeout(() => routeFromNotification(data, attempt + 1), 500);
+    }
+    return;
+  }
+  try {
+    if (data.screen === 'Sleep' || data.alarm) {
+      navigationRef.navigate('SleepTracker', {
+        alarm: true,
+        alarmId: data.alarmId ?? null,
+        autoSleep: data.autoSleep ?? false,
+        triggerToken: Date.now(),
+      });
+    } else if (data.screen === 'Notifications') {
+      navigationRef.navigate('Notifications');
+    } else if (data.screen === 'Sharing') {
+      (navigationRef as any).navigate('Main', { screen: 'ShareTab' });
+    } else if (data.screen === 'FamilyDetail' && data.memberId) {
+      navigationRef.navigate('FamilyDetail', { memberId: data.memberId });
+    }
+  } catch {}
+}
 
 export default function AlarmWatcher() {
   const checking = useRef(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     // 1. Setup Android notification channels & foreground notification handler
     setupNotificationChannels().catch(() => {});
 
+    // 1b. Đồng bộ nhắc hẹn giờ (8 khung nước, bữa ăn, ngủ đúng giờ).
+    syncReminderNotifications().catch(() => {});
+
+    // 1c. Đối chiếu khay hệ thống: thông báo đã đổ chuông lúc app
+    // đóng cũng được ghi vào lịch sử (listener chỉ gặp khi app mở).
+    reconcilePresentedNotifications().catch(() => {});
+
     // 2. Handle notification tap when user clicks notification
     const responseSub = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const data = response?.notification?.request?.content?.data;
-        if (data?.screen === 'Sleep' || data?.alarm) {
-          if (navigationRef.isReady()) {
-            navigationRef.navigate('SleepTracker', {
-              alarm: true,
-              alarmId: data.alarmId ?? null,
-              autoSleep: data.autoSleep ?? false,
-              triggerToken: Date.now(),
-            });
-          }
+        // Bấm vào thông báo cũng ghi lịch sử (trường hợp nó đổ chuông
+        // lúc app đóng, listener nhận chưa từng gặp nó).
+        if (response?.notification) {
+          recordDeliveredNotification(response.notification).catch(() => {});
         }
+        routeFromNotification(response?.notification?.request?.content?.data);
+      },
+    );
+
+    // 2b. App đang mở mà push nhắc tới: hiện toast thay cho banner hệ
+    // thống (banner đã tắt cho các kind này trong setupNotificationChannels).
+    // Nước: nếu lúc này đã uống đủ mục tiêu thì không hiện nữa.
+    const receivedSub = Notifications.addNotificationReceivedListener(
+      async (notification) => {
+        // Ghi lịch sử cho MỌI thông báo nhận được (kể cả loại không
+        // hiện toast bên dưới); trùng thì tự bỏ qua.
+        recordDeliveredNotification(notification).catch(() => {});
+        const content = notification?.request?.content;
+        const data: any = content?.data;
+        if (!data || !['water', 'meal', 'sleep'].includes(data.kind)) return;
+        if (data.kind === 'water') {
+          try {
+            const { data: auth } = await supabase.auth.getUser();
+            if (auth.user) {
+              const [profile, metric] = await Promise.all([
+                getProfile(auth.user.id).catch(() => null),
+                getTodayMetric(auth.user.id).catch(() => null),
+              ]);
+              if (
+                profile?.water_goal_ml != null &&
+                metric?.water_ml != null &&
+                metric.water_ml >= profile.water_goal_ml
+              ) {
+                return;
+              }
+            }
+          } catch {}
+        }
+        showToast({
+          title: content.title ?? 'Nhắc nhở',
+          body: content.body ?? '',
+          target: { screen: 'Notifications' },
+        });
       },
     );
 
@@ -46,17 +122,10 @@ export default function AlarmWatcher() {
     Notifications.getLastNotificationResponseAsync()
       .then((response) => {
         if (!response) return;
-        const data = response?.notification?.request?.content?.data;
-        if (data?.screen === 'Sleep' || data?.alarm) {
-          if (navigationRef.isReady()) {
-            navigationRef.navigate('SleepTracker', {
-              alarm: true,
-              alarmId: data.alarmId ?? null,
-              autoSleep: data.autoSleep ?? false,
-              triggerToken: Date.now(),
-            });
-          }
+        if (response.notification) {
+          recordDeliveredNotification(response.notification).catch(() => {});
         }
+        routeFromNotification(response?.notification?.request?.content?.data);
       })
       .catch(() => {});
 
@@ -199,11 +268,12 @@ export default function AlarmWatcher() {
       }
     };
 
-    check();
+    void check();
     const id = setInterval(check, 5000);
     return () => {
       clearInterval(id);
       responseSub.remove();
+      receivedSub.remove();
     };
   }, []);
 
