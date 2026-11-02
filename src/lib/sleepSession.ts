@@ -145,14 +145,36 @@ export async function finishSession(
 
 export async function setupNotificationChannels() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      priority: AndroidNotificationPriority.MAX,
-    }),
+    handleNotification: async (notification) => {
+      const kind = (notification.request.content.data as any)?.kind;
+      // Nhắc hẹn giờ (nước/bữa ăn/ngủ) và sự kiện gia đình: toast
+      // trong app lo hiển thị nên tắt banner hệ thống khi app đang mở
+      // (tránh hiện 2 lần). Khi app ở nền hoặc bị tắt, hệ thống vẫn
+      // hiện thông báo như thường.
+      if (
+        kind === 'water' ||
+        kind === 'meal' ||
+        kind === 'sleep' ||
+        kind === 'family'
+      ) {
+        return {
+          shouldShowAlert: false,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: false,
+          shouldShowList: false,
+          priority: AndroidNotificationPriority.DEFAULT,
+        };
+      }
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        priority: AndroidNotificationPriority.MAX,
+      };
+    },
   });
 
   if (Platform.OS === 'android') {

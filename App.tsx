@@ -8,8 +8,10 @@ import {
 import * as Linking from 'expo-linking';
 import { AuthProvider } from './src/features/auth/AuthContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { ToastProvider, ToastBanner } from './src/components/NotificationToast';
 import RootNavigator from './src/navigation/RootNavigator';
 import AlarmWatcher from './src/components/AlarmWatcher';
+import FamilyWatcher from './src/components/FamilyWatcher';
 import { navigationRef } from './src/lib/navigationRef';
 import { setPendingDeepLink } from './src/lib/pendingDeepLink';
 
@@ -75,7 +77,10 @@ function AppContent() {
       >
         <RootNavigator />
         <AlarmWatcher />
+        <FamilyWatcher />
       </NavigationContainer>
+      {/* Toast hiện trên mọi màn hình nên đặt ngoài NavigationContainer */}
+      <ToastBanner />
     </>
   );
 }
@@ -84,7 +89,9 @@ export default function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </SettingsProvider>
     </AuthProvider>
   );

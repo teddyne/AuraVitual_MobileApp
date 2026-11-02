@@ -1,32 +1,14 @@
 import React from 'react';
-import { Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ProfileSettingsScreen from '../features/profile/screens/ProfileSettingsScreen';
 import { useSettings } from '../context/SettingsContext';
 import ExploreScreen from '../features/explore/screens/ExploreScreen';
 import HomeScreen from '../features/home/screens/HomeScreen';
+import SharingScreen from '../features/family/screens/SharingScreen';
 
 const Tab = createBottomTabNavigator();
-
-function Placeholder({ label }: { label: string }) {
-  const { theme } = useSettings();
-  return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.background,
-      }}
-    >
-      <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text }}>
-        {label}
-      </Text>
-    </SafeAreaView>
-  );
-}
 
 export default function MainTabNavigator() {
   const { theme, t } = useSettings();
@@ -83,7 +65,7 @@ export default function MainTabNavigator() {
         />
         <Tab.Screen
           name='ShareTab'
-          component={() => <Placeholder label={t('tabs.share')} />}
+          component={SharingScreen}
           options={{
             title: t('tabs.share'),
             tabBarIcon: ({ focused, color }) => (

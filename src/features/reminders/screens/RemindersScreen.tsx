@@ -11,9 +11,13 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../../../context/SettingsContext';
+import {
+  WATER_WINDOWS,
+  nextWaterWindow,
+  syncReminderNotifications,
+} from '../../../lib/reminders';
 
 const NOTIF_KEY = '@auravital:notifications';
-const WATER_INTERVALS = [2, 3, 4];
 const CYCLE_DAYS = [1, 2, 3, 5];
 const GREY_PILL = '#D9D9D9';
 
@@ -87,7 +91,10 @@ export default function RemindersScreen({ navigation }: any) {
   const updateNotif = (patch: Partial<NotifSettings>) => {
     setNotif((prev) => {
       const next = { ...prev, ...patch };
-      AsyncStorage.setItem(NOTIF_KEY, JSON.stringify(next)).catch(() => {});
+      // Ghi xong mới đồng bộ lịch push để tránh đọc phải cài đặt cũ.
+      AsyncStorage.setItem(NOTIF_KEY, JSON.stringify(next))
+        .then(() => syncReminderNotifications())
+        .catch(() => {});
       return next;
     });
   };
@@ -115,9 +122,9 @@ export default function RemindersScreen({ navigation }: any) {
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
     if (notif.water) {
-      const next = new Date(now.getTime() + notif.waterIntervalHours * 3600000);
+      const { window, tomorrow } = nextWaterWindow(now);
       nextReminders.push(
-        `💧 ${locale === 'vi' ? 'Uống nước lúc' : 'Drink water at'} ${String(next.getHours()).padStart(2, '0')}:${String(next.getMinutes()).padStart(2, '0')}`,
+        `💧 ${locale === 'vi' ? 'Uống nước lúc' : 'Drink water at'} ${window.time}${tomorrow ? (locale === 'vi' ? ' (ngày mai)' : ' (tomorrow)') : ''}`,
       );
     }
     if (notif.meal) {
@@ -205,8 +212,8 @@ export default function RemindersScreen({ navigation }: any) {
                 </Text>
                 <Text style={[s.muted, { color: theme.muted }]}>
                   {locale === 'vi'
-                    ? `Mỗi ${notif.waterIntervalHours} giờ`
-                    : `Every ${notif.waterIntervalHours} hours`}
+                    ? '8 khung giờ cố định, nhắc 1 lần vào đầu mỗi khung'
+                    : '8 fixed windows, reminded once at each window start'}
                 </Text>
               </View>
               <Switch
@@ -217,25 +224,20 @@ export default function RemindersScreen({ navigation }: any) {
                 thumbColor='#FFFFFF'
               />
             </View>
-            <View style={s.pillRow}>
-              {WATER_INTERVALS.map((h) => (
-                <TouchableOpacity
-                  key={h}
-                  disabled={!notif.enabled}
-                  style={[s.pillBtn, pillStyle(notif.waterIntervalHours === h)]}
-                  onPress={() => updateNotif({ waterIntervalHours: h })}
-                >
-                  <Text
-                    style={[
-                      s.pillText,
-                      pillTextStyle(notif.waterIntervalHours === h),
-                    ]}
-                  >
-                    {locale === 'vi' ? `${h} giờ` : `${h}h`}
+            {notif.water && (
+              <View style={{ marginTop: 4 }}>
+                {WATER_WINDOWS.map((w) => (
+                  <Text key={w.time} style={[s.windowLine, { color: theme.muted }]}>
+                    • {w.time} ({w.range}): {w.title}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                ))}
+                <Text style={[s.windowNote, { color: theme.muted }]}>
+                  {locale === 'vi'
+                    ? 'Đã uống đủ mục tiêu trong ngày thì không nhắc nữa.'
+                    : 'No more reminders once the daily goal is met.'}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View
@@ -562,6 +564,8 @@ const s = StyleSheet.create({
   previewCard: { borderRadius: 16, padding: 14, marginTop: 12 },
   previewTitle: { fontWeight: '800', marginBottom: 6 },
   previewLine: { lineHeight: 20, marginTop: 2 },
+  windowLine: { fontSize: 13, lineHeight: 20 },
+  windowNote: { fontSize: 12, fontStyle: 'italic', marginTop: 6, lineHeight: 17 },
   note: { textAlign: 'center', fontSize: 12, marginTop: 12 },
   primaryBtn: {
     borderRadius: 999,

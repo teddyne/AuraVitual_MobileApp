@@ -21,6 +21,8 @@ import WorkoutPlayerScreen from '../features/workout/screens/WorkoutPlayerScreen
 import ArticleDetailScreen from '../features/workout/screens/ArticleDetailScreen';
 import WorkoutLogScreen from '../features/workout/screens/WorkoutLogScreen';
 import AddWorkoutScreen from '../features/workout/screens/AddWorkoutScreen';
+import FamilyDetailScreen from '../features/family/screens/FamilyDetailScreen';
+import SharingSettingsScreen from '../features/family/screens/SharingSettingsScreen';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -53,6 +55,8 @@ export type RootStackParamList = {
   ArticleDetail: { postId: string };
   WorkoutLog: { postId?: string; minutes?: number } | undefined;
   AddWorkout: undefined;
+  FamilyDetail: { memberId: string };
+  SharingSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -81,6 +85,8 @@ export default function RootNavigator() {
       <Stack.Screen name='ArticleDetail' component={ArticleDetailScreen} />
       <Stack.Screen name='WorkoutLog' component={WorkoutLogScreen} />
       <Stack.Screen name='AddWorkout' component={AddWorkoutScreen} />
+      <Stack.Screen name='FamilyDetail' component={FamilyDetailScreen} />
+      <Stack.Screen name='SharingSettings' component={SharingSettingsScreen} />
     </Stack.Navigator>
   );
 }
