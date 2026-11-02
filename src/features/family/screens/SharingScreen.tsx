@@ -111,7 +111,7 @@ export default function SharingScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
+      void loadAll();
     }, [loadAll]),
   );
 
@@ -203,15 +203,15 @@ export default function SharingScreen({ navigation }: any) {
     }
     setNicknamePrompt({ ownerId: r.fromUserId, name: r.fromName });
     setNicknameDraft('');
-    loadAll();
+    void loadAll();
   };
 
   const onDecline = async (r: FamilyRequest) => {
-    if (await declineRequest(r.id)) loadAll();
+    if (await declineRequest(r.id)) void loadAll();
   };
 
   const onDismissSent = async (r: FamilyRequest) => {
-    if (await dismissRequest(r.id)) loadAll();
+    if (await dismissRequest(r.id)) void loadAll();
   };
 
   const onSaveNickname = async () => {
@@ -222,7 +222,7 @@ export default function SharingScreen({ navigation }: any) {
       return;
     }
     setNicknamePrompt(null);
-    loadAll();
+    void loadAll();
   };
 
   const onScanPress = async () => {
@@ -258,7 +258,7 @@ export default function SharingScreen({ navigation }: any) {
           ref={scrollRef}
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadAll(); }} />
           }
         >
           {/* Header: logo + tiêu đề tab + avatar sang Tài khoản */}
@@ -555,7 +555,7 @@ export default function SharingScreen({ navigation }: any) {
 
           <TouchableOpacity
             onPress={() => {
-              loadAll();
+              void loadAll();
               scrollRef.current?.scrollTo({ y: Math.max(pairY.current - 20, 0), animated: true });
             }}
             style={[s.cta, { backgroundColor: theme.primaryDark }]}

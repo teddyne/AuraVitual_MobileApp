@@ -268,7 +268,7 @@ export default function AlarmWatcher() {
       }
     };
 
-    check();
+    void check();
     const id = setInterval(check, 5000);
     return () => {
       clearInterval(id);

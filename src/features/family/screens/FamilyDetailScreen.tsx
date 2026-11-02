@@ -64,7 +64,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
 
@@ -82,7 +82,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
       return;
     }
     setEditingNick(false);
-    load();
+    void load();
   };
 
   const onSosSettings = () => {
@@ -150,7 +150,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />
           }
         >
           {/* Header: quay lại + tiêu đề + cài đặt + tài khoản */}

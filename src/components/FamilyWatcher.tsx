@@ -192,9 +192,9 @@ export default function FamilyWatcher() {
   };
 
   useEffect(() => {
-    check();
+    void check();
     const sub = AppState.addEventListener('change', (st: AppStateStatus) => {
-      if (st === 'active') check();
+      if (st === 'active') void check();
     });
     const timer = setInterval(check, 120000);
     return () => {

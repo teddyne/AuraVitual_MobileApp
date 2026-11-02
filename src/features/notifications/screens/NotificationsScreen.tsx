@@ -154,7 +154,7 @@ export default function NotificationsScreen({ navigation }: any) {
   }, [vi]);
 
   useEffect(() => {
-    loadAll();
+    void loadAll();
   }, [loadAll]);
 
   const onRefresh = async () => {

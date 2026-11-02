@@ -295,9 +295,9 @@ export default function HomeScreen({ navigation }: any) {
   useEffect(() => {
     if (firstLoad.current) {
       firstLoad.current = false;
-      load(true);
+      void load(true);
     } else {
-      load(false);
+      void load(false);
     }
   }, [load]);
 
@@ -307,7 +307,7 @@ export default function HomeScreen({ navigation }: any) {
         firstFocus.current = false;
         return;
       }
-      load(false);
+      void load(false);
     }, [load]),
   );
 
@@ -337,7 +337,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    load(false);
+    void load(false);
   }, [load]);
 
   const changeDay = (delta: number) => {
@@ -466,7 +466,7 @@ export default function HomeScreen({ navigation }: any) {
     await AsyncStorage.removeItem(SESSION_KEY);
     await AsyncStorage.setItem(MODE_KEY, '0');
     setWakePrompt(null);
-    load(false);
+    void load(false);
   };
 
   if (loading && !profile) {

@@ -65,7 +65,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
 
@@ -75,7 +75,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
     const ok = await saveMySharingSettings(patch);
     if (!ok) {
       Alert.alert('Lỗi', 'Không lưu được cài đặt.');
-      load();
+      void load();
     }
   };
 
@@ -91,7 +91,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
           onPress: async () => {
             const ok = await revokeLink(m.ownerId);
             if (!ok) Alert.alert('Lỗi', 'Không hủy được kết nối.');
-            load();
+            void load();
           },
         },
       ],
