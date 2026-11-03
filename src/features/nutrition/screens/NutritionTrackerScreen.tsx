@@ -14,6 +14,7 @@ import Svg, { Circle, G } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { AppHeader } from '../../../components/ui/AppHeader';
 import {
   getNutritionDay,
   toLocalDateString,
@@ -185,12 +186,8 @@ export default function NutritionTrackerScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.wrap}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.back}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('nutrition.trackerTitle')}</Text>
-          <View style={{ width: 32 }} />
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <AppHeader title={t('nutrition.trackerTitle')} withTopInset={false} />
         </View>
         {loading ? (
           <ActivityIndicator

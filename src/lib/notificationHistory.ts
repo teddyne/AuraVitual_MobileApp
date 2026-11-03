@@ -118,13 +118,11 @@ export async function countUnreadHistory(): Promise<number> {
   }
 }
 
-// Ánh xạ 1 thông báo hệ thống vừa nhận thành dòng lịch sử.
-// - kind water/meal/sleep: nhắc hẹn giờ (data.kind do reminders.ts đặt).
-// - alarm/autoSleep: báo thức ngủ (sleepSession, không có data.kind).
-// - còn lại: nhắc chung.
+//Chỉ ghi thông báo mang dấu của AuraVital thì màn chuông
+//mới không lẫn thông báo ngoài.
 function mapDeliveredToEntry(
   n: Notifications.Notification,
-): NewHistoryEntry {
+): NewHistoryEntry | null {
   const req = n.request;
   const data: any = req.content.data ?? {};
   const firedAt = typeof n.date === 'number' ? n.date : Date.now();
@@ -181,25 +179,27 @@ function mapDeliveredToEntry(
       dedupeKey,
     };
   }
-  return {
-    kind: 'reminder',
-    category: 'NHẮC NHỞ',
-    title,
-    body,
-    icon: '🔔',
-    iconBg: '#E8F5E9',
-    firedAt,
-    dedupeKey,
-  };
+  return null;
 }
 
 // Ghi 1 thông báo hệ thống vừa nhận (gọi từ listener nhận/tap và từ
 // bước đối chiếu khay hệ thống). Trùng thì appendHistory tự bỏ qua.
+// Thông báo không mang dấu của app mình thì map trả null và bỏ qua.
 export async function recordDeliveredNotification(
   n: Notifications.Notification,
 ): Promise<void> {
   try {
-    await appendHistory(mapDeliveredToEntry(n));
+    const entry = mapDeliveredToEntry(n);
+    if (!entry) return;
+    await appendHistory(entry);
+  } catch {}
+}
+
+async function purgeForeignEntries(): Promise<void> {
+  try {
+    const list = await loadHistory();
+    const kept = list.filter((e) => e.category !== 'NHẮC NHỞ');
+    if (kept.length !== list.length) await saveHistory(kept);
   } catch {}
 }
 
@@ -208,6 +208,7 @@ export async function recordDeliveredNotification(
 // Gọi lúc mở app và lúc mở màn chuông.
 export async function reconcilePresentedNotifications(): Promise<void> {
   try {
+    await purgeForeignEntries();
     const presented =
       await Notifications.getPresentedNotificationsAsync();
     for (const n of presented) {

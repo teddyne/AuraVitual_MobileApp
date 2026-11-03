@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../../../components/ui/AppHeader';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
@@ -696,17 +697,7 @@ export default function StepsDetailScreen({ navigation }: any) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation?.goBack()}>
-              <Ionicons
-                name='chevron-back'
-                size={30}
-                color='#111'
-                style={{ marginRight: 12 }}
-              />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Theo dõi bước chân chi tiết</Text>
-          </View>
+          <AppHeader title='Theo dõi bước chân chi tiết' withTopInset={false} />
 
           <View style={styles.liveRow}>
             <View

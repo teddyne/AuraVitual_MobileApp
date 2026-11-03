@@ -745,7 +745,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={s.card}>
             <View style={s.rowBetween}>
               <Text style={s.cardTitle}>
-                💧 {tr('home.waterTitle', 'Lượng nước đã uống', 'Water drunk')}
+                {tr('home.waterTitle', 'Lượng nước đã uống', 'Water drunk')}
               </Text>
               <Text style={s.waterValue}>
                 {formatNumber(water)}
@@ -797,7 +797,7 @@ export default function HomeScreen({ navigation }: any) {
             )}
           </View>
 
-          {/* MỚI 1/4 — Chỉ số nổi bật: thay toàn bộ lưới emoji cũ. */}
+          {/* 1/4 — Chỉ số nổi bật */}
           <HighlightCards
             steps={metric?.steps == null ? null : Number(metric.steps)}
             stepGoal={
@@ -823,21 +823,20 @@ export default function HomeScreen({ navigation }: any) {
             onNutrition={() => goDetail('Nutrition')}
           />
 
-          {/* MỚI 2/4 — Đề xuất bài tập: thay banner + Alert cũ. */}
+          {/* 2/4 — Đề xuất bài tập*/}
           <TodayWorkoutCard
             post={featuredPost}
             onPress={goPlayer}
             onSeeAll={goExplore}
           />
 
-          {/* MỚI 3/4 — Tổng kết tuần: thay lưới cũ (kể cả dòng
-              "Chưa có bảng log tập luyện trong v5" đã bỏ). */}
+          {/* 3/4 — Tổng kết tuần */}
           <WeeklySummaryCard
             summary={weeklyForCard}
             onPressWorkout={goWorkoutLog}
           />
 
-          {/* MỚI 4/4 — Kiến thức dinh dưỡng: thay 1 bài + Alert cũ. */}
+          {/* 4/4 — Kiến thức dinh dưỡng */}
           <HomeArticles
             articles={articlesForHome}
             onPressArticle={goArticle}

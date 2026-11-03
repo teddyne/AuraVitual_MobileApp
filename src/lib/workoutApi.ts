@@ -1,14 +1,3 @@
-// =====================================================================
-// AuraVital — workoutApi.ts
-// Đặt tại: src/lib/workoutApi.ts (cùng thư mục với auravitalApi.ts,
-// vì vậy import './supabase' dưới đây khớp đúng file thật của bạn).
-// Nếu bạn đặt file ở chỗ khác thì sửa 1 dòng import này cho khớp.
-//
-// Phụ thuộc DB: migration v6 (posts.kcal_estimate + bảng workout_logs).
-// Chưa chạy v6 mà gọi các hàm này thì Supabase sẽ báo lỗi cột/bảng
-// không tồn tại — chạy sql/01_migration_v6_workouts.sql trước.
-// Phong cách giống auravitalApi thật: lỗi thì throw, chỗ gọi tự bắt.
-// =====================================================================
 import { supabase } from './supabase';
 
 export type Post = {

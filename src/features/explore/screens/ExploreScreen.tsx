@@ -191,7 +191,7 @@ export default function ExploreScreen() {
               {chipBtn('workout', 'Bài tập')}
             </ScrollView>
 
-            <Text style={styles.h2}>● Bài tập nổi bật</Text>
+            <Text style={styles.h2}> Bài tập nổi bật</Text>
             {shownWorkouts.length === 0 && (
               <Text style={styles.empty}>
                 Không có bài tập nào khớp bộ lọc.
@@ -263,11 +263,6 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
                 <View style={styles.workBody}>
                   <Text style={styles.workTitle}>{w.title}</Text>
-                  {w.summary ? (
-                    <Text style={styles.workSummary} numberOfLines={2}>
-                      {w.summary}
-                    </Text>
-                  ) : null}
                   <TouchableOpacity
                     onPress={() =>
                       navigation.navigate('WorkoutPlayer', { postId: w.id })
@@ -281,7 +276,7 @@ export default function ExploreScreen() {
 
             {tab === 'explore' && (
               <>
-                <Text style={styles.h2}>📖 Bài viết sức khỏe mới nhất</Text>
+                <Text style={styles.h2}> Bài viết sức khỏe mới nhất</Text>
                 {shownArticles.length === 0 && (
                   <Text style={styles.empty}>
                     Không có bài viết nào khớp bộ lọc.
@@ -384,11 +379,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     paddingHorizontal: 14,
-    paddingVertical: 10,
     marginTop: 14,
   },
   searchInput: { flex: 1, fontSize: 15 },
-  chipRow: { marginTop: 14 },
+  chipRow: { marginTop: 14, marginBottom: 14 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -403,7 +397,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#1B2A1E',
-    marginTop: 22,
+    marginTop: 10,
     marginBottom: 12,
   },
   empty: { fontSize: 14, color: '#6B7A6E', marginBottom: 12 },
@@ -411,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   workImg: { width: '100%', height: 180 },
   levelChip: {

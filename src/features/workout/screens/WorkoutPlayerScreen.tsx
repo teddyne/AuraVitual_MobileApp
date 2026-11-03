@@ -1,19 +1,7 @@
 // =====================================================================
 // AuraVital — WorkoutPlayerScreen.tsx (Trình phát bài tập)
-// Đặt tại: src/features/workout/screens/WorkoutPlayerScreen.tsx
 // Route params: { postId: string }.
 // Cần cài: npx expo install expo-video expo-keep-awake
-//
-// THÀNH THẬT VỀ VIDEO:
-// - Video (nếu có video_url) chạy bằng native controls của expo-video.
-// - Bộ đếm bước tập chạy theo duration_sec trong workout_steps, KHÔNG
-//   đồng bộ từng giây với video, vì video mẫu không phải video quay
-//   đúng bài tập đó. Khi nhóm có video thật thì vẫn dùng chung cách
-//   này, hoặc quay video đúng từng bước rồi mới nói là đồng bộ.
-// - Ô "NHỊP TIM 95-115 BPM" trên Figma đã BỎ, vì DB không có cột nhịp
-//   tim cho từng bài; thay bằng "SỐ ĐỘNG TÁC" đếm thật từ workout_steps.
-// - Mục "Dụng cụ cần thiết" cũng bỏ, vì DB không có cột dụng cụ.
-// - Màn hình luôn sáng dùng expo-keep-awake (đúng dòng ghi chú Figma).
 // =====================================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -171,7 +159,7 @@ export default function WorkoutPlayerScreen() {
       {post.video_url ? (
         <View style={styles.videoWrap}>
           <VideoPlayer uri={post.video_url} />
-          <Text style={styles.videoNote}>Video mẫu — thay bằng video thật của nhóm bằng câu UPDATE video_url (xem seed v6).</Text>
+          <Text style={styles.videoNote}>Video mẫu</Text>
         </View>
       ) : post.cover_url && !imgError ? (
         <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
@@ -216,7 +204,6 @@ export default function WorkoutPlayerScreen() {
       )}
       {finished && <Text style={styles.nowPlaying}>✓ Hoàn thành chuỗi động tác!</Text>}
 
-      <Text style={styles.kicker}>LIỆU PHÁP PHỤC HỒI BUỔI SÁNG</Text>
       <Text style={styles.title}>{post.title}</Text>
       {post.summary ? <Text style={styles.summary}>{post.summary}</Text> : null}
 
@@ -322,13 +309,13 @@ const styles = StyleSheet.create({
   seekBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#EEF1EE', justifyContent: 'center', alignItems: 'center' },
   seekText: { fontSize: 14, fontWeight: '700', color: '#1B2A1E' },
   bigPlay: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center' },
-  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 3 },
   timeText: { fontSize: 13, color: '#5B665E' },
   barTrack: { height: 6, borderRadius: 3, backgroundColor: '#E5E5E5', overflow: 'hidden', marginTop: 6 },
   barFill: { height: '100%', backgroundColor: '#2E7D32' },
   nowPlaying: { fontSize: 14, fontWeight: '700', color: '#2E7D32', marginTop: 10, textAlign: 'center' },
   kicker: { fontSize: 12, fontWeight: '700', color: '#2E7D32', marginTop: 22 },
-  title: { fontSize: 22, fontWeight: '800', color: '#1B2A1E', marginTop: 4 },
+  title: { fontSize: 22, fontWeight: '800', color: '#1B2A1E', marginTop: 25 },
   summary: { fontSize: 15, color: '#5B665E', marginTop: 8, lineHeight: 21 },
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16 },
   infoBox: { width: '48%', backgroundColor: '#F6F8F6', borderRadius: 14, padding: 12, marginBottom: 10 },

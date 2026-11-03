@@ -36,19 +36,6 @@ import {
   type FamilyRequest,
 } from '../../../lib/familyApi';
 
-// =====================================================================
-// Tab Chia sẻ (theo Figma "Chia sẻ sức khỏe gia đình"):
-// - Thành viên đã kết nối (tên hiển thị = biệt danh nếu đã đặt).
-// - Lời mời mình nhận: Đồng ý / Từ chối.
-// - Lời mời mình gửi: đang chờ / đã bị từ chối (+ Ẩn).
-// - Ghép đôi tức thì: mã mời 8 ký tự + mã QR CỦA MÃ ĐÓ (không phải
-//   link web), hiệu lực 24 giờ; bên dưới là ô nhập mã / quét QR của
-//   người khác + nút Gửi lời mời.
-// - Nút "Bắt đầu chia sẻ với gia đình": đảm bảo đã có mã rồi cuộn
-//   xuống khu vực ghép đôi. "Cài đặt & Phân quyền chia sẻ": sang màn
-//   cài đặt nội dung chia sẻ + hủy kết nối.
-// =====================================================================
-
 const CODE_RE = /^[A-HJKMNP-Z2-9]{8}$/;
 
 function fmtExpiry(iso: string): string {
@@ -84,7 +71,7 @@ export default function SharingScreen({ navigation }: any) {
   const [scanning, setScanning] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
-  // Ref để nút "Bắt đầu chia sẻ" cuộn xuống khu vực ghép đôi.
+  // Ref để nút "Bắt đầu chia sẻ" cuộn xuống khu vực chia sẻ.
   // Dùng any cho ref vì kiểu instance của ScrollView trong RN 0.88
   // (ScrollViewInstance) khác kiểu component ScrollView.
   const scrollRef = useRef<any>(null);
@@ -138,7 +125,7 @@ export default function SharingScreen({ navigation }: any) {
   const onRotateCode = () => {
     Alert.alert(
       'Tạo mã mới?',
-      'Mã cũ đang hiển thị sẽ hết hiệu lực ngay. Người chưa dùng mã cũ sẽ phải dùng mã mới.',
+      'Mã cũ đang hiển thị sẽ hết hiệu lực ngay.',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -263,22 +250,9 @@ export default function SharingScreen({ navigation }: any) {
         >
           {/* Header: logo + tiêu đề tab + avatar sang Tài khoản */}
           <View style={s.headerRow}>
-            <Text style={[s.logo, { color: theme.primaryDark }]}>🫀 AuraVital</Text>
+            <Text style={[s.logo, { color: theme.primaryDark }]}>🌿 AuraVital</Text>
             <Text style={[s.headerTitle, { color: theme.text }]}>Chia sẻ</Text>
-            <TouchableOpacity onPress={goAccount} style={[s.avatarBtn, { backgroundColor: theme.cardAlt }]}>
-              <Text>👤</Text>
-            </TouchableOpacity>
           </View>
-
-          <View style={[s.badge, { backgroundColor: '#E8F5E9' }]}>
-            <Text style={[s.badgeText, { color: theme.primaryDark }]}>
-              🛡 AURAVITAL GIA ĐÌNH AN TOÀN
-            </Text>
-          </View>
-          <Text style={[s.title, { color: theme.text }]}>Chia sẻ sức khỏe gia đình</Text>
-          <Text style={[s.subtitle, { color: theme.muted }]}>
-            Gắn kết người thân yêu và theo dõi sức khỏe chủ động với sự an tâm tuyệt đối chuẩn y tế.
-          </Text>
 
           {/* Minh họa mạng lưới gia đình (vẽ bằng View, không cần ảnh) */}
           <View style={[s.hero, { backgroundColor: theme.cardAlt }]}>
@@ -453,11 +427,9 @@ export default function SharingScreen({ navigation }: any) {
               pairY.current = e.nativeEvent.layout.y;
             }}
           >
-            <Text style={[s.sectionTitle, { color: theme.text }]}>🔗 Ghép đôi tức thì</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>🔗 Ghép nối tức thì</Text>
           </View>
-          <Text style={[s.pairDesc, { color: theme.muted }]}>
-            Mã QR và mã mời của bạn (hiệu lực 24 giờ). Người khác quét QR này hoặc nhập mã để gửi lời mời cho bạn.
-          </Text>
+          
           <View style={[s.pairCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {myCode ? (
               <>
@@ -489,7 +461,7 @@ export default function SharingScreen({ navigation }: any) {
             )}
 
             <View style={s.divider}>
-              <Text style={[s.dividerText, { color: theme.muted }]}>— hoặc nhập mã của người khác —</Text>
+              <Text style={[s.dividerText, { color: theme.muted, paddingTop: 15 }]}>- nhập mã chia sẻ của người khác -</Text>
             </View>
             <TextInput
               value={codeInput}
@@ -522,29 +494,17 @@ export default function SharingScreen({ navigation }: any) {
             )}
           </View>
 
-          {/* Giá trị cốt lõi (nội dung tĩnh theo Figma) */}
-          <Text style={[s.sectionTitle, { color: theme.text, marginTop: 20 }]}>Giá trị cốt lõi</Text>
-          <Text style={[s.pairDesc, { color: theme.muted }]}>
-            Thiết kế chuẩn mực y khoa vì tình thân gia đình.
-          </Text>
-          <View style={[s.valueCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={s.valueIcon}>📈</Text>
+          {/* Giá trị cốt lõi */}
+          <Text style={[s.sectionTitle, { color: theme.text, marginTop: 30 }]}> Giá trị cốt lõi</Text>
+          <View style={[s.valueCard, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 3 }]}>
             <View style={{ flex: 1 }}>
               <Text style={[s.valueTitle, { color: theme.text }]}>Theo dõi sức khỏe chủ động</Text>
               <Text style={[s.valueBody, { color: theme.muted }]}>
                 Tự động đồng bộ số bước chân, thời lượng giấc ngủ và cảnh báo nhịp tim bất thường cho người thân theo thời gian thực.
               </Text>
-              <View style={s.chipRow}>
-                {['Vận động', 'Giấc ngủ', 'Nhịp tim'].map((c) => (
-                  <View key={c} style={[s.chip, { backgroundColor: theme.cardAlt }]}>
-                    <Text style={[s.chipText, { color: theme.text }]}>{c}</Text>
-                  </View>
-                ))}
-              </View>
             </View>
           </View>
           <View style={[s.valueCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={s.valueIcon}>🔔</Text>
             <View style={{ flex: 1 }}>
               <Text style={[s.valueTitle, { color: theme.text }]}>Thông báo thông minh</Text>
               <Text style={[s.valueBody, { color: theme.muted }]}>
@@ -598,7 +558,7 @@ export default function SharingScreen({ navigation }: any) {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { fontSize: 17, fontWeight: '800' },
+  logo: { fontSize: 18, fontWeight: '800', color: '#2E7D32' },
   headerTitle: { fontSize: 17, fontWeight: '700' },
   avatarBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10, marginTop: 16 },
@@ -645,7 +605,7 @@ const s = StyleSheet.create({
   reloadBtn: { borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, marginTop: 12 },
   reloadText: { fontWeight: '700' },
   divider: { marginVertical: 16 },
-  dividerText: { fontSize: 13 },
+  dividerText: { fontSize: 13, },
   codeInput: { width: '100%', borderRadius: 10, padding: 12, fontSize: 16, letterSpacing: 3, textAlign: 'center' },
   scanBtn: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   scanText: { fontWeight: '700' },
@@ -659,7 +619,7 @@ const s = StyleSheet.create({
   chipRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
   chip: { borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   chipText: { fontSize: 12, fontWeight: '700' },
-  cta: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  cta: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   ctaText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
   ctaOutline: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
   ctaOutlineText: { fontWeight: '700', fontSize: 15 },

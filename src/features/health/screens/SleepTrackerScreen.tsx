@@ -45,6 +45,8 @@ import {
   toKey,
   toTimeInput,
 } from '../../../lib/sleepSession';
+import { AppHeader } from '../../../components/ui/AppHeader';
+import { AppIcon } from '../../../components/ui/AppIcon';
 
 const PRIMARY = '#4E8A47';
 const RAIN_SOUND = require('../../../../assets/audio/rain.mp3');
@@ -1111,26 +1113,10 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
           >
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => navigation?.goBack()}>
-                <Ionicons
-                  name='chevron-back'
-                  size={30}
-                  color='#111'
-                  style={{ marginRight: 12 }}
-                />
-              </TouchableOpacity>
-              <Text style={[styles.headerTitle, { flex: 1 }]}>
-                Theo dõi giấc ngủ
-              </Text>
-              <TouchableOpacity
-                onPress={onRefresh}
-                disabled={refreshing}
-                style={{ padding: 6 }}
-              >
-                <Ionicons name='refresh-outline' size={20} color={PRIMARY} />
-              </TouchableOpacity>
-            </View>
+            <AppHeader
+              title='Theo dõi giấc ngủ'
+              withTopInset={false}
+            />
 
             <View style={styles.banner}>
               <View

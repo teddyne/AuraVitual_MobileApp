@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../../../components/ui/AppHeader';
 import Svg, { Circle } from 'react-native-svg';
 import { supabase } from '../../../lib/supabase';
 
@@ -514,12 +515,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation?.goBack()}>
-              <Ionicons name='chevron-back' size={30} color='#111111' />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Theo dõi chu kỳ & Nội tiết</Text>
-          </View>
+          <AppHeader title='Theo dõi chu kỳ & Nội tiết' withTopInset={false} />
 
           <View style={styles.card}>
             <View style={styles.calendarTop}>
