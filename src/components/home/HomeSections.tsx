@@ -75,8 +75,7 @@ export function HighlightCards(p: HighlightProps) {
   return (
     <View>
       <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Chỉ số nổi bật trong ngày</Text>
-        <Text style={styles.sectionSub}>Dữ liệu thời gian thực</Text>
+        <Text style={styles.sectionTitle}>Chỉ số nổi bật</Text>
       </View>
       <View style={styles.grid}>
         <TouchableOpacity
@@ -122,7 +121,7 @@ export function HighlightCards(p: HighlightProps) {
           <IconCircle bg='#E9A23B' name='restaurant' />
           <Text style={styles.big}>
             {p.kcal != null ? fmt(p.kcal) : '—'}
-            <Text style={styles.bigUnit}> kcal</Text>
+            <Text style={styles.big}> kcal</Text>
           </Text>
           <Text style={styles.cardLabel}>Năng lượng đã nạp</Text>
           <ProgressBar pct={kcalPct} color='#E9A23B' />
@@ -133,7 +132,7 @@ export function HighlightCards(p: HighlightProps) {
 }
 
 // ---------------------------------------------------------------------
-// 2) Đề xuất bài tập hôm nay — 1 thẻ lớn như ảnh Figma.
+// 2) Đề xuất bài tập hôm nay 
 //    Bấm vào thẻ / nút play -> trình phát. "Xem tất cả" -> tab Khám phá.
 // ---------------------------------------------------------------------
 export function TodayWorkoutCard({
@@ -166,7 +165,7 @@ export function TodayWorkoutCard({
           ]}
         >
           <Text style={styles.emptyText}>
-            Chưa có bài tập trong database.{'\n'}Chạy seed v6 rồi tải lại.
+            Chưa có bài tập.{'\n'}
           </Text>
         </View>
       </View>
@@ -422,7 +421,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   big: { fontSize: 26, fontWeight: '800', color: '#1B2A1E' },
-  bigUnit: { fontSize: 16, fontWeight: '600', color: '#5B665E' },
   cardLabel: { fontSize: 14, color: '#3D4A41', marginTop: 2, marginBottom: 8 },
   phase: { fontSize: 14, color: '#8A4A4A', marginTop: 2 },
   barTrack: {
@@ -466,7 +464,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF3FF',
     borderRadius: 24,
     padding: 16,
-    marginTop: 8,
+    paddingTop: 0,
+    marginTop: 30,
+    marginBottom: 8,
   },
   sparkle: {
     width: 40,

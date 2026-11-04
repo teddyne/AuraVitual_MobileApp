@@ -29,23 +29,7 @@ import {
   type HistoryGroup,
   type HistoryKind,
 } from '../../../lib/notificationHistory';
-
-// =====================================================================
-// Màn chuông LÀM LẠI (2/11/2026): chỉ hiện LỊCH SỬ thông báo, từ hiện
-// tại trở về quá khứ, mới nhất trước, chia nhóm Hôm nay / Hôm qua /
-// Tuần này / Cũ hơn (nhóm nào không có dòng thì không hiện tên nhóm).
-// Không còn các thẻ "sắp tới" dựng sẵn như bản cũ (khung nước tiếp
-// theo, bữa tiếp theo, đếm ngược giờ ngủ...).
-// - Lịch sử = dòng đã ghi khi thông báo thực sự đổ chuông (nhắc
-//   nước/bữa/ngủ, báo thức), sự kiện gia đình, cột mốc đạt mục tiêu.
-// - Lời mời kết nối là thẻ live từ server, gộp chung vào dòng thời
-//   gian theo ngày tạo, vẫn có nút Đồng ý / Từ chối ngay trên thẻ.
-// - Thời gian trên thẻ là thời gian tương đối từ lúc thông báo xuất
-//   hiện ("5 phút trước", "1 giờ trước", ...).
-// - Chấm chưa đọc: bấm thẻ = đã đọc; "Đã đọc tất cả" = đã đọc hết
-//   các dòng hiện có (KHÔNG còn theo ngày như bản cũ: thông báo mới
-//   tới sau đó vẫn hiện chấm lại như thường).
-// =====================================================================
+import { Ionicons } from '@expo/vector-icons';
 
 const PRIMARY = '#4E8A47';
 const READ_KEY = '@auravital:notifications_read';
@@ -168,9 +152,6 @@ export default function NotificationsScreen({ navigation }: any) {
     AsyncStorage.setItem(READ_KEY, JSON.stringify(next)).catch(() => {});
   };
 
-  // "Đã đọc tất cả" (bản mới): đánh dấu đã đọc hết các dòng lịch sử
-  // hiện có + các lời mời hiện có. Không còn cờ theo ngày: thông báo
-  // mới tới sau đó vẫn chưa đọc và vẫn hiện chấm như thường.
   const markAllRead = async () => {
     await markAllHistoryRead().catch(() => {});
     const inviteIds = items
@@ -199,7 +180,7 @@ export default function NotificationsScreen({ navigation }: any) {
   const tabs: { id: typeof filter; label: string }[] = [
     { id: 'all', label: vi ? 'Tất cả' : 'All' },
     { id: 'reminder', label: vi ? 'Nhắc nhở' : 'Reminders' },
-    { id: 'family', label: vi ? 'Chia sẻ gia đình' : 'Family' },
+    { id: 'family', label: vi ? 'Chia sẻ' : 'Family' },
     { id: 'milestone', label: vi ? 'Cột mốc' : 'Milestones' },
   ];
 
@@ -291,15 +272,12 @@ export default function NotificationsScreen({ navigation }: any) {
           }
         >
           <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[s.back, { color: theme.primaryDark }]}>‹</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 4 }}>
+              <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
             <Text style={[s.headerTitle, { color: theme.text }]}>
               {vi ? 'Thông báo & Nhắc nhở' : 'Notifications & Reminders'}
             </Text>
-            <View style={s.avatar}>
-              <Text>👤</Text>
-            </View>
           </View>
 
           <View style={s.summaryRow}>
@@ -342,16 +320,16 @@ export default function NotificationsScreen({ navigation }: any) {
 
           <Text style={[s.hint, { color: theme.muted }]}>
             {vi
-              ? 'BẤM THẺ ĐỂ ĐÁNH DẤU ĐÃ ĐỌC, BẤM ✕ ĐỂ XÓA/ẨN THẺ'
-              : 'TAP A CARD TO MARK AS READ, TAP ✕ TO DELETE/HIDE IT'}
+              ? 'BẤM THẺ ĐỂ ĐÁNH DẤU ĐÃ ĐỌC'
+              : 'TAP A CARD TO MARK AS READ'}
           </Text>
 
           {grouped.length === 0 ? (
             <Text style={[s.empty, { color: theme.muted }]}>
               {filter === 'family'
                 ? vi
-                  ? 'Chưa có chia sẻ gia đình.'
-                  : 'No family sharing yet.'
+                  ? 'Chưa có chia sẻ mới.'
+                  : 'No new sharing yet.'
                 : vi
                   ? 'Chưa có thông báo nào.'
                   : 'No notifications yet.'}
@@ -445,7 +423,6 @@ const s = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
-  back: { fontSize: 30, fontWeight: '800' },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '800' },
   avatar: {
     width: 36,

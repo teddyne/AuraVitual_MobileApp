@@ -28,20 +28,6 @@ import {
   type FamilyMember,
 } from '../../../lib/familyApi';
 
-// =====================================================================
-// Chi tiết sức khỏe của thành viên đã kết nối (theo Figma
-// "Sức Khỏe Của Bố"):
-// - Chỉ hiện các mục thành viên đó đang chia sẻ (cài đặt chung cho
-//   mọi người xem). Mục không chia sẻ thì ẨN, không hiện số liệu.
-// - Sự kiện hôm nay suy ra từ dữ liệu thật (đạt mục tiêu bước chân /
-//   ngủ đủ / đủ nước). Không bịa giờ giấc hay nhịp tim lúc tập vì
-//   bảng hiện tại không có dữ liệu đó.
-// - Huyết áp KHÔNG có trong bảng health_metrics nên màn này không
-//   hiện thẻ huyết áp (chỉ hiện SpO2 có sẵn).
-// - Banner SOS chỉ là UI theo yêu cầu (chưa gọi điện thật).
-// - Bấm ✎ cạnh tên để sửa biệt danh (lưu vào family_links.nickname).
-// =====================================================================
-
 export default function FamilyDetailScreen({ navigation, route }: any) {
   const { theme } = useSettings();
   const memberId: string | undefined = route?.params?.memberId;
@@ -107,8 +93,8 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
       <SafeAreaProvider>
         <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
           <View style={{ padding: 16 }}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[s.back, { color: theme.primaryDark }]}>‹ Quay lại</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
+              <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
             <Text style={[s.notFound, { color: theme.text }]}>
               Không tìm thấy thành viên (có thể liên kết đã bị hủy).
@@ -153,20 +139,19 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />
           }
         >
-          {/* Header: quay lại + tiêu đề + cài đặt + tài khoản */}
+          {/* Header: quay lại + tiêu đề + cài đặt */}
           <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[s.back, { color: theme.primaryDark }]}>‹</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
+              <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
+
             <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>
               Sức khỏe của {name}
             </Text>
+
             <View style={s.headerBtns}>
               <TouchableOpacity onPress={goSettings}>
-                <Ionicons name='settings-outline' size={22} color={theme.text} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={goAccount}>
-                <Ionicons name='person-outline' size={22} color={theme.text} />
+                <Ionicons name='settings-outline' size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
           </View>
@@ -209,13 +194,13 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
                       setEditingNick(true);
                     }}
                   >
-                    <Text style={[s.editNick, { color: theme.primaryDark }]}>✎</Text>
+                    <Text style={[s.editNick, { color: theme.primaryDark }]}> ✎</Text>
                   </TouchableOpacity>
                 </View>
               )}
               <Text style={[s.profileSub, { color: theme.text }]}>● Đang kết nối</Text>
               <Text style={[s.profileSub2, { color: theme.muted }]}>
-                {metric ? `Đồng bộ ${timeAgo(metric.updated_at)}` : 'Chưa có dữ liệu'}
+                {metric ? `Đồng bộ ngày ${timeAgo(metric.updated_at)}` : 'Chưa có dữ liệu'}
               </Text>
             </View>
             {score != null && (
@@ -338,12 +323,23 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
 
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  back: { fontSize: 28, fontWeight: '800' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { fontSize: 17, fontWeight: '800', flex: 1, textAlign: 'center' },
+// 1. Thêm alignItems: 'center' để tất cả phần tử trong hàng căn giữa theo chiều dọc
+  headerRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  headerTitle: { 
+    fontSize: 17, 
+    fontWeight: '800', 
+    flex: 1,
+  },
+
   headerBtns: { flexDirection: 'row', gap: 14 },
   notFound: { fontSize: 15, marginTop: 20, lineHeight: 22 },
-  profileCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 14, marginTop: 14, gap: 12 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 14, marginTop: 1, gap: 12 },
   initialCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   initial: { fontSize: 24, fontWeight: '800' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -356,7 +352,7 @@ const s = StyleSheet.create({
   profileSub2: { fontSize: 13, marginTop: 1 },
   scoreBadge: { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10 },
   scoreText: { fontWeight: '800' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 0 },
   sectionTitle: { fontSize: 17, fontWeight: '800' },
   sectionRight: { fontSize: 13 },
   live: { fontSize: 13, fontWeight: '700' },
@@ -375,7 +371,7 @@ const s = StyleSheet.create({
   eventSub: { fontSize: 14, fontWeight: '700', marginTop: 2 },
   eventBody: { fontSize: 13, marginTop: 2, lineHeight: 18 },
   eventTime: { fontSize: 12 },
-  sosCard: { flexDirection: 'row', borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
+  sosCard: { flexDirection: 'row', borderRadius: 16, padding: 14, marginTop: 24, gap: 10 },
   sosIcon: { fontSize: 26 },
   sosTitle: { fontSize: 16, fontWeight: '800' },
   sosBody: { fontSize: 13, lineHeight: 19, marginTop: 4 },

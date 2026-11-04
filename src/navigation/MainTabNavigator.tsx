@@ -1,31 +1,34 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ProfileSettingsScreen from '../features/profile/screens/ProfileSettingsScreen';
 import { useSettings } from '../context/SettingsContext';
 import ExploreScreen from '../features/explore/screens/ExploreScreen';
 import HomeScreen from '../features/home/screens/HomeScreen';
 import SharingScreen from '../features/family/screens/SharingScreen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTabNavigator() {
   const { theme, t } = useSettings();
+  const insets = useSafeAreaInsets();
+  const bottomPad = insets.bottom || 48;
+
   return (
-    <SafeAreaProvider>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: '#2E7D32',
-          tabBarInactiveTintColor: theme.muted,
-          tabBarStyle: {
-            backgroundColor: theme.card,
-            borderTopColor: theme.border,
-            borderTopWidth: 1,
-            paddingTop: 4,
-            paddingBottom: 2,
-          },
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.primaryDark,
+        tabBarInactiveTintColor: theme.muted,
+        tabBarStyle: {
+          backgroundColor: theme.card,
+          borderTopColor: theme.border,
+          borderTopWidth: 1,
+          paddingTop: 4,
+          paddingBottom: bottomPad,
+          height: 32 + bottomPad,
+        },
           tabBarItemStyle: {
             paddingVertical: 2,
           },
@@ -92,6 +95,5 @@ export default function MainTabNavigator() {
           }}
         />
       </Tab.Navigator>
-    </SafeAreaProvider>
   );
 }

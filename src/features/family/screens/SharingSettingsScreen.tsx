@@ -12,6 +12,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSettings } from '../../../context/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
 import {
   DEFAULT_SHARING,
   displayNameOf,
@@ -23,28 +24,17 @@ import {
   type SharingSettings,
 } from '../../../lib/familyApi';
 
-// =====================================================================
-// Cài đặt & Phân quyền chia sẻ:
-// - Công tắc tổng "Chia sẻ sức khỏe với gia đình".
-// - Chọn nội dung được chia sẻ (bước chân, giấc ngủ, nhịp tim, SpO2,
-//   nước, cân nặng). Áp dụng CHUNG cho mọi người thân đã kết nối
-//   (không phân quyền từng người, theo yêu cầu).
-// - Hủy kết nối từng thành viên (xóa cả 2 chiều).
-// Lưu ngay mỗi lần gạt công tắc (kiểu màn Cài đặt nhắc nhở).
-// =====================================================================
-
 const CONTENT_ROWS: {
   key: keyof Omit<SharingSettings, 'share_enabled'>;
-  icon: string;
   title: string;
   desc: string;
 }[] = [
-  { key: 'share_steps', icon: '🏃', title: 'Bước chân', desc: 'Số bước, quãng đường, kcal ước lượng' },
-  { key: 'share_sleep', icon: '🌙', title: 'Giấc ngủ', desc: 'Thời lượng ngủ và mục tiêu giấc ngủ' },
-  { key: 'share_heart_rate', icon: '❤️', title: 'Nhịp tim', desc: 'Nhịp tim lúc nghỉ' },
-  { key: 'share_spo2', icon: '🩸', title: 'SpO2', desc: 'Độ bão hòa oxy trong máu' },
-  { key: 'share_water', icon: '💧', title: 'Nước', desc: 'Lượng nước đã uống trong ngày' },
-  { key: 'share_weight', icon: '⚖️', title: 'Cân nặng', desc: 'Cân nặng ghi nhận hôm nay' },
+  { key: 'share_steps', title: 'Bước chân', desc: 'Số bước, quãng đường, kcal ước lượng' },
+  { key: 'share_sleep', title: 'Giấc ngủ', desc: 'Thời lượng ngủ và mục tiêu giấc ngủ' },
+  { key: 'share_heart_rate', title: 'Nhịp tim', desc: 'Nhịp tim lúc nghỉ' },
+  { key: 'share_spo2', title: 'SpO2', desc: 'Độ bão hòa oxy trong máu' },
+  { key: 'share_water', title: 'Nước', desc: 'Lượng nước đã uống trong ngày' },
+  { key: 'share_weight', title: 'Cân nặng', desc: 'Cân nặng ghi nhận hôm nay' },
 ];
 
 export default function SharingSettingsScreen({ navigation }: any) {
@@ -112,21 +102,24 @@ export default function SharingSettingsScreen({ navigation }: any) {
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+          {/* Header: quay lại + tiêu đề */}
           <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[s.back, { color: theme.primaryDark }]}>‹</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
+              <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
-            <Text style={[s.headerTitle, { color: theme.text }]}>Cài đặt & Phân quyền chia sẻ</Text>
-            <View style={{ width: 28 }} />
+            
+            <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>
+              Cài đặt & Phân quyền chia sẻ
+            </Text>
           </View>
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <View style={s.row}>
               <Text style={s.icon}>👨‍👩‍👧</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>Chia sẻ sức khỏe với gia đình</Text>
+                <Text style={[s.rowTitle, { color: theme.text }]}>Chia sẻ sức khỏe</Text>
                 <Text style={[s.muted, { color: theme.muted }]}>
-                  Khi tắt, người thân vẫn thấy tên bạn nhưng không xem được chỉ số.
+                  Khi tắt, người được chia sẻ vẫn thấy tên bạn nhưng không xem được chỉ số.
                 </Text>
               </View>
               <Switch
@@ -139,7 +132,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
           </View>
 
           <Text style={[s.sectionTitle, { color: theme.text }]}>
-            Nội dung được chia sẻ (áp dụng chung cho mọi người thân)
+            Nội dung được chia sẻ
           </Text>
           <View
             style={[
@@ -150,7 +143,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
           >
             {CONTENT_ROWS.map((row) => (
               <View key={row.key} style={s.row}>
-                <Text style={s.icon}>{row.icon}</Text>
+                <Text style={s.icon}></Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.rowTitle, { color: theme.text }]}>{row.title}</Text>
                   <Text style={[s.muted, { color: theme.muted }]}>{row.desc}</Text>
@@ -201,12 +194,30 @@ export default function SharingSettingsScreen({ navigation }: any) {
 
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 28, fontWeight: '800' },
-  headerTitle: { fontSize: 16, fontWeight: '800', flex: 1, textAlign: 'center' },
+  // Căn giữa theo chiều dọc và tạo khoảng cách hợp lý
+  headerRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  backBtn: {
+    paddingRight: 2,
+    paddingVertical: 4,
+  },
+  back: { 
+    fontSize: 28, 
+    fontWeight: '300',
+    lineHeight: 32,
+  },
+  headerTitle: { 
+    fontSize: 16, 
+    fontWeight: '800', 
+    flex: 1
+  },
   card: { borderRadius: 14, padding: 12, marginBottom: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  icon: { fontSize: 22 },
+  icon: { fontSize: 36 },
   rowTitle: { fontSize: 15, fontWeight: '700' },
   muted: { fontSize: 13, lineHeight: 18, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '800', marginTop: 16, marginBottom: 10 },
