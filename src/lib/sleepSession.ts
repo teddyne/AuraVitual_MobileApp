@@ -6,6 +6,7 @@ import {
   AndroidNotificationVisibility,
 } from 'expo-notifications';
 import * as Notifications from 'expo-notifications';
+import { translate } from '../i18n/locale';
 
 export const SESSION_KEY = '@auravital:sleep_session';
 export const MODE_KEY = '@auravital:sleep_mode';
@@ -232,7 +233,7 @@ export async function setupNotificationChannels() {
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('alarm-channel', {
-      name: 'Báo thức (Alarm)',
+      name: translate('reminders.channelAlarm'),
       importance: AndroidImportance.MAX,
       sound: 'default',
       vibrationPattern: [0, 500, 250, 500],
@@ -243,7 +244,7 @@ export async function setupNotificationChannels() {
       lockscreenVisibility: AndroidNotificationVisibility.PUBLIC,
     });
     await Notifications.setNotificationChannelAsync('reminder-channel', {
-      name: 'Nhắc nhở giấc ngủ',
+      name: translate('reminders.channelSleepReminder'),
       importance: AndroidImportance.HIGH,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
@@ -349,8 +350,8 @@ export async function syncAllAlarmNotifications(
       const mins = parseHHMM(profile.bedtime_time)!;
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Đến giờ đi ngủ',
-          body: 'Bấm để bắt đầu chế độ ngủ.',
+          title: translate('reminders.bedtimeTitle'),
+          body: translate('reminders.bedtimeBody'),
           data: { screen: 'Sleep', autoSleep: true },
           sound: 'default',
         },
@@ -373,8 +374,8 @@ export async function syncAllAlarmNotifications(
       const mins = parseHHMM(profile.wake_time)!;
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: '⏰ Báo thức thức dậy',
-          body: 'Đã đến giờ dậy rồi!',
+          title: translate('reminders.wakeAlarmTitle'),
+          body: translate('reminders.wakeAlarmBody'),
           data: { screen: 'Sleep', alarm: true, alarmId: null },
           sound: 'default',
           priority: AndroidNotificationPriority.MAX,
@@ -407,8 +408,8 @@ export async function syncAllAlarmNotifications(
         }
         const id = await Notifications.scheduleNotificationAsync({
           content: {
-            title: `⏰ ${a.label || 'Báo thức'}`,
-            body: `Báo thức lúc ${a.time}`,
+            title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+            body: translate('reminders.alarmBody', { time: a.time }),
             data: { screen: 'Sleep', alarm: true, alarmId: a.id },
             sound: 'default',
             priority: AndroidNotificationPriority.MAX,
@@ -424,8 +425,8 @@ export async function syncAllAlarmNotifications(
         // Daily alarm
         const id = await Notifications.scheduleNotificationAsync({
           content: {
-            title: `⏰ ${a.label || 'Báo thức'}`,
-            body: `Báo thức lúc ${a.time}`,
+            title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+            body: translate('reminders.alarmBody', { time: a.time }),
             data: { screen: 'Sleep', alarm: true, alarmId: a.id },
             sound: 'default',
             priority: AndroidNotificationPriority.MAX,
@@ -443,8 +444,8 @@ export async function syncAllAlarmNotifications(
         for (const d of days) {
           const id = await Notifications.scheduleNotificationAsync({
             content: {
-              title: `⏰ ${a.label || 'Báo thức'}`,
-              body: `Báo thức lúc ${a.time}`,
+              title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+              body: translate('reminders.alarmBody', { time: a.time }),
               data: { screen: 'Sleep', alarm: true, alarmId: a.id },
               sound: 'default',
               priority: AndroidNotificationPriority.MAX,

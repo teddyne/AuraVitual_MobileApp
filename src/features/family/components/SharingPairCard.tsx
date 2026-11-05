@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import { fmtExpiry } from '../utils/sharingFormat';
 
 // The Ghep doi tuc thi trong SharingScreen (doi nguyen van).
@@ -28,14 +28,15 @@ export function SharingPairCard({
   onScanPress: () => void;
   onSend: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={[styles.pairCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {myCode ? (
         <>
-          <Text style={[styles.codeLabel, { color: theme.muted }]}>MÃ MỜI CỦA BẠN</Text>
+          <Text style={[styles.codeLabel, { color: theme.muted }]}>{t('family.myCodeLabel')}</Text>
           <Text style={[styles.code, { color: theme.text }]}>{myCode.code}</Text>
           <Text style={[styles.codeExp, { color: theme.muted }]}>
-            Hiệu lực đến {fmtExpiry(myCode.expiresAt)}
+            {t('family.codeValidUntil', { expiry: fmtExpiry(myCode.expiresAt) })}
           </Text>
           <View style={styles.qrWrap}>
             <QRCode value={myCode.code} size={180} color='#1F2937' backgroundColor='#FFFFFF' />
@@ -49,23 +50,23 @@ export function SharingPairCard({
             ]}
           >
             <Text style={[styles.reloadText, { color: theme.primaryDark }]}>
-              {rotating ? 'Đang tạo…' : '↻ Tạo mã mới'}
+              {rotating ? t('family.rotating') : t('family.newCode')}
             </Text>
           </TouchableOpacity>
         </>
       ) : (
         <Text style={[styles.empty, { color: theme.muted }]}>
-          Chưa tạo được mã mời, kéo xuống để thử lại hoặc kiểm tra mạng.
+          {t('family.noCode')}
         </Text>
       )}
 
       <View style={styles.divider}>
-        <Text style={[styles.dividerText, { color: theme.muted, paddingTop: 15 }]}>- nhập mã chia sẻ của người khác -</Text>
+        <Text style={[styles.dividerText, { color: theme.muted, paddingTop: 15 }]}>{t('family.enterOtherCode')}</Text>
       </View>
       <TextInput
         value={codeInput}
         onChangeText={(t) => onCodeInputChange(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-        placeholder='Nhập mã 8 ký tự'
+        placeholder={t('family.codePlaceholder')}
         placeholderTextColor={theme.muted}
         autoCapitalize='characters'
         maxLength={8}
@@ -76,14 +77,14 @@ export function SharingPairCard({
           onPress={onScanPress}
           style={[styles.scanBtn, { borderColor: theme.border }]}
         >
-          <Text style={[styles.scanText, { color: theme.text }]}>📷 Quét QR</Text>
+          <Text style={[styles.scanText, { color: theme.text }]}>{t('family.scanQr')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onSend}
           disabled={sending}
           style={[styles.sendBtn, { backgroundColor: theme.primaryDark, opacity: sending ? 0.6 : 1 }]}
         >
-          <Text style={styles.sendText}>{sending ? 'Đang gửi...' : 'Gửi lời mời'}</Text>
+          <Text style={styles.sendText}>{sending ? t('family.sending') : t('family.sendInvite')}</Text>
         </TouchableOpacity>
       </View>
       {sendMsg && (

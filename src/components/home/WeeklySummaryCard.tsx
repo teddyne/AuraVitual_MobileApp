@@ -3,6 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fmt, fmtHoursMinutes, fmtSleepHours } from './homeFormat';
 import { type WeeklySummary } from '../../lib/workoutApi';
+import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 
 export function WeeklySummaryCard({
@@ -12,11 +13,14 @@ export function WeeklySummaryCard({
   summary: WeeklySummary | null;
   onPressWorkout: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.weeklyWrap}>
       <View style={styles.sectionHead}>
         <View>
-          <Text style={[styles.sectionTitle, { color: '#000' }]}>Tổng kết tuần</Text>
+          <Text style={[styles.sectionTitle, { color: '#000' }]}>
+            {t('home.weeklyTitle')}
+          </Text>
         </View>
         <View style={styles.sparkle}>
           <Ionicons name='sparkles' size={20} color='#2E7D32' />
@@ -24,46 +28,53 @@ export function WeeklySummaryCard({
       </View>
       <View style={styles.grid}>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>TỔNG BƯỚC</Text>
+          <Text style={styles.miniLabel}>{t('home.totalSteps')}</Text>
           <Text style={styles.miniBig}>
             {summary ? fmt(summary.stepsTotal) : '—'}
           </Text>
           <Text style={styles.miniSub}>
             {summary && summary.stepsChangePct != null
-              ? `${summary.stepsChangePct >= 0 ? '+' : ''}${summary.stepsChangePct}% so với tuần trước`
-              : 'Chưa đủ dữ liệu tuần trước để so sánh'}
+              ? t('home.vsLastWeek', {
+                  pct: `${summary.stepsChangePct >= 0 ? '+' : ''}${summary.stepsChangePct}%`,
+                })
+              : t('home.noPrevWeekData')}
           </Text>
         </View>
         <TouchableOpacity style={styles.miniCard} onPress={onPressWorkout}>
-          <Text style={styles.miniLabel}>LUYỆN TẬP</Text>
+          <Text style={styles.miniLabel}>{t('home.totalWorkout')}</Text>
           <Text style={styles.miniBig}>
             {summary ? fmtHoursMinutes(summary.workoutMinutes) : '—'}
           </Text>
           <Text style={styles.miniSub}>
             {summary
-              ? `${summary.workoutSessions} buổi · ${fmt(summary.workoutKcal)} kcal ước lượng`
+              ? t('home.sessionsEst', {
+                  sessions: summary.workoutSessions,
+                  kcal: fmt(summary.workoutKcal),
+                })
               : ''}
           </Text>
-          <Text style={styles.miniLink}>Ghi nhận tập luyện →</Text>
+          <Text style={styles.miniLink}>{t('home.logWorkout')}</Text>
         </TouchableOpacity>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>NƯỚC UỐNG</Text>
+          <Text style={styles.miniLabel}>{t('home.totalWater')}</Text>
           <Text style={styles.miniBig}>
             {summary ? `${fmt(summary.waterTotalMl)} ml` : '—'}
           </Text>
           <Text style={styles.miniSub}>
             {summary && summary.waterAvgPctOfGoal != null
-              ? `Trung bình ${summary.waterAvgPctOfGoal}% mục tiêu/ngày`
-              : 'Chưa có mục tiêu nước'}
+              ? t('home.waterAvgPct', { pct: summary.waterAvgPctOfGoal })
+              : t('home.noWaterGoal')}
           </Text>
         </View>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>GIỜ NGỦ</Text>
+          <Text style={styles.miniLabel}>{t('home.totalSleep')}</Text>
           <Text style={styles.miniBig}>
             {summary ? fmtSleepHours(summary.sleepTotalHours) : '—'}
           </Text>
           <Text style={styles.miniSub}>
-            {summary ? `Trung bình ${summary.sleepAvgHours}h/ngày` : ''}
+            {summary
+              ? t('home.sleepAvg', { hours: summary.sleepAvgHours })
+              : ''}
           </Text>
         </View>
       </View>

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { PRIMARY } from '../constants';
 import { fmt } from '../utils/stepsFormat';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/StepsDetailScreen.styles';
 
 // Vong gauge 3/4: cung 270 do, ho 90 do o phia duoi. Doi nguyen van tu
@@ -17,6 +18,7 @@ export function StepsGauge({
   goal: number;
   percent: number;
 }) {
+  const { t } = useSettings();
   const R = 82;
   const C = 2 * Math.PI * R;
   const arc = 0.75 * C;
@@ -49,15 +51,19 @@ export function StepsGauge({
         </Svg>
         <View style={styles.gaugeCenter}>
           <Text style={styles.gaugeNumber}>{fmt(todaySteps)}</Text>
-          <Text style={styles.gaugeSub}>Bước / mục tiêu {fmt(goal)}</Text>
+          <Text style={styles.gaugeSub}>
+            {t('steps.ofGoal', { goal: fmt(goal) })}
+          </Text>
         </View>
       </View>
       <View style={styles.banner}>
         <Ionicons name='trophy-outline' size={18} color={PRIMARY} />
         <Text style={styles.bannerText}>
           {percent >= 1
-            ? 'Bạn đã đạt mục tiêu hôm nay!'
-            : `Bạn đã đạt ${Math.round(percent * 100)}% mục tiêu hôm nay!`}
+            ? t('steps.goalReached')
+            : t('steps.goalProgress', {
+                pct: Math.round(percent * 100),
+              })}
         </Text>
       </View>
     </View>

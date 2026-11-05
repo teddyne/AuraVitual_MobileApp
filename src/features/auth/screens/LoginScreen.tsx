@@ -19,10 +19,12 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthField } from '../components/AuthField';
 import { focusInput } from '../utils/focusInput';
 import { BG, EMAIL_RE } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './LoginScreen.styles';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useSettings();
   const { login, signInWithProvider, biometricAvailable, loginWithBiometrics } =
     useAuth();
   const [email, setEmail] = useState('');
@@ -35,11 +37,11 @@ export default function LoginScreen() {
   const submit = async () => {
     if (submitting) return;
     if (!EMAIL_RE.test(email.trim())) {
-      setError('Email chưa đúng định dạng.');
+      setError(t('auth.validation.invalidEmail'));
       return;
     }
     if (password.length < 6) {
-      setError('Mật khẩu phải từ 6 ký tự trở lên.');
+      setError(t('auth.validation.passwordMin6'));
       return;
     }
     setError('');
@@ -47,11 +49,11 @@ export default function LoginScreen() {
     try {
       const res = await login(email, password);
       if (!res.ok) {
-        setError(res.message ?? 'Đăng nhập thất bại.');
+        setError(res.message ?? t('auth.login.failed'));
         return;
       }
       if (!res.user) {
-        setError('Không lấy được tài khoản sau khi đăng nhập.');
+        setError(t('auth.login.noAccount'));
         return;
       }
       const profile = await getProfile(res.user.id);
@@ -68,11 +70,11 @@ export default function LoginScreen() {
     try {
       const res = await signInWithProvider(provider);
       if (!res.ok) {
-        setError(res.message ?? 'Đăng nhập thất bại.');
+        setError(res.message ?? t('auth.login.failed'));
         return;
       }
       if (!res.user) {
-        setError('Không lấy được tài khoản sau khi đăng nhập.');
+        setError(t('auth.login.noAccount'));
         return;
       }
       const profile = await getProfile(res.user.id);
@@ -92,22 +94,22 @@ export default function LoginScreen() {
         const reason =
           typeof avail === 'object' && avail?.reason
             ? String(avail.reason)
-            : 'Thiết bị này không hỗ trợ sinh trắc học hoặc bạn chưa cài đặt Face ID / vân tay trên thiết bị.';
-        Alert.alert('Chưa dùng được sinh trắc học', reason);
+            : t('auth.biometric.unavailable');
+        Alert.alert(t('auth.biometric.unavailableTitle'), reason);
         return;
       }
       const res = await loginWithBiometrics();
       if (!res.ok) {
         Alert.alert(
-          'Đăng nhập sinh trắc học thất bại',
-          res.message ?? 'Đăng nhập thất bại.',
+          t('auth.biometric.failedTitle'),
+          res.message ?? t('auth.login.failed'),
         );
         return;
       }
       if (!res.user) {
         Alert.alert(
-          'Đăng nhập sinh trắc học thất bại',
-          'Không lấy được tài khoản sau khi đăng nhập.',
+          t('auth.biometric.failedTitle'),
+          t('auth.login.noAccount'),
         );
         return;
       }
@@ -135,18 +137,15 @@ export default function LoginScreen() {
               resizeMode='contain'
             />
 
-            <Text style={styles.title}>Chào mừng trở lại</Text>
-            <Text style={styles.sub}>
-              Đăng nhập để tiếp tục hành trình phục hồi và cân bằng nhịp sinh
-              học.
-            </Text>
+            <Text style={styles.title}>{t('auth.login.title')}</Text>
+            <Text style={styles.sub}>{t('auth.login.subtitle')}</Text>
 
             {/* Thẻ form trắng, bo tròn lớn, shadow nhẹ */}
             <View style={styles.formCard}>
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               <AuthField
-                label='ĐỊA CHỈ EMAIL'
+                label={t('auth.fields.email')}
                 icon={
                   <Ionicons name='mail-outline' size={20} color='#7A8A7A' />
                 }
@@ -160,7 +159,7 @@ export default function LoginScreen() {
                 blurOnSubmit={false}
               />
               <AuthField
-                label='MẬT KHẨU'
+                label={t('auth.fields.password')}
                 icon={
                   <Ionicons
                     name='lock-closed-outline'
@@ -170,7 +169,7 @@ export default function LoginScreen() {
                 }
                 value={password}
                 onChangeText={setPassword}
-                placeholder='Nhập mật khẩu'
+                placeholder={t('auth.login.passwordPlaceholder')}
                 secureTextEntry={!showPass}
                 autoCapitalize='none'
                 inputRef={passwordRef}
@@ -192,7 +191,9 @@ export default function LoginScreen() {
                 style={styles.forgot}
                 onPress={() => navigation.navigate('ForgotPassword')}
               >
-                <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+                <Text style={styles.forgotText}>
+                  {t('auth.login.forgotPassword')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -201,7 +202,9 @@ export default function LoginScreen() {
                 disabled={submitting}
                 activeOpacity={0.85}
               >
-                <Text style={styles.loginBtnText}>Đăng nhập ngay</Text>
+                <Text style={styles.loginBtnText}>
+                  {t('auth.login.submit')}
+                </Text>
                 <Ionicons name='arrow-forward' size={18} color={colors.white} />
               </TouchableOpacity>
             </View>
@@ -217,13 +220,15 @@ export default function LoginScreen() {
                 color={colors.sageDark}
               />
               <Text style={styles.faceIdText}>
-                Đăng nhập nhanh bằng sinh trắc học
+                {t('auth.login.biometricQuick')}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.divider}>
               <View style={styles.line} />
-              <Text style={styles.dividerText}>HOẶC ĐĂNG NHẬP VỚI</Text>
+              <Text style={styles.dividerText}>
+                {t('auth.login.orWith')}
+              </Text>
               <View style={styles.line} />
             </View>
 
@@ -251,7 +256,7 @@ export default function LoginScreen() {
                 <Ionicons name='leaf-outline' size={20} color='#2E7D32' />
               </View>
               <Text style={styles.proofText}>
-                Hơn 84,000 thành viên đã đồng bộ nhịp sinh học sáng nay.
+                {t('auth.login.socialProof')}
               </Text>
             </View>
 
@@ -260,9 +265,9 @@ export default function LoginScreen() {
               onPress={() => navigation.navigate('SignUp')}
             >
               <Text style={styles.footerText}>
-                Chưa có tài khoản?{' '}
+                {t('auth.login.noAccountYet')}{' '}
                 <Text style={{ color: colors.sageDark, fontWeight: '700' }}>
-                  Đăng ký ngay
+                  {t('auth.signup.cta')}
                 </Text>
               </Text>
             </TouchableOpacity>

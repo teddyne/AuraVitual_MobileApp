@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from '../screens/StepsDetailScreen.styles';
+import { useSettings } from '../../../context/SettingsContext';
 
 // O nhap tay so buoc hom nay. Doi nguyen van tu StepsDetailScreen.
 export function StepsManualForm({
@@ -14,21 +15,18 @@ export function StepsManualForm({
   savingManual: boolean;
   onSave: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.manualCard}>
-      <Text style={styles.cardTitle}>Nhập tay số bước hôm nay</Text>
-      <Text style={styles.cardText}>
-        Dùng khi điện thoại không có cảm biến, chưa cấp quyền, hoặc bạn muốn
-        sửa số hôm nay. Số nhập tay sẽ không bị đồng bộ tự động ghi đè trong
-        ngày hôm nay.
-      </Text>
+      <Text style={styles.cardTitle}>{t('steps.manualTitle')}</Text>
+      <Text style={styles.cardText}>{t('steps.manualDesc')}</Text>
       <View style={styles.manualRow}>
         <TextInput
           style={styles.manualInput}
           value={manualInput}
           onChangeText={onChangeText}
           keyboardType='number-pad'
-          placeholder='Ví dụ: 6500'
+          placeholder={t('steps.manualPlaceholder')}
           placeholderTextColor='#999'
         />
         <TouchableOpacity
@@ -37,7 +35,7 @@ export function StepsManualForm({
           disabled={savingManual}
         >
           <Text style={styles.manualBtnText}>
-            {savingManual ? 'Đang lưu…' : 'Lưu'}
+            {savingManual ? t('steps.saving') : t('common.save')}
           </Text>
         </TouchableOpacity>
       </View>

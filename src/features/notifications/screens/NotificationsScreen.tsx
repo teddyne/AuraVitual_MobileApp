@@ -41,7 +41,7 @@ import { s } from './NotificationsScreen.styles';
 const READ_KEY = '@auravital:notifications_read';
 
 export default function NotificationsScreen({ navigation }: any) {
-  const { theme, locale } = useSettings();
+  const { theme, locale, t } = useSettings();
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,14 +79,10 @@ export default function NotificationsScreen({ navigation }: any) {
     const inviteItems: DisplayItem[] = received.map((r) => ({
       id: `invite:${r.id}`,
       kind: 'family' as const,
-      category: vi ? 'CHIA SẺ GIA ĐÌNH' : 'FAMILY SHARING',
+      category: t('family.category'),
       time: new Date(r.createdAt).getTime() || Date.now(),
-      title: vi
-        ? `Lời mời kết nối từ ${r.fromName}`
-        : `Connection invite from ${r.fromName}`,
-      body: vi
-        ? `${r.fromName} muốn kết nối sức khỏe gia đình với bạn. Đồng ý để xem chỉ số của nhau, hoặc Từ chối.`
-        : `${r.fromName} wants to connect family health with you. Accept to share health data, or decline.`,
+      title: t('notifications.inviteTitle', { name: r.fromName }),
+      body: t('notifications.inviteBody', { name: r.fromName }),
       icon: '👨‍👩‍👧',
       iconBg: '#E8F5E9',
       read: readList.includes(`invite:${r.id}`),
@@ -145,10 +141,10 @@ export default function NotificationsScreen({ navigation }: any) {
     })).filter((g) => g.rows.length > 0);
 
   const tabs: { id: NotificationFilter; label: string }[] = [
-    { id: 'all', label: vi ? 'Tất cả' : 'All' },
-    { id: 'reminder', label: vi ? 'Nhắc nhở' : 'Reminders' },
-    { id: 'family', label: vi ? 'Chia sẻ' : 'Family' },
-    { id: 'milestone', label: vi ? 'Cột mốc' : 'Milestones' },
+    { id: 'all', label: t('notifications.filter.all') },
+    { id: 'reminder', label: t('notifications.filter.reminder') },
+    { id: 'family', label: t('notifications.filter.family') },
+    { id: 'milestone', label: t('notifications.filter.milestone') },
   ];
 
   const goSharing = () =>
@@ -191,10 +187,8 @@ export default function NotificationsScreen({ navigation }: any) {
     const ok = await acceptRequest(item.invite.requestId);
     if (!ok) {
       Alert.alert(
-        'Lỗi',
-        vi
-          ? 'Không đồng ý được lời mời, thử lại sau.'
-          : 'Could not accept the invite, please try again.',
+        t('family.errorTitle'),
+        t('notifications.inviteAcceptFailed'),
       );
       return;
     }
@@ -238,7 +232,7 @@ export default function NotificationsScreen({ navigation }: any) {
               <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
             <Text style={[s.headerTitle, { color: theme.text }]}>
-              {vi ? 'Thông báo & Nhắc nhở' : 'Notifications & Reminders'}
+              {t('settings.notificationsSection')}
             </Text>
           </View>
         </View>
@@ -251,11 +245,11 @@ export default function NotificationsScreen({ navigation }: any) {
 
           <View style={s.summaryRow}>
             <Text style={[s.summary, { color: theme.text }]}>
-              ● {unreadCount} {vi ? 'cập nhật chưa đọc' : 'unread updates'}
+              ● {t('notifications.unread', { count: unreadCount })}
             </Text>
             <TouchableOpacity onPress={markAllRead}>
               <Text style={[s.readAll, { color: theme.primaryDark }]}>
-                ✓ {vi ? 'Đã đọc tất cả' : 'Mark all read'}
+                ✓ {t('notifications.markAllRead')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -271,33 +265,27 @@ export default function NotificationsScreen({ navigation }: any) {
           </ScrollView>
 
           <Text style={[s.hint, { color: theme.muted }]}>
-            {vi
-              ? 'BẤM THẺ ĐỂ ĐÁNH DẤU ĐÃ ĐỌC'
-              : 'TAP A CARD TO MARK AS READ'}
+            {t('notifications.hint')}
           </Text>
 
           {grouped.length === 0 ? (
             <Text style={[s.empty, { color: theme.muted }]}>
               {filter === 'family'
-                ? vi
-                  ? 'Chưa có chia sẻ mới.'
-                  : 'No new sharing yet.'
-                : vi
-                  ? 'Chưa có thông báo nào.'
-                  : 'No notifications yet.'}
+                ? t('notifications.emptyFamily')
+                : t('notifications.emptyAll')}
             </Text>
           ) : (
             grouped.map(({ group, rows }) => (
               <View key={group}>
                 <View style={s.sectionRow}>
                   <Text style={[s.sectionTitle, { color: theme.text }]}>
-                    {groupLabel(group, vi)}
+                    {groupLabel(group)}
                   </Text>
                   <Text
                     style={[s.sectionRight, { color: theme.primaryDark }]}
                   >
                     {rows.filter((r) => !r.read).length}{' '}
-                    {vi ? 'tin mới' : 'new'}
+                    {t('notifications.newItems')}
                   </Text>
                 </View>
                 {rows.map((item) => (
@@ -305,7 +293,6 @@ export default function NotificationsScreen({ navigation }: any) {
                     key={item.id}
                     item={item}
                     theme={theme}
-                    vi={vi}
                     onPress={() => onCardPress(item)}
                     onHide={() => onHidePress(item)}
                     onInviteAccept={() => onInviteAccept(item)}

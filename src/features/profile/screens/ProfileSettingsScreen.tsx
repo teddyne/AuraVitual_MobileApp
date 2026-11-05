@@ -39,6 +39,7 @@ export default function ProfileSettingsScreen({ navigation }: any) {
   }, [profile?.avatar_url]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
 
   // Lấy navigator gốc (Stack) để navigate tới ProfileSetup /
   // Recommendation / Reminders cho đúng, không bị kẹt ở Tab.
@@ -74,8 +75,8 @@ export default function ProfileSettingsScreen({ navigation }: any) {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(
-        'Chưa cấp quyền',
-        'Cần quyền thư viện ảnh để chọn ảnh đại diện.',
+        t('settings.avatarPermissionTitle'),
+        t('settings.avatarPermissionDesc'),
       );
       return;
     }
@@ -99,9 +100,7 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       if (!accessToken) {
-        throw new Error(
-          'Phiên đăng nhập đã hết hạn. Hãy đăng xuất rồi đăng nhập lại, sau đó đổi ảnh.',
-        );
+        throw new Error(t('settings.avatarSessionExpired'));
       }
       const uploadUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL!}/storage/v1/object/avatars/${filePath}`;
       const up = await FileSystem.uploadAsync(
@@ -120,10 +119,10 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       );
       if (up.status !== 200) {
         throw new Error(
-          'Máy chủ ảnh trả về lỗi ' +
-            up.status +
-            (up.body ? ' — ' + up.body.slice(0, 300) : '') +
-            '. Hãy thử lại.',
+          t('settings.avatarServerError', {
+            status: up.status,
+            body: up.body ? ' — ' + up.body.slice(0, 300) : '',
+          }),
         );
       }
       const { data } = supabase.storage
@@ -134,7 +133,10 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       setAvatarBroken(false);
       setAvatarTick((t) => t + 1);
     } catch (e: any) {
-      Alert.alert('Đổi ảnh thất bại', e?.message ?? 'Thử lại sau.');
+      Alert.alert(
+        t('settings.avatarChangeFailed'),
+        e?.message ?? t('settings.avatarTryLater'),
+      );
     } finally {
       setUploadingAvatar(false);
     }
@@ -287,7 +289,9 @@ export default function ProfileSettingsScreen({ navigation }: any) {
                   marginTop: 8,
                 }}
               >
-                {uploadingAvatar ? 'Đang tải ảnh...' : 'Đổi ảnh đại diện'}
+                {uploadingAvatar
+                  ? t('settings.avatarUploading')
+                  : t('settings.changeAvatar')}
               </Text>
             </TouchableOpacity>
             <Text style={[s.name, { color: theme.text }]}>
@@ -403,13 +407,7 @@ export default function ProfileSettingsScreen({ navigation }: any) {
             dark={isDark}
             icon='calendar-outline'
             title={t('settings.birthDate')}
-            sub={
-              age == null
-                ? undefined
-                : locale === 'vi'
-                  ? `${age} tuổi`
-                  : `${age} years old`
-            }
+            sub={age == null ? undefined : t('settings.ageYears', { age })}
             right={birthDisplay || notSet}
             onPress={goSetup}
           />
@@ -504,25 +502,30 @@ export default function ProfileSettingsScreen({ navigation }: any) {
                 ? t('settings.languageVi')
                 : t('settings.languageEn')
             }
+            onPress={() => setLangOpen((v) => !v)}
           />
-          {languageOptions.map((o) => (
-            <TouchableOpacity
-              key={o.id}
-              style={[s.row, { backgroundColor: theme.card }]}
-              onPress={() => setLocale(o.id)}
-            >
-              <Text style={[s.rowTitle, { color: theme.text, flex: 1 }]}>
-                {o.label}
-              </Text>
-              {locale === o.id && (
-                <Ionicons
-                  name='checkmark'
-                  size={20}
-                  color={theme.primaryDark}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
+          {langOpen &&
+            languageOptions.map((o) => (
+              <TouchableOpacity
+                key={o.id}
+                style={[s.row, { backgroundColor: theme.card }]}
+                onPress={() => {
+                  setLocale(o.id);
+                  setLangOpen(false);
+                }}
+              >
+                <Text style={[s.rowTitle, { color: theme.text, flex: 1 }]}>
+                  {o.label}
+                </Text>
+                {locale === o.id && (
+                  <Ionicons
+                    name='checkmark'
+                    size={20}
+                    color={theme.primaryDark}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
 
           <Text style={[s.section, { color: theme.muted }]}>
             {t('settings.supportSection')}

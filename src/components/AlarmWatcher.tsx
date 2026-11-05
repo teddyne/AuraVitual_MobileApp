@@ -17,6 +17,7 @@ import {
   cancelSnoozeNotification,
 } from '../lib/sleepSession';
 import { navigationRef } from '../lib/navigationRef';
+import { translate } from '../i18n/locale';
 import { useToast } from './NotificationToast';
 import { syncReminderNotifications } from '../lib/reminders';
 import {
@@ -111,7 +112,7 @@ export default function AlarmWatcher() {
           } catch {}
         }
         showToast({
-          title: content.title ?? 'Nhắc nhở',
+          title: content.title ?? translate('notifications.fallbackTitle'),
           body: content.body ?? '',
           target: { screen: 'Notifications' },
         });

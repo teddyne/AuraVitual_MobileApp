@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { translate } from '../../i18n/locale';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         ok: true,
         needsConfirmation: true,
-        message: 'Cần xác nhận email trước khi đăng nhập.',
+        message: translate('auth.signup.needsConfirmation'),
       };
     const appUser = toAppUser(data.session.user);
     setUser(appUser);
@@ -131,8 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { ok: false, message: error.message };
     return {
       ok: true,
-      message:
-        'Nếu email tồn tại, link đặt lại mật khẩu đã được gửi. Hãy kiểm tra hộp thư (bản local: Mailpit) rồi bấm link.',
+      message: translate('auth.forgot.linkSent'),
     };
   };
 
@@ -154,10 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) return { ok: false, message: error.message };
     if (!data.url)
-      return { ok: false, message: 'Không lấy được link đăng nhập.' };
+      return { ok: false, message: translate('auth.login.noLoginLink') };
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success')
-      return { ok: false, message: 'Đã hủy đăng nhập.' };
+      return { ok: false, message: translate('auth.login.cancelled') };
     const parsed = Linking.parse(result.url);
     const params = parsed.queryParams ?? {};
     if (typeof params.code === 'string' && params.code.length > 0) {
@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!sessionUser)
       return {
         ok: false,
-        message: 'Không lấy được tài khoản sau khi đăng nhập.',
+        message: translate('auth.login.noAccount'),
       };
     const appUser = toAppUser(sessionUser);
     setUser(appUser);
@@ -202,25 +202,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!hardware)
         return {
           ok: false,
-          message: 'Thiết bị không hỗ trợ sinh trắc học.',
+          message: translate('auth.biometric.noHardware'),
         };
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       if (!enrolled)
         return {
           ok: false,
-          message: 'Thiết bị chưa đăng ký sinh trắc học.',
+          message: translate('auth.biometric.notEnrolled'),
         };
       const auth = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Xác thực để đăng nhập AuraVital',
+        promptMessage: translate('auth.biometric.prompt'),
       });
       if (!auth.success)
-        return { ok: false, message: 'Xác thực sinh trắc học thất bại.' };
+        return { ok: false, message: translate('auth.biometric.failed') };
       const stored = await SecureStore.getItemAsync(BIOMETRIC_KEY);
       if (!stored)
         return {
           ok: false,
-          message:
-            'Chưa lưu thông tin đăng nhập sinh trắc học. Hãy đăng nhập bằng email/mật khẩu một lần trước.',
+          message: translate('auth.biometric.notSaved'),
         };
       let saved: { email?: string; password?: string } = {};
       try {
@@ -231,8 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!saved.email || !saved.password)
         return {
           ok: false,
-          message:
-            'Chưa lưu thông tin đăng nhập sinh trắc học. Hãy đăng nhập bằng email/mật khẩu một lần trước.',
+          message: translate('auth.biometric.notSaved'),
         };
       const { data, error } = await supabase.auth.signInWithPassword({
         email: saved.email,
@@ -243,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(appUser);
       return { ok: true, user: appUser };
     } catch {
-      return { ok: false, message: 'Xác thực sinh trắc học thất bại.' };
+      return { ok: false, message: translate('auth.biometric.failed') };
     }
   };
 

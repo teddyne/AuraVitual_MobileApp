@@ -9,6 +9,7 @@ import React, {
 import { Appearance, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { translations, type Locale } from '../i18n/translations';
+import { setCurrentLocale } from '../i18n/locale';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ThemePalette = {
@@ -56,7 +57,7 @@ type SettingsValue = {
   setLocale: (l: Locale) => void;
   theme: ThemePalette;
   isDark: boolean;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 };
 
 const Ctx = createContext<SettingsValue>(null as any);
@@ -86,8 +87,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         savedTheme === 'system'
       )
         setThemeModeState(savedTheme);
-      if (savedLocale === 'vi' || savedLocale === 'en')
+      if (savedLocale === 'vi' || savedLocale === 'en') {
         setLocaleState(savedLocale);
+        setCurrentLocale(savedLocale);
+      }
       setLoaded(true);
     })();
   }, []);
@@ -99,6 +102,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   };
   const setLocale = (l: Locale) => {
     setLocaleState(l);
+    setCurrentLocale(l);
     AsyncStorage.setItem('auravital:locale', l);
   };
 
@@ -107,10 +111,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const theme = isDark ? DARK : LIGHT;
 
   const t = useMemo(
-    () => (key: string) => {
-      return (
-        lookup(translations[locale], key) ?? lookup(translations.vi, key) ?? key
-      );
+    () => (key: string, vars?: Record<string, string | number>) => {
+      let s =
+        lookup(translations[locale], key) ??
+        lookup(translations.vi, key) ??
+        key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          s = s.split(`{${k}}`).join(String(v));
+        }
+      }
+      return s;
     },
     [locale],
   );

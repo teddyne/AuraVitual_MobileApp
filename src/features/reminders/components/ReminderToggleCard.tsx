@@ -1,12 +1,10 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { ThemePalette } from '../../../context/SettingsContext';
 
-// The bat/tat mot loai nhac trong RemindersScreen (doi nguyen van).
-// children = noi dung mo rong ben duoi hang chinh (khung gio nuoc,
-// o nhap gio, vien chon so ngay...). dimmed = mo khi tat nhac chung.
+// The bat/tat mot loai nhac trong RemindersScreen.
 export function ReminderToggleCard({
-  icon,
   title,
   desc,
   value,
@@ -14,9 +12,12 @@ export function ReminderToggleCard({
   dimmed,
   theme,
   onValueChange,
+  expandable,
+  expanded,
+  onToggleExpand,
+  summary,
   children,
 }: {
-  icon: string;
   title: string;
   desc: string;
   value: boolean;
@@ -24,8 +25,13 @@ export function ReminderToggleCard({
   dimmed?: boolean;
   theme: ThemePalette;
   onValueChange: (v: boolean) => void;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  summary?: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  const canExpand = !!expandable && !!value;
   return (
     <View
       style={[
@@ -35,15 +41,16 @@ export function ReminderToggleCard({
       ]}
     >
       <View style={styles.row}>
-        <Text style={styles.icon}>{icon}</Text>
-        <View style={{ flex: 1 }}>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={canExpand ? 0.7 : 1}
+          onPress={canExpand ? onToggleExpand : undefined}
+        >
           <Text style={[styles.rowTitle, { color: theme.text }]}>
             {title}
           </Text>
-          <Text style={[styles.muted, { color: theme.muted }]}>
-            {desc}
-          </Text>
-        </View>
+          <Text style={[styles.muted, { color: theme.muted }]}>{desc}</Text>
+        </TouchableOpacity>
         <Switch
           disabled={disabled}
           value={value}
@@ -51,16 +58,33 @@ export function ReminderToggleCard({
           trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
           thumbColor='#FFFFFF'
         />
+        {canExpand && (
+          <TouchableOpacity onPress={onToggleExpand} hitSlop={8}>
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={theme.muted}
+            />
+          </TouchableOpacity>
+        )}
       </View>
-      {children}
+      {!expanded && value && summary ? (
+        <View style={styles.summaryWrap}>{summary}</View>
+      ) : null}
+      {expanded && children ? (
+        <View style={[styles.detailWrap, { borderTopColor: theme.border }]}>
+          {children}
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, padding: 14, marginTop: 8 },
+  card: { borderRadius: 20, padding: 16, marginTop: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  icon: { fontSize: 22 },
-  rowTitle: { fontWeight: '800' },
-  muted: { lineHeight: 18, marginTop: 2 },
+  rowTitle: { fontSize: 16, fontWeight: '700' },
+  muted: { fontSize: 13, lineHeight: 18, marginTop: 3 },
+  summaryWrap: { marginTop: 12 },
+  detailWrap: { borderTopWidth: 1, marginTop: 12 },
 });

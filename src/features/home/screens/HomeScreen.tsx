@@ -219,9 +219,9 @@ export default function HomeScreen({ navigation }: any) {
           if (steps != null && goal != null && steps >= goal) {
             await appendHistory({
               kind: 'milestone',
-              category: 'CỘT MỐC SỨC SỐNG',
-              title: 'Chúc mừng mục tiêu vận động!',
-              body: `Bạn đã đạt ${steps} bước hôm nay, vượt mục tiêu ${goal} bước.`,
+              category: t('home.milestoneCategory'),
+              title: t('home.milestoneStepsTitle'),
+              body: t('home.milestoneStepsBody', { steps, goal }),
               icon: '🏆',
               iconBg: '#FFF3E0',
               firedAt: Date.now(),
@@ -253,7 +253,7 @@ export default function HomeScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     },
-    [userId, selectedKey],
+    [userId, selectedKey, t],
   );
 
   useEffect(() => {
@@ -372,7 +372,18 @@ export default function HomeScreen({ navigation }: any) {
       target = target.getParent?.();
     }
 
-    Alert.alert('Không mở được mục Khám phá', 'Vui lòng thử lại sau.');
+    Alert.alert(
+      tr(
+        'home.exploreOpenFailedTitle',
+        'Không mở được mục Khám phá',
+        'Could not open Explore',
+      ),
+      tr(
+        'home.exploreOpenFailedDesc',
+        'Vui lòng thử lại sau.',
+        'Please try again later.',
+      ),
+    );
   };
   const goPlayer = (post: Post) => {
     const target = getRootNav();
@@ -569,7 +580,7 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={s.hello}>
                 {greetingWord}, {greetingName}
               </Text>
-              {greetingName === 'Bạn' && (
+              {greetingName === tr('home.you', 'Bạn', 'You') && (
                 <Text style={s.muted}>
                   {tr(
                     'home.profileNameMissing',

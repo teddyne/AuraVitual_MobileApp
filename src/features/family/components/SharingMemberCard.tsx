@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import { healthScore } from '../../../lib/auravitalApi';
 import {
   displayNameOf,
@@ -20,6 +20,7 @@ export function SharingMemberCard({
   theme: ThemePalette;
   onPress: () => void;
 }) {
+  const { t } = useSettings();
   const score = healthScore(m.latest, {
     step_goal: m.stepGoal,
     water_goal_ml: m.waterGoalMl,
@@ -51,7 +52,7 @@ export function SharingMemberCard({
           </View>
         </View>
         <Text style={[styles.memberSub, { color: theme.muted }]}>
-          {m.latest ? `Đã đồng bộ ${timeAgo(m.latest.updated_at)}` : 'Chưa có dữ liệu'}
+          {m.latest ? t('family.syncedAgo', { time: timeAgo(m.latest.updated_at) }) : t('family.noData')}
         </Text>
       </View>
       {showHr ? (

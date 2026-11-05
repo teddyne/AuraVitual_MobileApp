@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fmt, fmtSleepHours } from './homeFormat';
+import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 
 function ProgressBar({ pct, color }: { pct: number; color: string }) {
@@ -42,6 +43,7 @@ export type HighlightProps = {
 };
 
 export function HighlightCards(p: HighlightProps) {
+  const { t } = useSettings();
   const stepPct =
     p.steps != null && p.stepGoal ? (p.steps / p.stepGoal) * 100 : 0;
   const sleepPct =
@@ -53,7 +55,7 @@ export function HighlightCards(p: HighlightProps) {
   return (
     <View>
       <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Chỉ số nổi bật</Text>
+        <Text style={styles.sectionTitle}>{t('home.highlights')}</Text>
       </View>
       <View style={styles.grid}>
         <TouchableOpacity
@@ -62,7 +64,7 @@ export function HighlightCards(p: HighlightProps) {
         >
           <IconCircle bg='#2E7D32' name='walk' />
           <Text style={styles.big}>{p.steps != null ? fmt(p.steps) : '—'}</Text>
-          <Text style={styles.cardLabel}>Bước chân</Text>
+          <Text style={styles.cardLabel}>{t('home.steps')}</Text>
           <ProgressBar pct={stepPct} color='#2E7D32' />
         </TouchableOpacity>
 
@@ -72,9 +74,11 @@ export function HighlightCards(p: HighlightProps) {
         >
           <IconCircle bg='#D96C6C' name='heart' />
           <Text style={[styles.big, { color: '#B23A3A' }]}>
-            {p.daysToPeriod != null ? `${p.daysToPeriod} ngày` : '—'}
+            {p.daysToPeriod != null
+              ? `${p.daysToPeriod} ${t('home.dayUnit')}`
+              : '—'}
           </Text>
-          <Text style={styles.cardLabel}>Trước kỳ kinh tiếp theo</Text>
+          <Text style={styles.cardLabel}>{t('home.nextPeriod')}</Text>
           {p.cyclePhaseLabel ? (
             <Text style={styles.phase}>● {p.cyclePhaseLabel}</Text>
           ) : null}
@@ -88,7 +92,7 @@ export function HighlightCards(p: HighlightProps) {
           <Text style={styles.big}>
             {p.sleepHours != null ? fmtSleepHours(p.sleepHours) : '—'}
           </Text>
-          <Text style={styles.cardLabel}>Giấc ngủ ngon</Text>
+          <Text style={styles.cardLabel}>{t('home.goodSleep')}</Text>
           <ProgressBar pct={sleepPct} color='#5B6FD6' />
         </TouchableOpacity>
 
@@ -101,7 +105,7 @@ export function HighlightCards(p: HighlightProps) {
             {p.kcal != null ? fmt(p.kcal) : '—'}
             <Text style={styles.big}> kcal</Text>
           </Text>
-          <Text style={styles.cardLabel}>Năng lượng đã nạp</Text>
+          <Text style={styles.cardLabel}>{t('home.energy')}</Text>
           <ProgressBar pct={kcalPct} color='#E9A23B' />
         </TouchableOpacity>
       </View>

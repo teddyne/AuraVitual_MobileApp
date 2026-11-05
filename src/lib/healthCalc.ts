@@ -1,4 +1,5 @@
 import type { Metric, Profile } from './auravitalApi';
+import { translate, displayLocale } from '../i18n/locale';
 
 export type ActivityId =
   'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh';
@@ -9,6 +10,8 @@ export const ACTIVITY_LEVELS: {
   factor: number;
   title: string;
   desc: string;
+  titleKey: string;
+  descKey: string;
   sessions: number;
   waterExtra: number;
 }[] = [
@@ -17,6 +20,8 @@ export const ACTIVITY_LEVELS: {
     factor: 1.2,
     title: 'Rất ít',
     desc: 'Ít hoạt động, chỉ đi làm (đi học)',
+    titleKey: 'health.activity.sedentary.title',
+    descKey: 'health.activity.sedentary.desc',
     sessions: 0,
     waterExtra: 0,
   },
@@ -25,6 +30,8 @@ export const ACTIVITY_LEVELS: {
     factor: 1.375,
     title: 'Ít',
     desc: 'Có tập nhẹ nhàng, tuần 1-3 buổi',
+    titleKey: 'health.activity.light.title',
+    descKey: 'health.activity.light.desc',
     sessions: 2,
     waterExtra: 250,
   },
@@ -33,6 +40,8 @@ export const ACTIVITY_LEVELS: {
     factor: 1.55,
     title: 'Trung bình',
     desc: 'Có vận động vừa, 4-5 buổi/tuần',
+    titleKey: 'health.activity.moderate.title',
+    descKey: 'health.activity.moderate.desc',
     sessions: 4,
     waterExtra: 500,
   },
@@ -41,6 +50,8 @@ export const ACTIVITY_LEVELS: {
     factor: 1.725,
     title: 'Cao',
     desc: 'Vận động nhiều, 6-7 buổi/tuần',
+    titleKey: 'health.activity.high.title',
+    descKey: 'health.activity.high.desc',
     sessions: 6,
     waterExtra: 750,
   },
@@ -49,13 +60,15 @@ export const ACTIVITY_LEVELS: {
     factor: 1.9,
     title: 'Rất cao',
     desc: 'Vận động rất nhiều, ngày tập 2 lần',
+    titleKey: 'health.activity.veryHigh.title',
+    descKey: 'health.activity.veryHigh.desc',
     sessions: 7,
     waterExtra: 1000,
   },
 ];
 
 function durationUnitWord(u: DurationUnit) {
-  return u === 'day' ? 'ngày' : u === 'month' ? 'tháng' : 'tuần';
+  return translate(`health.unit.${u}`);
 }
 export function calcBmi(w: number, h: number) {
   return h > 0 ? w / Math.pow(h / 100, 2) : 0;
@@ -128,7 +141,11 @@ export function exercisePlan(
     duration,
     met: c.met,
     kcalPerWeek: Math.round(minutes * ((c.met * weightKg * 3.5) / 200)),
-    desc: `${duration} phút x ${sessions} buổi/tuần${userChosen ? ' (bạn chọn)' : ''}`,
+    desc: translate('health.exerciseDesc', {
+      duration,
+      sessions,
+      chosen: userChosen ? translate('health.youChose') : '',
+    }),
   };
 }
 export function calcRecommendation(input: {
@@ -166,7 +183,7 @@ export function calcRecommendation(input: {
     input.durationValue && input.durationUnit
       ? `${input.durationValue} ${durationUnitWord(input.durationUnit)}`
       : durationWeeks
-        ? `${durationWeeks} tuần`
+        ? translate('health.weeks', { n: durationWeeks })
         : '';
   const targetDiff =
     targetWeightKg !== null ? +(targetWeightKg - weightKg).toFixed(1) : null;
@@ -192,7 +209,12 @@ export function calcRecommendation(input: {
       if (isTooFast) {
         recommendedWeeks = Math.ceil(Math.abs(targetDiff) / 0.5);
         recommendedCalorie = tdee - Math.min(550, Math.max(0, tdee - bmr));
-        adviceText = `Lời khuyên: ${weeklyChangeKg.toFixed(2)} kg/tuần là nhanh hơn mức an toàn khoảng 0,5 kg/tuần${calorieTarget < bmr ? ' và tổng calo dưới BMR' : ''}. Nếu theo mức an toàn, bạn nên ăn khoảng ${recommendedCalorie.toLocaleString('vi-VN')} kcal/ngày trong khoảng ${recommendedWeeks} tuần.`;
+        adviceText = translate('health.adviceLoseFast', {
+          rate: weeklyChangeKg.toFixed(2),
+          belowBmr: calorieTarget < bmr ? translate('health.belowBmr') : '',
+          cal: recommendedCalorie.toLocaleString(displayLocale()),
+          weeks: recommendedWeeks,
+        });
       }
     } else {
       const rate = bmi >= 30 ? 0.2 : bmi >= 25 ? 0.15 : 0.1;
@@ -220,7 +242,11 @@ export function calcRecommendation(input: {
       if (isTooFast) {
         recommendedWeeks = Math.ceil(Math.abs(targetDiff) / 0.25);
         recommendedCalorie = tdee + 275;
-        adviceText = `Lời khuyên: ${weeklyChangeKg.toFixed(2)} kg/tuần là nhanh hơn mức an toàn khoảng 0,25 kg/tuần. Nếu theo mức an toàn, bạn nên ăn khoảng ${recommendedCalorie.toLocaleString('vi-VN')} kcal/ngày trong khoảng ${recommendedWeeks} tuần.`;
+        adviceText = translate('health.adviceGainFast', {
+          rate: weeklyChangeKg.toFixed(2),
+          cal: recommendedCalorie.toLocaleString(displayLocale()),
+          weeks: recommendedWeeks,
+        });
       }
     } else {
       surplus = Math.min(Math.round(tdee * 0.1), 500);
@@ -261,7 +287,9 @@ export function calcRecommendation(input: {
     gender: input.gender,
     goal,
     activityId: input.activityId,
-    activityLabel: level ? level.title : 'Trung bình (mặc định)',
+    activityLabel: localizeActivityTitle(
+      level ? level.title : 'Trung bình (mặc định)',
+    ),
     targetWeightKg,
     bmi,
     asia: asiaCategory(bmi),
@@ -304,7 +332,7 @@ export function calcRecommendation(input: {
     sleepBedtime: input.sleepBedtime ?? null,
     sleepWakeTime: input.sleepWakeTime ?? null,
     recommendedSleepHours,
-    recommendedSleepRange,
+    recommendedSleepRange: localizeSleepRange(recommendedSleepRange),
     habitualSleepHours,
     cycleStartDate: input.cycleStartDate ?? null,
     cycleLengthDays: input.cycleLengthDays ?? null,
@@ -314,6 +342,79 @@ export function calcRecommendation(input: {
     cycleOvulationISO,
     cycleOvulationLabel: isoToLabel(cycleOvulationISO),
   };
+}
+
+// --- Tra cuu dich SONG SONG ---
+// RecommendationScreen.tsx so sanh truc tiep rec.asia.label === 'Bình thường'
+// / 'Thiếu cân' / 'Thừa cân' de chon mau BMI, nen asiaCategory() GIU NGUYEN
+// gia tri tieng Viet goc; cho hien thi dung localizeBmiLabel/localizeBmiRisk.
+// Cac chuoi ghep tu so (exercise.desc, durationLabel, adviceText) va
+// activityLabel / recommendedSleepRange da dich truc tiep bang translate()
+// trong cac ham tren, theo locale hien tai.
+export function localizeBmiLabel(label: string): string {
+  switch (label) {
+    case 'Thiếu cân':
+      return translate('health.bmi.underweight.label');
+    case 'Bình thường':
+      return translate('health.bmi.normal.label');
+    case 'Thừa cân':
+      return translate('health.bmi.overweight.label');
+    case 'Béo phì độ I':
+      return translate('health.bmi.obese1.label');
+    case 'Béo phì độ II':
+      return translate('health.bmi.obese2.label');
+    default:
+      return label;
+  }
+}
+
+export function localizeBmiRisk(risk: string): string {
+  switch (risk) {
+    case 'Suy nhược, thiếu chất, loãng xương':
+      return translate('health.bmi.underweight.risk');
+    case 'Lý tưởng, nguy cơ bệnh lý thấp':
+      return translate('health.bmi.normal.risk');
+    case 'Tiền béo phì, cần chỉnh lối sống':
+      return translate('health.bmi.overweight.risk');
+    case 'Tăng nguy cơ tim mạch, tiểu đường':
+      return translate('health.bmi.obese1.risk');
+    case 'Nguy cơ bệnh tật rất cao':
+      return translate('health.bmi.obese2.risk');
+    default:
+      return risk;
+  }
+}
+
+export function localizeActivityTitle(title: string): string {
+  switch (title) {
+    case 'Rất ít':
+      return translate('health.activity.sedentary.title');
+    case 'Ít':
+      return translate('health.activity.light.title');
+    case 'Trung bình':
+      return translate('health.activity.moderate.title');
+    case 'Cao':
+      return translate('health.activity.high.title');
+    case 'Rất cao':
+      return translate('health.activity.veryHigh.title');
+    case 'Trung bình (mặc định)':
+      return translate('health.activityDefault');
+    default:
+      return title;
+  }
+}
+
+export function localizeSleepRange(range: string): string {
+  switch (range) {
+    case '8–10 giờ':
+      return translate('health.sleepRange.young');
+    case '7–8 giờ':
+      return translate('health.sleepRange.senior');
+    case '7–9 giờ':
+      return translate('health.sleepRange.adult');
+    default:
+      return range;
+  }
 }
 
 // Chuyen nguyen van tu HomeScreen (src/features/home/screens/HomeScreen.tsx):

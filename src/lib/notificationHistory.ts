@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { translate } from '../i18n/locale';
 
 export type HistoryKind = 'reminder' | 'family' | 'milestone';
 
@@ -126,7 +127,7 @@ function mapDeliveredToEntry(
   const req = n.request;
   const data: any = req.content.data ?? {};
   const firedAt = typeof n.date === 'number' ? n.date : Date.now();
-  const title = req.content.title ?? 'Nhắc nhở';
+  const title = req.content.title ?? translate('notifications.fallbackTitle');
   const body = req.content.body ?? '';
   const identifier = req.identifier ?? `${title}|${body}`;
   const dedupeKey = `${identifier}|${dayKeyOf(firedAt)}`;
@@ -134,7 +135,7 @@ function mapDeliveredToEntry(
   if (data.kind === 'water') {
     return {
       kind: 'reminder',
-      category: 'THÓI QUEN SINH HOẠT',
+      category: translate('notifications.category.habits'),
       title,
       body,
       icon: '💧',
@@ -146,7 +147,7 @@ function mapDeliveredToEntry(
   if (data.kind === 'meal') {
     return {
       kind: 'reminder',
-      category: 'BỮA ĂN',
+      category: translate('notifications.category.meal'),
       title,
       body,
       icon: '🍽',
@@ -158,7 +159,7 @@ function mapDeliveredToEntry(
   if (data.kind === 'sleep') {
     return {
       kind: 'reminder',
-      category: 'GIẤC NGỦ',
+      category: translate('notifications.category.sleep'),
       title,
       body,
       icon: '🌙',
@@ -170,7 +171,10 @@ function mapDeliveredToEntry(
   if (data.alarm || data.isSnooze || data.autoSleep) {
     return {
       kind: 'reminder',
-      category: data.autoSleep && !data.alarm ? 'GIẤC NGỦ' : 'BÁO THỨC',
+      category:
+        data.autoSleep && !data.alarm
+          ? translate('notifications.category.sleep')
+          : translate('notifications.category.alarm'),
       title,
       body,
       icon: data.autoSleep && !data.alarm ? '🌙' : '⏰',

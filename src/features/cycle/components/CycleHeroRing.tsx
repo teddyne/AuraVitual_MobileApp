@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { PRIMARY } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/CycleTrackingScreen.styles';
 
 const R = 102;
@@ -17,6 +18,7 @@ export function CycleHeroRing({
   daysUntilNext: number | null;
   phase: string;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.heroRingWrap}>
       <Svg width={280} height={280} viewBox='0 0 240 240'>
@@ -41,19 +43,23 @@ export function CycleHeroRing({
         />
       </Svg>
       <View style={styles.heroCenter}>
-        <Text style={styles.heroLabel}>CHU KỲ HIỆN TẠI</Text>
+        <Text style={styles.heroLabel}>{t('cycle.currentCycle')}</Text>
         {daysUntilNext !== null && daysUntilNext >= 0 ? (
           <>
-            <Text style={styles.heroMain}>Kỳ sau</Text>
+            <Text style={styles.heroMain}>{t('cycle.nextPeriod')}</Text>
             <Text style={styles.heroDays}>
-              {daysUntilNext === 0 ? 'Hôm nay' : `${daysUntilNext} ngày`}
+              {daysUntilNext === 0
+                ? t('home.today')
+                : `${daysUntilNext} ${t('home.dayUnit')}`}
             </Text>
           </>
         ) : (
           <>
-            <Text style={styles.heroMain}>Đã quá</Text>
+            <Text style={styles.heroMain}>{t('cycle.overdue')}</Text>
             <Text style={styles.heroDays}>
-              {daysUntilNext !== null ? `${-daysUntilNext} ngày` : ''}
+              {daysUntilNext !== null
+                ? `${-daysUntilNext} ${t('home.dayUnit')}`
+                : ''}
             </Text>
           </>
         )}

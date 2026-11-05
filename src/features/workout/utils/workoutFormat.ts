@@ -7,6 +7,8 @@
 // 00:00) hay fmtDur/toKey/keyToDisplay cua dates.ts: dinh dang
 // tra ve khac (fmtHM tra "1h 5ph" / "5ph", displayDate tra "d/m"
 // khong nam, fmtClock khong co guard).
+import { translate } from '../../../i18n/locale';
+
 export function displayDate(iso: string): string {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
@@ -15,7 +17,9 @@ export function displayDate(iso: string): string {
 export function fmtHM(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60);
   const m = Math.round(totalMinutes % 60);
-  return h > 0 ? `${h}h ${m}ph` : `${m}ph`;
+  return h > 0
+    ? translate('workout.fmt.hoursMinutes', { h, m })
+    : translate('workout.fmt.minutesOnly', { m });
 }
 
 export function fmtClock(totalSec: number): string {

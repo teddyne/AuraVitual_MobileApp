@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 
 // Hop dat biet danh ngay sau khi Dong y loi moi (doi nguyen van tu SharingScreen).
 export function SharingNicknameBox({
@@ -18,15 +18,16 @@ export function SharingNicknameBox({
   onSave: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={[styles.nickBox, { backgroundColor: '#E8F5E9', borderColor: theme.primaryDark }]}>
       <Text style={[styles.nickTitle, { color: theme.text }]}>
-        Đã kết nối với {name}! Đặt biệt danh cho người này:
+        {t('family.nickConnected', { name })}
       </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder='Ví dụ: Bố, Mẹ...'
+        placeholder={t('family.nickExample')}
         placeholderTextColor={theme.muted}
         maxLength={30}
         style={[styles.nickInput, { backgroundColor: '#FFFFFF', color: theme.text }]}
@@ -36,10 +37,10 @@ export function SharingNicknameBox({
           onPress={onSave}
           style={[styles.acceptBtn, { backgroundColor: theme.primaryDark }]}
         >
-          <Text style={styles.acceptText}>Lưu biệt danh</Text>
+          <Text style={styles.acceptText}>{t('family.saveNick')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onDismiss}>
-          <Text style={[styles.declineText, { color: theme.muted }]}>Để sau</Text>
+          <Text style={[styles.declineText, { color: theme.muted }]}>{t('family.later')}</Text>
         </TouchableOpacity>
       </View>
     </View>

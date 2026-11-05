@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { IconBadge } from '../../../components/ui/IconBadge';
 import { formatSyncTime } from '../utils/stepsFormat';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/StepsDetailScreen.styles';
 
 export type SensorStatus =
@@ -28,6 +29,7 @@ export function StepsSyncCard({
   manualToday: boolean;
   onSync: (force: boolean) => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.syncCard}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -36,8 +38,8 @@ export function StepsSyncCard({
       </View>
       <Text style={styles.syncText}>
         {lastSyncAt
-          ? `Đồng bộ lần cuối: ${formatSyncTime(lastSyncAt)}`
-          : 'Chưa đồng bộ lần nào từ cảm biến.'}
+          ? t('steps.lastSync', { time: formatSyncTime(lastSyncAt) })
+          : t('steps.neverSynced')}
       </Text>
       {sensorNote ? <Text style={styles.syncText}>{sensorNote}</Text> : null}
       {sensorStatus === 'available' && platformNote ? (
@@ -50,7 +52,7 @@ export function StepsSyncCard({
           disabled={syncing}
         >
           <Text style={styles.syncBtnText}>
-            {syncing ? 'Đang đồng bộ…' : 'Đồng bộ lại'}
+            {syncing ? t('steps.syncing') : t('steps.syncAgain')}
           </Text>
         </TouchableOpacity>
         {sensorStatus === 'denied' ? (
@@ -58,7 +60,7 @@ export function StepsSyncCard({
             style={styles.syncBtn}
             onPress={() => onSync(false)}
           >
-            <Text style={styles.syncBtnText}>Cấp quyền lại</Text>
+            <Text style={styles.syncBtnText}>{t('steps.grantAgain')}</Text>
           </TouchableOpacity>
         ) : null}
         {manualToday ? (
@@ -66,7 +68,7 @@ export function StepsSyncCard({
             style={styles.syncBtn}
             onPress={() => onSync(true)}
           >
-            <Text style={styles.syncBtnText}>Dùng lại đếm tự động</Text>
+            <Text style={styles.syncBtnText}>{t('steps.useAutoAgain')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>

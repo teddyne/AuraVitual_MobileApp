@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import type { FamilyRequest } from '../../../lib/familyApi';
 
 // The loi moi nhan / da gui trong SharingScreen (doi nguyen van).
@@ -15,23 +15,24 @@ export function ReceivedRequestCard({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={[styles.reqCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.reqText, { color: theme.text }]}>
-        <Text style={{ fontWeight: '800' }}>{r.fromName}</Text> muốn kết nối gia đình với bạn.
+        <Text style={{ fontWeight: '800' }}>{r.fromName}</Text> {t('family.requestReceivedSuffix')}
       </Text>
       <View style={styles.reqBtns}>
         <TouchableOpacity
           onPress={onAccept}
           style={[styles.acceptBtn, { backgroundColor: theme.primaryDark }]}
         >
-          <Text style={styles.acceptText}>Đồng ý</Text>
+          <Text style={styles.acceptText}>{t('family.accept')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onDecline}
           style={[styles.declineBtn, { borderColor: theme.border }]}
         >
-          <Text style={[styles.declineText, { color: theme.text }]}>Từ chối</Text>
+          <Text style={[styles.declineText, { color: theme.text }]}>{t('family.decline')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -47,22 +48,23 @@ export function SentRequestCard({
   theme: ThemePalette;
   onDismiss: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={[styles.reqCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.reqText, { color: theme.text }]}>
         {r.status === 'declined' ? (
           <>
-            <Text style={{ fontWeight: '800' }}>{r.toName ?? 'Người nhận'}</Text> đã từ chối lời mời.
+            <Text style={{ fontWeight: '800' }}>{r.toName ?? t('family.recipientFallback')}</Text> {t('family.requestDeclinedSuffix')}
           </>
         ) : (
           <>
-            Đang chờ <Text style={{ fontWeight: '800' }}>{r.toName ?? 'người nhận'}</Text> chấp nhận.
+            {t('family.requestPendingPrefix')} <Text style={{ fontWeight: '800' }}>{r.toName ?? t('family.recipientFallbackLower')}</Text> {t('family.requestPendingSuffix')}
           </>
         )}
       </Text>
       {r.status === 'declined' && (
         <TouchableOpacity onPress={onDismiss}>
-          <Text style={[styles.dismiss, { color: theme.primaryDark }]}>Ẩn</Text>
+          <Text style={[styles.dismiss, { color: theme.primaryDark }]}>{t('family.hide')}</Text>
         </TouchableOpacity>
       )}
     </View>

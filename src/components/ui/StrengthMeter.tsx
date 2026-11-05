@@ -1,17 +1,19 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
+import { useSettings } from '../../context/SettingsContext';
 
 // Thanh đo độ mạnh mật khẩu 4 vạch như màn Sign Up trong ảnh.
 export function StrengthMeter({ score }: { score: number }) {
+  const { t } = useSettings();
   const label =
     score <= 1
-      ? 'Yếu'
+      ? t('shared.passwordStrength.weak')
       : score === 2
-        ? 'Trung bình'
+        ? t('shared.passwordStrength.fair')
         : score === 3
-          ? 'Khá'
-          : 'Mạnh';
+          ? t('shared.passwordStrength.good')
+          : t('shared.passwordStrength.strong');
   return (
     <View style={styles.strengthWrap}>
       <View style={styles.bars}>

@@ -50,9 +50,12 @@ export function ageFromIso(iso: string | null) {
   return age;
 }
 
-export function fmtSleepHours(h: number) {
+// locale: 'vi' mặc định giữ nguyên chuỗi cũ; 'en' dùng dạng rút gọn "Xh Ym".
+export function fmtSleepHours(h: number, locale: 'vi' | 'en' = 'vi') {
   const hh = Math.floor(h),
     mm = Math.round((h - hh) * 60);
+  if (locale === 'en')
+    return mm === 60 ? `${hh + 1}h` : `${hh}h ${mm}m`;
   return mm === 60 ? `${hh + 1} giờ` : `${hh} giờ ${mm} phút`;
 }
 
@@ -63,8 +66,9 @@ export const toDbTime = (v: string) => {
 
 export const toTimeInput = (t: string | null) => (t ? t.slice(0, 5) : '');
 
-export function fmtHours(h: number) {
+export function fmtHours(h: number, locale: 'vi' | 'en' = 'vi') {
   const hh = Math.floor(h),
     mm = Math.round((h - hh) * 60);
+  if (locale === 'en') return `${hh}h ${mm}m`;
   return `${hh} giờ ${mm} phút`;
 }

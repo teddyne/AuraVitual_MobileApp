@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import { formatSleep } from '../../../lib/auravitalApi';
 import {
   stepsToKcal,
@@ -23,6 +23,7 @@ export function FamilyVitalGrid({
   settings: SharingSettings;
   theme: ThemePalette;
 }) {
+  const { t, locale } = useSettings();
   const sharingOff = !settings.share_enabled;
   const showHr = !sharingOff && settings.share_heart_rate && metric?.heart_rate != null;
   const showSteps = !sharingOff && settings.share_steps && metric?.steps != null;
@@ -33,22 +34,22 @@ export function FamilyVitalGrid({
     metric?.heart_rate == null
       ? ''
       : metric.heart_rate < 60
-        ? 'Thấp (dưới 60)'
+        ? t('family.hrLow')
         : metric.heart_rate <= 100
-          ? 'Bình thường (60-90)'
-          : 'Cao (trên 100)';
+          ? t('family.hrNormal')
+          : t('family.hrHigh');
 
   if (sharingOff) {
     return (
       <Text style={[styles.notice, { color: theme.muted }]}>
-        Thành viên này đã tắt chia sẻ sức khỏe với gia đình.
+        {t('family.sharingOff')}
       </Text>
     );
   }
   if (!metric) {
     return (
       <Text style={[styles.notice, { color: theme.muted }]}>
-        Thành viên chưa ghi nhận chỉ số nào.
+        {t('family.noMetrics')}
       </Text>
     );
   }
@@ -57,7 +58,7 @@ export function FamilyVitalGrid({
       {showHr && (
         <View style={[styles.vitalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={styles.vitalIcon}>❤️</Text>
-          <Text style={[styles.vitalLabel, { color: theme.muted }]}>LÚC NGHỈ</Text>
+          <Text style={[styles.vitalLabel, { color: theme.muted }]}>{t('family.hrRest')}</Text>
           <Text style={[styles.vitalValue, { color: theme.text }]}>{metric.heart_rate} <Text style={styles.vitalUnit}>BPM</Text></Text>
           <Text style={[styles.vitalNote, { color: theme.primaryDark }]}>✓ {hrStatus}</Text>
         </View>
@@ -66,8 +67,8 @@ export function FamilyVitalGrid({
         <View style={[styles.vitalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={styles.vitalIcon}>🏃</Text>
           <Text style={[styles.vitalValue, { color: theme.text }]}>
-            {metric.steps!.toLocaleString('vi-VN')}
-            <Text style={styles.vitalUnit}> / {member.stepGoal.toLocaleString('vi-VN')}</Text>
+            {metric.steps!.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')}
+            <Text style={styles.vitalUnit}> / {member.stepGoal.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')}</Text>
           </Text>
           <Text style={[styles.vitalNote, { color: theme.primaryDark }]}>
             {Math.round((metric.steps! / member.stepGoal) * 100)}% • {stepsToKm(metric.steps!).toFixed(1)} km • {stepsToKcal(metric.steps!)} kcal
@@ -79,7 +80,9 @@ export function FamilyVitalGrid({
           <Text style={styles.vitalIcon}>🌙</Text>
           <Text style={[styles.vitalValue, { color: theme.text }]}>{formatSleep(metric.sleep_hours)}</Text>
           <Text style={[styles.vitalNote, { color: theme.primaryDark }]}>
-            {Math.round((Number(metric.sleep_hours) / member.sleepGoalHours) * 100)}% mục tiêu giấc ngủ
+            {t('family.sleepGoalPct', {
+              pct: Math.round((Number(metric.sleep_hours) / member.sleepGoalHours) * 100),
+            })}
           </Text>
         </View>
       )}
@@ -88,7 +91,7 @@ export function FamilyVitalGrid({
           <Text style={styles.vitalIcon}>🩸</Text>
           <Text style={[styles.vitalValue, { color: theme.text }]}>SpO2: {metric.spo2}%</Text>
           <Text style={[styles.vitalNote, { color: theme.primaryDark }]}>
-            {metric.spo2! >= 95 ? 'Oxy máu lý tưởng' : 'Oxy máu thấp, cần chú ý'}
+            {metric.spo2! >= 95 ? t('family.spo2Ideal') : t('family.spo2Low')}
           </Text>
         </View>
       )}
@@ -96,7 +99,7 @@ export function FamilyVitalGrid({
         <View style={[styles.vitalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={styles.vitalIcon}>⚖️</Text>
           <Text style={[styles.vitalValue, { color: theme.text }]}>{metric.weight_kg} <Text style={styles.vitalUnit}>kg</Text></Text>
-          <Text style={[styles.vitalNote, { color: theme.muted }]}>Cân nặng hôm nay</Text>
+          <Text style={[styles.vitalNote, { color: theme.muted }]}>{t('family.weightToday')}</Text>
         </View>
       )}
     </View>

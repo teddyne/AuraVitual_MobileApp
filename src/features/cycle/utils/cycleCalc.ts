@@ -1,6 +1,7 @@
 // Ham thuan tinh toan chu ky — doi nguyen van tu CycleTrackingScreen,
 // chi doi cac ham ngay thang sang import tu src/utils/dates.ts.
 import { addDaysKey, diffDays, keyToDisplay, pad } from '../../../utils/dates';
+import { translate } from '../../../i18n/locale';
 import type { Cycle } from '../types';
 
 export function predictedPeriod(cycle: Cycle | null, key: string) {
@@ -32,8 +33,8 @@ export function computeCycleStatus(
     const diff = diffDays(cycle.start_date, todayKey);
     if (diff < 0) {
       daysUntilNext = -diff;
-      phase = 'Chưa tới kỳ';
-      fertility = 'Chưa xác định';
+      phase = translate('cycle.phase.notStarted');
+      fertility = translate('cycle.fertility.unknown');
     } else {
       const idx = Math.floor(diff / cycle.cycle_length_days);
       dayInCycle = (diff % cycle.cycle_length_days) + 1;
@@ -47,17 +48,17 @@ export function computeCycleStatus(
         cycle.cycle_length_days - 14,
       );
       if (dayInCycle <= cycle.period_length_days) {
-        phase = 'Kỳ kinh';
-        fertility = 'Thấp';
+        phase = translate('cycle.phase.period');
+        fertility = translate('cycle.fertility.low');
       } else if (dayInCycle < ovulation - 5) {
-        phase = 'Pha nang noãn';
-        fertility = 'Thấp';
+        phase = translate('cycle.phase.follicular');
+        fertility = translate('cycle.fertility.low');
       } else if (dayInCycle <= ovulation + 1) {
-        phase = 'Rụng trứng';
-        fertility = 'Cao';
+        phase = translate('cycle.phase.ovulation');
+        fertility = translate('cycle.fertility.high');
       } else {
-        phase = 'Pha hoàng thể';
-        fertility = 'Thấp';
+        phase = translate('cycle.phase.luteal');
+        fertility = translate('cycle.fertility.low');
       }
     }
   }
@@ -95,7 +96,10 @@ export function computeDeviations(
     const lateDays = diffDays(predictedNext, todayKey);
     if (lateDays > 0) {
       deviations.push(
-        `Trễ ${lateDays} ngày so với ngày dự kiến ${keyToDisplay(predictedNext)} mà chưa có kỳ mới được ghi.`,
+        translate('cycle.devLate', {
+          late: lateDays,
+          date: keyToDisplay(predictedNext),
+        }),
       );
     }
   }
@@ -107,7 +111,11 @@ export function computeDeviations(
     const dev = latest.actual - prevAvg;
     if (Math.abs(dev) >= 7) {
       deviations.push(
-        `Chu kỳ vừa rồi ${latest.actual} ngày, ${dev > 0 ? 'dài' : 'ngắn'} hơn trung bình các kỳ trước (${prevAvg.toFixed(1)} ngày) ${Math.abs(dev).toFixed(0)} ngày.`,
+        translate(dev > 0 ? 'cycle.devLonger' : 'cycle.devShorter', {
+          actual: latest.actual,
+          avg: prevAvg.toFixed(1),
+          diff: Math.abs(dev).toFixed(0),
+        }),
       );
     }
   }
@@ -116,7 +124,11 @@ export function computeDeviations(
     const range = Math.max(...vals) - Math.min(...vals);
     if (range >= 10) {
       deviations.push(
-        `Các chu kỳ gần đây dao động ${range} ngày (từ ${Math.min(...vals)} đến ${Math.max(...vals)} ngày), được xem là không đều.`,
+        translate('cycle.devIrregular', {
+          range,
+          min: Math.min(...vals),
+          max: Math.max(...vals),
+        }),
       );
     }
   }

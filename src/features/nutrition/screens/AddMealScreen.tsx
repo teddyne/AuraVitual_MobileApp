@@ -326,8 +326,8 @@ export default function AddMealScreen({ navigation, route }: any) {
       mealType,
     );
     showToast({
-      title: 'Đã thêm',
-      body: `${scannedProduct.name} đã vào danh sách bên dưới.`,
+      title: t('nutrition.scannedAddedTitle'),
+      body: t('nutrition.scannedAddedBody', { name: scannedProduct.name }),
     });
     setScannedProduct(null);
   };
@@ -388,7 +388,7 @@ export default function AddMealScreen({ navigation, route }: any) {
 
       const base64Data = manip.base64;
       if (!base64Data) {
-        throw new Error('Could not process image');
+        throw new Error(t('nutrition.imageProcessFailed'));
       }
 
       const items = await analyzeMealPhoto(base64Data);

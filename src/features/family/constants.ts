@@ -1,15 +1,16 @@
 // Hang so dung chung cho cum Gia dinh (doi nguyen van tu SharingSettingsScreen).
+// title/desc la key i18n (family.content.*); man hinh dich bang t() khi render.
 import type { SharingSettings } from '../../lib/familyApi';
 
 export const CONTENT_ROWS: {
   key: keyof Omit<SharingSettings, 'share_enabled'>;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
 }[] = [
-  { key: 'share_steps', title: 'Bước chân', desc: 'Số bước, quãng đường, kcal ước lượng' },
-  { key: 'share_sleep', title: 'Giấc ngủ', desc: 'Thời lượng ngủ và mục tiêu giấc ngủ' },
-  { key: 'share_heart_rate', title: 'Nhịp tim', desc: 'Nhịp tim lúc nghỉ' },
-  { key: 'share_spo2', title: 'SpO2', desc: 'Độ bão hòa oxy trong máu' },
-  { key: 'share_water', title: 'Nước', desc: 'Lượng nước đã uống trong ngày' },
-  { key: 'share_weight', title: 'Cân nặng', desc: 'Cân nặng ghi nhận hôm nay' },
+  { key: 'share_steps', titleKey: 'family.content.steps.title', descKey: 'family.content.steps.desc' },
+  { key: 'share_sleep', titleKey: 'family.content.sleep.title', descKey: 'family.content.sleep.desc' },
+  { key: 'share_heart_rate', titleKey: 'family.content.heartRate.title', descKey: 'family.content.heartRate.desc' },
+  { key: 'share_spo2', titleKey: 'family.content.spo2.title', descKey: 'family.content.spo2.desc' },
+  { key: 'share_water', titleKey: 'family.content.water.title', descKey: 'family.content.water.desc' },
+  { key: 'share_weight', titleKey: 'family.content.weight.title', descKey: 'family.content.weight.desc' },
 ];

@@ -28,9 +28,11 @@ import {
   CELL_W,
   FLOW_OPTIONS,
   MONTH_NAMES,
+  MONTH_NAMES_EN,
   PRIMARY,
   SYMPTOMS,
 } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import type { Article, Cycle, CycleLog, Flow } from '../types';
 import {
   computeActualLengths,
@@ -47,6 +49,8 @@ import { styles } from './CycleTrackingScreen.styles';
 // Vòng tròn nhạt + icon xanh đậm, cùng kiểu với ProfileSettings/ProfileSetup.
 
 export default function CycleTrackingScreen({ navigation }: any) {
+  const { t, locale } = useSettings();
+  const monthNames = locale === 'en' ? MONTH_NAMES_EN : MONTH_NAMES;
   const today = new Date();
   const todayKey = toKey(today);
   // YYYY-MM-DD đã pad 0 nên so sánh chuỗi = so sánh ngày.
@@ -197,10 +201,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
     const first = `${year}-${pad(month + 1)}-01`;
     // Tháng tương lai: không cho chọn để ghi, giữ nguyên ngày đang chọn.
     if (isFutureKey(first)) {
-      Alert.alert(
-        'Tháng ở tương lai',
-        'Chỉ ghi được cho hôm nay và các ngày trước đó.',
-      );
+      Alert.alert(t('cycle.futureMonthTitle'), t('cycle.futureMonthDesc'));
       return;
     }
     setViewYear(year);
@@ -213,10 +214,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
   const saveLog = async () => {
     // Chặn ở code, dù UI có lọt ngày tương lai thì cũng không ghi xuống DB.
     if (isFutureKey(selectedKey)) {
-      Alert.alert(
-        'Ngày ở tương lai',
-        'Không ghi được cho ngày sau hôm nay. Chỉ ghi cho hôm nay và các ngày trước đó.',
-      );
+      Alert.alert(t('cycle.futureDayTitle'), t('cycle.futureDayDesc'));
       return;
     }
     if (!userId) return;
@@ -239,11 +237,11 @@ export default function CycleTrackingScreen({ navigation }: any) {
       { onConflict: 'user_id,log_date' },
     );
     setSaving(false);
-    if (error) Alert.alert('Lưu thất bại', error.message);
+    if (error) Alert.alert(t('cycle.saveFailed'), error.message);
     else {
       Alert.alert(
-        'Đã lưu',
-        `Đã lưu ghi nhận ngày ${keyToDisplay(selectedKey)}.`,
+        t('cycle.saved'),
+        t('cycle.savedLogDesc', { date: keyToDisplay(selectedKey) }),
       );
       await loadLogs(userId);
     }
@@ -252,12 +250,12 @@ export default function CycleTrackingScreen({ navigation }: any) {
   const deleteLog = () => {
     if (!userId || !selectedLog) return;
     Alert.alert(
-      'Xóa ghi nhận?',
-      `Xóa ghi nhận ngày ${keyToDisplay(selectedKey)}? Lịch sẽ trở về dự đoán từ chu kỳ.`,
+      t('cycle.deleteConfirmTitle'),
+      t('cycle.deleteConfirmDesc', { date: keyToDisplay(selectedKey) }),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await supabase
@@ -283,22 +281,25 @@ export default function CycleTrackingScreen({ navigation }: any) {
     const len = Number(editLength);
     const per = Number(editPeriod);
     if (!startKey) {
-      Alert.alert('Ngày chưa đúng', 'Nhập ngày bắt đầu dạng DD/MM/YYYY.');
+      Alert.alert(t('cycle.invalidDateTitle'), t('cycle.invalidDateDesc'));
       return;
     }
     // Kỳ mới cũng không được bắt đầu ở tương lai.
     if (isFutureKey(startKey)) {
-      Alert.alert('Ngày chưa đúng', 'Ngày bắt đầu kỳ không được sau hôm nay.');
+      Alert.alert(
+        t('cycle.invalidDateTitle'),
+        t('cycle.startDateFutureDesc'),
+      );
       return;
     }
     if (!(len >= 20 && len <= 45)) {
-      Alert.alert('Chu kỳ chưa đúng', 'DB chỉ cho phép từ 20 đến 45 ngày.');
+      Alert.alert(t('cycle.invalidLengthTitle'), t('cycle.invalidLengthDesc'));
       return;
     }
     if (!(per >= 1 && per <= 15)) {
       Alert.alert(
-        'Số ngày kinh chưa đúng',
-        'DB chỉ cho phép từ 1 đến 15 ngày.',
+        t('cycle.invalidPeriodTitle'),
+        t('cycle.invalidPeriodDesc'),
       );
       return;
     }
@@ -312,11 +313,11 @@ export default function CycleTrackingScreen({ navigation }: any) {
     });
     setSaving(false);
     if (error) {
-      Alert.alert('Lưu thất bại', error.message);
+      Alert.alert(t('cycle.saveFailed'), error.message);
       return;
     }
     setShowEdit(false);
-    Alert.alert('Đã lưu', 'Đã ghi nhận kỳ mới, các tính toán sẽ dùng kỳ này.');
+    Alert.alert(t('cycle.saved'), t('cycle.savedNewCycleDesc'));
     loadStatic();
   };
 
@@ -354,7 +355,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe}>
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-          <AppHeader title='Theo dõi chu kỳ & Nội tiết' withTopInset={false} />
+          <AppHeader title={t('cycle.title')} withTopInset={false} />
         </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -380,7 +381,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                       viewMode === 'month' && styles.modeTextActive,
                     ]}
                   >
-                    Lịch tháng
+                    {t('cycle.monthView')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -396,7 +397,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                       viewMode === 'year' && styles.modeTextActive,
                     ]}
                   >
-                    Lịch năm
+                    {t('cycle.yearView')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -416,7 +417,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                     }}
                   >
                     <Text style={styles.monthLabel}>
-                      {MONTH_NAMES[selectedMonth]}, {selectedYear}
+                      {monthNames[selectedMonth]}, {selectedYear}
                     </Text>
                     {/* Icon V dùng Ionicons và căn giữa theo hàng, không
                         còn là ký tự V gắn cuối chữ nên không bị tuột. */}
@@ -448,7 +449,9 @@ export default function CycleTrackingScreen({ navigation }: any) {
                       setPickerVisible(true);
                     }}
                   >
-                    <Text style={styles.monthLabel}>Năm {viewYear}</Text>
+                    <Text style={styles.monthLabel}>
+                      {t('cycle.yearLabel', { year: viewYear })}
+                    </Text>
                     <Ionicons name='chevron-down' size={18} color='#111111' />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -469,7 +472,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.yearGrid}>
-                  {MONTH_NAMES.map((name, m) => (
+                  {monthNames.map((name, m) => (
                     <TouchableOpacity
                       key={name}
                       style={styles.yearCell}
@@ -477,7 +480,13 @@ export default function CycleTrackingScreen({ navigation }: any) {
                     >
                       <Text style={styles.yearMonth}>{name}</Text>
                       <Text style={styles.yearCount}>
-                        {countPeriodDaysInMonth(viewYear, m, isPeriodDay)} ngày kinh
+                        {t('cycle.periodDaysInMonth', {
+                          count: countPeriodDaysInMonth(
+                            viewYear,
+                            m,
+                            isPeriodDay,
+                          ),
+                        })}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -495,34 +504,36 @@ export default function CycleTrackingScreen({ navigation }: any) {
                   phase={phase}
                 />
                 <Text style={styles.heroSub}>
-                  Khả năng thụ thai {fertility}
+                  {t('cycle.fertilityLabel', { fertility })}
                   {dayInCycle !== null
-                    ? ` • Ngày thứ ${dayInCycle} của chu kỳ ${cycle.cycle_length_days} ngày`
+                    ? t('cycle.dayOfCycle', {
+                        day: dayInCycle,
+                        len: cycle.cycle_length_days,
+                      })
                     : ''}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.cardText}>
-                Chưa có chu kỳ nào trong bảng cycles. Bấm nút dưới để ghi kỳ đầu
-                tiên.
-              </Text>
+              <Text style={styles.cardText}>{t('cycle.noCycle')}</Text>
             )}
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => setShowEdit(!showEdit)}
             >
               <Ionicons name='calendar-outline' size={18} color='#111111' />
-              <Text style={styles.editButtonText}>Chỉnh sửa ngày kỳ kinh</Text>
+              <Text style={styles.editButtonText}>
+                {t('cycle.editPeriodStart')}
+              </Text>
             </TouchableOpacity>
             {showEdit ? (
               <View style={{ width: '100%' }}>
-                <Text style={styles.label}>Ngày bắt đầu kỳ</Text>
+                <Text style={styles.label}>{t('cycle.startDate')}</Text>
                 <TouchableOpacity
                   style={[styles.input, { justifyContent: 'center' }]}
                   onPress={() => setShowDatePicker(true)}
                 >
                   <Text style={{ color: editDate ? '#111111' : '#999999' }}>
-                    {editDate || 'Chọn ngày bắt đầu kỳ'}
+                    {editDate || t('cycle.pickStartDate')}
                   </Text>
                 </TouchableOpacity>
                 {showDatePicker && (
@@ -543,14 +554,14 @@ export default function CycleTrackingScreen({ navigation }: any) {
                     }}
                   />
                 )}
-                <Text style={styles.label}>Độ dài chu kỳ (ngày, 20-45)</Text>
+                <Text style={styles.label}>{t('cycle.cycleLength')}</Text>
                 <TextInput
                   style={styles.input}
                   value={editLength}
                   onChangeText={setEditLength}
                   keyboardType='numeric'
                 />
-                <Text style={styles.label}>Số ngày kinh (1-15)</Text>
+                <Text style={styles.label}>{t('cycle.periodLength')}</Text>
                 <TextInput
                   style={styles.input}
                   value={editPeriod}
@@ -563,7 +574,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                   disabled={saving}
                 >
                   <Text style={styles.saveButtonText}>
-                    {saving ? 'Đang lưu...' : 'Lưu kỳ mới'}
+                    {saving ? t('cycle.saving') : t('cycle.saveNewCycle')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -571,16 +582,14 @@ export default function CycleTrackingScreen({ navigation }: any) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sai lệch chu kỳ</Text>
+            <Text style={styles.cardTitle}>{t('cycle.deviationsTitle')}</Text>
             {cycles.length < 2 ? (
               <Text style={styles.cardText}>
-                Chưa đủ dữ liệu để đánh giá sai lệch. Cần ít nhất 2 kỳ đã ghi
-                trong bảng cycles.
+                {t('cycle.deviationsNoData')}
               </Text>
             ) : deviations.length === 0 ? (
               <Text style={styles.cardText}>
-                Chu kỳ gần đây ổn định, sai lệch trong giới hạn (dưới 7 ngày so
-                với trung bình).
+                {t('cycle.deviationsStable')}
               </Text>
             ) : (
               deviations.map((d, i) => (
@@ -598,34 +607,37 @@ export default function CycleTrackingScreen({ navigation }: any) {
             )}
             {actualLengths.slice(-4).map((x) => (
               <Text key={x.start} style={styles.cardText}>
-                • Kỳ {keyToDisplay(x.start)}: thực tế {x.actual} ngày (dự kiến{' '}
-                {x.expected} ngày)
+                {t('cycle.actualLength', {
+                  date: keyToDisplay(x.start),
+                  actual: x.actual,
+                  expected: x.expected,
+                })}
               </Text>
             ))}
             <Text style={styles.cardText}>
-              Đây chỉ là so sánh số liệu, không phải chẩn đoán y tế.
+              {t('cycle.notMedicalAdvice')}
             </Text>
           </View>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              Ghi nhận ngày {keyToDisplay(selectedKey)}
+              {t('cycle.logDay', { date: keyToDisplay(selectedKey) })}
             </Text>
             <Text style={styles.cardText}>
               {selectedLog
-                ? 'Ngày này đã được lưu.'
+                ? t('cycle.daySaved')
                 : isPeriodDay(selectedKey)
-                  ? 'Dự đoán: Có kinh (chưa lưu).'
-                  : 'Dự đoán: Không có kinh (chưa lưu).'}
+                  ? t('cycle.predictedPeriod')
+                  : t('cycle.predictedNoPeriod')}
             </Text>
 
-            <Text style={styles.label}>Kỳ kinh nguyệt</Text>
+            <Text style={styles.label}>{t('cycle.periodLabel')}</Text>
             <View style={styles.twoCols}>
               <TouchableOpacity
                 style={[styles.choiceBtn, formHasPeriod && styles.choicePink]}
                 onPress={() => setFormHasPeriod(true)}
               >
-                <Text style={styles.choiceText}>Có kinh nguyệt</Text>
+                <Text style={styles.choiceText}>{t('cycle.hasPeriod')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.choiceBtn, !formHasPeriod && styles.choiceGreen]}
@@ -634,13 +646,13 @@ export default function CycleTrackingScreen({ navigation }: any) {
                   setFormFlow(null);
                 }}
               >
-                <Text style={styles.choiceText}>Không có kinh</Text>
+                <Text style={styles.choiceText}>{t('cycle.noPeriod')}</Text>
               </TouchableOpacity>
             </View>
 
             {formHasPeriod ? (
               <>
-                <Text style={styles.label}>Lượng kinh nguyệt</Text>
+                <Text style={styles.label}>{t('cycle.flowLabel')}</Text>
                 <View style={styles.chipRow}>
                   {FLOW_OPTIONS.map((f) => (
                     <TouchableOpacity
@@ -651,14 +663,14 @@ export default function CycleTrackingScreen({ navigation }: any) {
                       ]}
                       onPress={() => setFormFlow(f.value)}
                     >
-                      <Text style={styles.chipText}>{f.label}</Text>
+                      <Text style={styles.chipText}>{t(f.labelKey)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </>
             ) : null}
 
-            <Text style={styles.label}>Xuất huyết lốm đốm</Text>
+            <Text style={styles.label}>{t('cycle.spottingLabel')}</Text>
             <View style={styles.twoCols}>
               <TouchableOpacity
                 style={[
@@ -669,7 +681,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                 ]}
                 onPress={() => setFormSpotting(true)}
               >
-                <Text style={styles.choiceText}>Có</Text>
+                <Text style={styles.choiceText}>{t('common.yes')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -678,11 +690,11 @@ export default function CycleTrackingScreen({ navigation }: any) {
                 ]}
                 onPress={() => setFormSpotting(false)}
               >
-                <Text style={styles.choiceText}>Không</Text>
+                <Text style={styles.choiceText}>{t('common.no')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>Triệu chứng (chọn nhiều)</Text>
+            <Text style={styles.label}>{t('cycle.symptomsLabel')}</Text>
             <View style={styles.chipRow}>
               {SYMPTOMS.map((s) => {
                 const active = formSymptoms.includes(s.key);
@@ -692,7 +704,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => toggleSymptom(s.key)}
                   >
-                    <Text style={styles.chipText}>{s.label}</Text>
+                    <Text style={styles.chipText}>{t(s.labelKey)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -700,7 +712,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                 style={[styles.chip, formOtherSelected && styles.chipActive]}
                 onPress={() => setFormOtherSelected(!formOtherSelected)}
               >
-                <Text style={styles.chipText}>Khác</Text>
+                <Text style={styles.chipText}>{t('cycle.other')}</Text>
               </TouchableOpacity>
             </View>
             {formOtherSelected ? (
@@ -708,14 +720,13 @@ export default function CycleTrackingScreen({ navigation }: any) {
                 style={styles.input}
                 value={formOtherText}
                 onChangeText={setFormOtherText}
-                placeholder='Nhập triệu chứng khác, ví dụ: Đau lưng dưới'
+                placeholder={t('cycle.otherPlaceholder')}
               />
             ) : null}
 
             {isSelectedFuture ? (
               <Text style={styles.futureWarning}>
-                Ngày này ở tương lai, chưa ghi được. Chọn hôm nay hoặc ngày
-                trước đó.
+                {t('cycle.futureWarning')}
               </Text>
             ) : null}
             <TouchableOpacity
@@ -724,13 +735,13 @@ export default function CycleTrackingScreen({ navigation }: any) {
               disabled={saving || isSelectedFuture}
             >
               <Text style={styles.saveButtonText}>
-                {saving ? 'Đang lưu...' : 'Lưu ghi nhận ngày này'}
+                {saving ? t('cycle.saving') : t('cycle.saveLog')}
               </Text>
             </TouchableOpacity>
             {selectedLog ? (
               <TouchableOpacity style={styles.deleteButton} onPress={deleteLog}>
                 <Text style={styles.deleteButtonText}>
-                  Xóa ghi nhận ngày này
+                  {t('cycle.deleteLog')}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -740,13 +751,11 @@ export default function CycleTrackingScreen({ navigation }: any) {
             <View style={styles.sectionTitleRow}>
               <IconBadge name='leaf-outline' />
               <Text style={[styles.cardTitle, { marginBottom: 0 }]}>
-                Kiến thức chu kỳ & Thể trạng
+                {t('cycle.knowledgeTitle')}
               </Text>
             </View>
             {articles.length === 0 ? (
-              <Text style={styles.cardText}>
-                Chưa có bài viết kind = article trong bảng posts.
-              </Text>
+              <Text style={styles.cardText}>{t('cycle.noArticles')}</Text>
             ) : (
               articles.map((a) => (
                 <TouchableOpacity
@@ -761,7 +770,7 @@ export default function CycleTrackingScreen({ navigation }: any) {
                         {a.summary}
                       </Text>
                     ) : null}
-                    <Text style={styles.link}>Xem chi tiết</Text>
+                    <Text style={styles.link}>{t('cycle.viewDetail')}</Text>
                   </View>
                   <Ionicons name='chevron-forward' size={20} color='#888888' />
                 </TouchableOpacity>
