@@ -167,7 +167,7 @@ export default function RemindersScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <View style={s.headerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Text style={[s.back, { color: theme.primaryDark }]}>‹</Text>
@@ -176,6 +176,8 @@ export default function RemindersScreen({ navigation }: any) {
           <Text style={[s.title, { color: theme.text }]}>
             {t('settings.notificationsSection')}
           </Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <View style={s.row}>

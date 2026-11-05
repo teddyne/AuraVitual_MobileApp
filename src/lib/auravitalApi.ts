@@ -7,6 +7,7 @@ export type Profile = {
   weight_kg: number;
   date_of_birth: string | null;
   gender: string | null;
+  avatar_url?: string | null;
   step_goal: number;
   water_goal_ml: number;
   sleep_goal_hours: number;
@@ -202,6 +203,14 @@ export async function saveProfile(
     if (error) throw error;
   }
 }
+export async function updateAvatarUrl(userId: string, url: string) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 export async function saveCycleStart(
   userId: string,
   startDate: string,

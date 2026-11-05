@@ -161,9 +161,9 @@ export default function NutritionTrackerScreen({ navigation }: any) {
   };
   const styles = makeStyles(theme);
   const eatenKcal = day?.totalKcal ?? 0;
-  // SỬA Ở ĐÂY: bỏ Math.max(0, ...) để còn lại giữ nguyên dấu.
-  // Mục tiêu 2000, đã ăn 2150 -> remaining = -150, hiện "-150 kcal Còn lại".
-  // Chưa đặt mục tiêu (calorieGoal <= 0) thì vẫn là 0 và dòng này không hiện.
+  // remaining âm nghĩa là đã vượt mục tiêu: hiện "Đã nạp dư X kcal"
+  // thay cho "-X kcal Còn lại". Chưa đặt mục tiêu thì vẫn là 0 và
+  // dòng này không hiện.
   const remaining =
     day && day.calorieGoal > 0 ? day.calorieGoal - eatenKcal : 0;
   const isOver = day ? day.calorieGoal > 0 && remaining < 0 : false;
@@ -243,7 +243,11 @@ export default function NutritionTrackerScreen({ navigation }: any) {
                 <Text
                   style={[styles.heroSmall, isOver && styles.overRemaining]}
                 >
-                  {remaining} kcal {t('nutrition.remaining')}
+                  {isOver
+                    ? locale === 'en'
+                      ? `Over goal by ${Math.abs(remaining)} kcal`
+                      : `Đã nạp dư ${Math.abs(remaining)} kcal so với mục tiêu`
+                    : `${remaining} kcal ${t('nutrition.remaining')}`}
                 </Text>
               )}
               <View style={styles.legend}>

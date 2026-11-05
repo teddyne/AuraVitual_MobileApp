@@ -70,11 +70,7 @@ export default function ArticleDetailScreen() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-    <ScrollView
-      style={styles.wrap}
-      contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
+    <View style={{ paddingHorizontal: 16 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color="#1B2A1E" />
@@ -82,6 +78,12 @@ export default function ArticleDetailScreen() {
         <Text style={styles.headerTitle}>Bài viết</Text>
         <View style={{ width: 26 }} />
       </View>
+    </View>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={{ paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
 
       {post.cover_url && !imgError ? (
         <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
@@ -133,7 +135,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   error: { color: '#B23A3A', fontSize: 15, textAlign: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E', marginRight: 180 },
   cover: { width: '100%', height: 220, borderRadius: 20 },
   tag: { fontSize: 12, fontWeight: '700', color: '#2E7D32', marginTop: 18 },
   title: { fontSize: 24, fontWeight: '800', color: '#1B2A1E', marginTop: 6, lineHeight: 30 },

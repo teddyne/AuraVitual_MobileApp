@@ -133,12 +133,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
-        <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />
-          }
-        >
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           {/* Header: quay lại + tiêu đề + cài đặt */}
           <View style={s.headerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
@@ -155,6 +150,13 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />
+          }
+        >
 
           {/* Thẻ hồ sơ */}
           <View style={[s.profileCard, { backgroundColor: theme.cardAlt }]}>

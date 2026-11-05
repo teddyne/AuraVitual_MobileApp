@@ -15,6 +15,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../../../components/ui/AppHeader';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Svg, { Circle } from 'react-native-svg';
 import { supabase } from '../../../lib/supabase';
 
@@ -149,6 +150,14 @@ export default function CycleTrackingScreen({ navigation }: any) {
 
   const [showEdit, setShowEdit] = useState(false);
   const [editDate, setEditDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  // Ngày cho DateTimePicker: từ editDate (DD/MM/YYYY), sai thì lấy hôm nay.
+  const editDateObj = (() => {
+    const k = displayToKey(editDate);
+    if (!k) return today;
+    const [y, m, d] = k.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  })();
   const [editLength, setEditLength] = useState('28');
   const [editPeriod, setEditPeriod] = useState('5');
 
@@ -509,13 +518,15 @@ export default function CycleTrackingScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <AppHeader title='Theo dõi chu kỳ & Nội tiết' withTopInset={false} />
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <AppHeader title='Theo dõi chu kỳ & Nội tiết' withTopInset={false} />
 
           <View style={styles.card}>
             <View style={styles.calendarTop}>
@@ -797,14 +808,33 @@ export default function CycleTrackingScreen({ navigation }: any) {
             </TouchableOpacity>
             {showEdit ? (
               <View style={{ width: '100%' }}>
-                <Text style={styles.label}>Ngày bắt đầu kỳ (DD/MM/YYYY)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editDate}
-                  onChangeText={setEditDate}
-                  placeholder='01/10/2026'
-                  keyboardType='numbers-and-punctuation'
-                />
+                <Text style={styles.label}>Ngày bắt đầu kỳ</Text>
+                <TouchableOpacity
+                  style={[styles.input, { justifyContent: 'center' }]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ color: editDate ? '#111111' : '#999999' }}>
+                    {editDate || 'Chọn ngày bắt đầu kỳ'}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={editDateObj}
+                    mode='date'
+                    display='calendar'
+                    maximumDate={today}
+                    onChange={(_e, d) => {
+                      setShowDatePicker(false);
+                      if (d) {
+                        setEditDate(
+                          keyToDisplay(
+                            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                          ),
+                        );
+                      }
+                    }}
+                  />
+                )}
                 <Text style={styles.label}>Độ dài chu kỳ (ngày, 20-45)</Text>
                 <TextInput
                   style={styles.input}

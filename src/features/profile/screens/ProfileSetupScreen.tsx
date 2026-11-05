@@ -116,12 +116,16 @@ function DragRuler({
   max,
   step,
   onChange,
+  onDragStart,
+  onDragEnd,
 }: {
   value: number;
   min: number;
   max: number;
   step: number;
   onChange: (v: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }) {
   const [w, setW] = useState(0);
   const pan = useRef(
@@ -130,6 +134,7 @@ function DragRuler({
       onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderGrant: (e) => {
         if (!w) return;
+        onDragStart?.();
         const r = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
         onChange(
           Math.max(
@@ -147,6 +152,12 @@ function DragRuler({
             Math.min(max, Math.round((min + r * (max - min)) / step) * step),
           ),
         );
+      },
+      onPanResponderRelease: () => {
+        onDragEnd?.();
+      },
+      onPanResponderTerminate: () => {
+        onDragEnd?.();
       },
     }),
   ).current;
@@ -213,6 +224,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
   const { theme } = useSettings();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
   const [birthText, setBirthText] = useState('');
@@ -556,6 +568,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
     <SafeAreaProvider>
       <SafeAreaView style={[s.wrap, { backgroundColor: theme.background }]}>
         <ScrollView
+          scrollEnabled={scrollEnabled}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -684,6 +697,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
               max={250}
               step={1}
               onChange={setHeight}
+              onDragStart={() => setScrollEnabled(false)}
+              onDragEnd={() => setScrollEnabled(true)}
             />
             <Text style={[s.label, { color: theme.text, marginTop: 14 }]}>
               Cân nặng
@@ -726,6 +741,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
               max={300}
               step={0.5}
               onChange={setWeight}
+              onDragStart={() => setScrollEnabled(false)}
+              onDragEnd={() => setScrollEnabled(true)}
             />
           </View>
 
@@ -888,6 +905,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 max={300}
                 step={0.5}
                 onChange={setTargetWeight}
+                onDragStart={() => setScrollEnabled(false)}
+                onDragEnd={() => setScrollEnabled(true)}
               />
             </View>
           )}
@@ -1174,9 +1193,11 @@ export default function ProfileSetupScreen({ navigation }: any) {
             <View style={[s.modalBox, { backgroundColor: theme.card }]}>
               <Text
                 style={{
-                  color: theme.muted,
+                  color: theme.text,
+                  fontSize: 18,
+                  fontWeight: '800',
                   textAlign: 'center',
-                  marginBottom: 8,
+                  marginBottom: 12,
                 }}
               >
                 {calTarget === 'birth'
@@ -1185,6 +1206,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               </Text>
               <View style={s.row}>
                 <TouchableOpacity
+                  hitSlop={10}
                   onPress={() => {
                     const m = calMonth - 1;
                     if (m < 0) {
@@ -1196,6 +1218,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   <Text style={{ color: theme.text, fontSize: 20 }}>‹</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  hitSlop={8}
                   onPress={() => setShowYearList(!showYearList)}
                 >
                   <Text style={{ color: theme.text, fontWeight: '700' }}>
@@ -1203,6 +1226,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  hitSlop={10}
                   onPress={() => {
                     const m = calMonth + 1;
                     if (m > 11) {
@@ -1241,6 +1265,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                       <TouchableOpacity
                         key={i}
                         style={s.calCell}
+                        hitSlop={4}
                         onPress={() => pickDay(d)}
                       >
                         <Text
@@ -1257,7 +1282,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 style={s.closeBtn}
                 onPress={() => setCalVisible(false)}
               >
-                <Text style={{ color: theme.text }}>Đóng</Text>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Đóng</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1417,7 +1442,7 @@ const s = StyleSheet.create({
     maxHeight: '70%',
   },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
-  calCell: { width: '14.28%', paddingVertical: 10 },
+  calCell: { width: '14.28%', paddingVertical: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center' },
   yearRow: { paddingVertical: 10, alignItems: 'center' },
-  closeBtn: { alignItems: 'center', padding: 12, marginTop: 8 },
+  closeBtn: { alignItems: 'center', padding: 14, marginTop: 12, borderRadius: 12, backgroundColor: '#2E7D32' },
 });

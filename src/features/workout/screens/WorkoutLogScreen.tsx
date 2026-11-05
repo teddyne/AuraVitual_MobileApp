@@ -18,6 +18,7 @@ import {
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../../../components/ui/AppHeader';
 import { useAuth } from '../../auth/AuthContext';
 import {
   calcKcal, deleteWorkoutLog, getWeeklySummary, getWorkoutLogsForDate,
@@ -189,18 +190,14 @@ export default function WorkoutLogScreen() {
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FBF9' }}>
         <View style={{ flex: 1 }}>
+    <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+      <AppHeader title='Ghi nhận tập luyện' withTopInset={false} />
+    </View>
     <ScrollView
       style={styles.wrap}
       contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>‹ Quay lại</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ghi nhận tập luyện</Text>
-        <View style={{ width: 60 }} />
-      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.dateRow}>

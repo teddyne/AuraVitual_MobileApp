@@ -41,6 +41,8 @@ import {
   syncAllAlarmNotifications,
   startSession,
   finishSession,
+  markWakeHandled,
+  isWakeHandledToday,
   toDbTime,
   toKey,
   toTimeInput,
@@ -183,6 +185,10 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   const [alarmSnoozeInput, setAlarmSnoozeInput] = useState('10');
   const handledRoute = useRef(false);
   const lastAlarmTrigger = useRef<number | null>(null);
+  // SỬA: chống bấm đúp nút "Đã dậy" — cờ state `saving` cập nhật sau
+  // một nhịp render nên 2 lần bấm nhanh vẫn cùng lọt qua; cờ ref này
+  // chặn ngay lập tức vì đọc/ghi ref là đồng bộ.
+  const finishingRef = useRef(false);
   // SỬA: chống reo trùng cùng một phiên quá giờ khi loadAll chạy 2 lần
   // (mount + focus) hoặc khi focus lại nhiều lần.
   const overdueRingRef = useRef<string | null>(null);
@@ -515,6 +521,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
 
     const alarmId = route?.params?.alarmId;
     (async () => {
+      if (!alarmId && (await isWakeHandledToday())) return;
       if (!alarmId) {
         await ringAlarm(null);
         return;
@@ -564,7 +571,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
 
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
+      async (notification) => {
         const data = notification.request.content.data;
         if (
           data?.alarm !== true ||
@@ -574,6 +581,8 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         ) {
           return;
         }
+        // Đã dậy rồi mà thông báo lịch vẫn tới sau thì bỏ qua, khỏi reo lại.
+        if (data.alarmId == null && (await isWakeHandledToday())) return;
 
         const alarmId =
           typeof data.alarmId === 'string' ? data.alarmId : null;
@@ -865,6 +874,8 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
 
   const finish = async (source: 'alarm' | 'next_day' | 'manual') => {
     if (!session || !userId) return;
+    if (finishingRef.current) return;
+    finishingRef.current = true;
     setSaving(true);
     try {
       const result = await finishSession(supabase, userId, session, source);
@@ -877,6 +888,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       await AsyncStorage.removeItem(SNOOZE_KEY).catch(() => {});
       await AsyncStorage.removeItem(WAKE_NAV_KEY).catch(() => {});
       await cancelSnoozeNotification();
+      await markWakeHandled();
       if (!result) {
         Alert.alert('Chưa lưu được', 'Phiên ngủ quá ngắn hoặc quá 24 giờ.');
         return;
@@ -890,6 +902,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       Alert.alert('Lưu thất bại', e?.message || 'Thử lại sau.');
     } finally {
       setSaving(false);
+      finishingRef.current = false;
     }
   };
 
@@ -948,6 +961,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
 
   const dismissAlarm = async () => {
     await stopAlarm();
+    if (!ringingAlarm) await markWakeHandled();
     setAlarmVisible(false);
     setRingingAlarm(null);
     setCustomSnooze(null);
@@ -1106,6 +1120,12 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            <AppHeader
+              title='Theo dõi giấc ngủ'
+              withTopInset={false}
+            />
+          </View>
           <ScrollView
             contentContainerStyle={[styles.scroll, { paddingBottom: 160 }]}
             keyboardShouldPersistTaps='handled'
@@ -1113,10 +1133,6 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
           >
-            <AppHeader
-              title='Theo dõi giấc ngủ'
-              withTopInset={false}
-            />
 
             <View style={styles.banner}>
               <View

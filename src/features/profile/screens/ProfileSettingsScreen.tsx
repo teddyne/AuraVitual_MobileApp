@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -10,12 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { supabase } from '../../../lib/supabase';
 import {
   formatNumber,
   getProfile,
   type Profile,
+  updateAvatarUrl,
 } from '../../../lib/auravitalApi';
 
 // Icon kiểu ảnh bạn gửi: vòng tròn nhạt + icon xanh đậm.
@@ -56,6 +61,14 @@ export default function ProfileSettingsScreen({ navigation }: any) {
   const { theme, themeMode, setThemeMode, locale, setLocale, t, isDark } =
     useSettings();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [avatarTick, setAvatarTick] = useState(0);
+
+  // Đổi tài khoản / tải lại hồ sơ thì cho ảnh một cơ hội tải lại.
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [profile?.avatar_url]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -85,6 +98,77 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       Alert.alert(t('common.errorTitle'), e.message);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const changeAvatar = async () => {
+    if (!user?.id) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        'Chưa cấp quyền',
+        'Cần quyền thư viện ảnh để chọn ảnh đại diện.',
+      );
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+    try {
+      setUploadingAvatar(true);
+      const filePath = `${user.id}.jpg`;
+      try {
+        await supabase.storage.from('avatars').remove([filePath]);
+      } catch {
+        // bỏ qua
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error(
+          'Phiên đăng nhập đã hết hạn. Hãy đăng xuất rồi đăng nhập lại, sau đó đổi ảnh.',
+        );
+      }
+      const uploadUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL!}/storage/v1/object/avatars/${filePath}`;
+      const up = await FileSystem.uploadAsync(
+        uploadUrl,
+        res.assets[0].uri,
+        {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+            'Content-Type': 'image/jpeg',
+            'x-upsert': 'true',
+          },
+        },
+      );
+      if (up.status !== 200) {
+        throw new Error(
+          'Máy chủ ảnh trả về lỗi ' +
+            up.status +
+            (up.body ? ' — ' + up.body.slice(0, 300) : '') +
+            '. Hãy thử lại.',
+        );
+      }
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(`${user.id}.jpg`);
+      await updateAvatarUrl(user.id, data.publicUrl);
+      setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
+      setAvatarBroken(false);
+      setAvatarTick((t) => t + 1);
+    } catch (e: any) {
+      Alert.alert('Đổi ảnh thất bại', e?.message ?? 'Thử lại sau.');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -208,9 +292,36 @@ export default function ProfileSettingsScreen({ navigation }: any) {
           }
         >
           <View style={[s.header, { backgroundColor: theme.cardAlt }]}>
-            <View style={[s.avatar, { backgroundColor: theme.primary }]}>
-              <Text style={s.avatarText}>{initials}</Text>
-            </View>
+            <TouchableOpacity onPress={changeAvatar} disabled={uploadingAvatar}>
+              {profile.avatar_url && !avatarBroken ? (
+                <View style={[s.avatar, { overflow: 'hidden' }]}>
+                  <Image
+                    source={{
+                      uri: `${profile.avatar_url}${
+                        profile.avatar_url.includes('?') ? '&' : '?'
+                      }v=${avatarTick}`,
+                    }}
+                    style={{ width: 84, height: 84 }}
+                    onError={() => setAvatarBroken(true)}
+                  />
+                </View>
+              ) : (
+                <View style={[s.avatar, { backgroundColor: theme.primary }]}>
+                  <Text style={s.avatarText}>{initials}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={changeAvatar} disabled={uploadingAvatar}>
+              <Text
+                style={{
+                  color: theme.primaryDark,
+                  fontWeight: '700',
+                  marginTop: 8,
+                }}
+              >
+                {uploadingAvatar ? 'Đang tải ảnh...' : 'Đổi ảnh đại diện'}
+              </Text>
+            </TouchableOpacity>
             <Text style={[s.name, { color: theme.text }]}>
               {profile.display_name}
             </Text>

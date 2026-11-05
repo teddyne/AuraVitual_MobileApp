@@ -68,14 +68,14 @@ export default function AddWorkoutScreen() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.wrap}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name='chevron-back' size={26} color='#1B2A1E' />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Thêm bài tập mới</Text>
+          <View style={{ width: 26 }} />
+        </View>
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name='chevron-back' size={26} color='#1B2A1E' />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Thêm bài tập mới</Text>
-            <View style={{ width: 26 }} />
-          </View>
 
           <Text style={styles.label}>Tên bài tập *</Text>
           <TextInput

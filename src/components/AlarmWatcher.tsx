@@ -222,7 +222,11 @@ export default function AlarmWatcher() {
                     session.startedAt,
                     String(prof.data.wake_time),
                   );
-              if (target && now >= target) {
+              if (
+                target &&
+                now >= target &&
+                now.getTime() - target.getTime() <= 30 * 60 * 1000
+              ) {
                 const navKey =
                   session.startedAt + '|' + (session.snoozeUntil ?? '');
                 const navRaw = await AsyncStorage.getItem(WAKE_NAV_KEY);
