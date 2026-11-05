@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import { timeAgo } from '../../../lib/familyApi';
 import { PRIMARY } from '../constants';
 import type { DisplayItem } from '../utils/notificationDisplay';
@@ -9,7 +9,6 @@ import type { DisplayItem } from '../utils/notificationDisplay';
 export function NotificationCard({
   item,
   theme,
-  vi,
   onPress,
   onHide,
   onInviteAccept,
@@ -17,12 +16,12 @@ export function NotificationCard({
 }: {
   item: DisplayItem;
   theme: ThemePalette;
-  vi: boolean;
   onPress: () => void;
   onHide: () => void;
   onInviteAccept: () => void;
   onInviteDecline: () => void;
 }) {
+  const { t } = useSettings();
   const unread = !item.read;
   return (
     <TouchableOpacity
@@ -57,7 +56,7 @@ export function NotificationCard({
               onPress={onInviteAccept}
             >
               <Text style={styles.inviteAcceptText}>
-                {vi ? 'Đồng ý' : 'Accept'}
+                {t('family.accept')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -65,7 +64,7 @@ export function NotificationCard({
               onPress={onInviteDecline}
             >
               <Text style={styles.inviteDeclineText}>
-                {vi ? 'Từ chối' : 'Decline'}
+                {t('family.decline')}
               </Text>
             </TouchableOpacity>
           </View>

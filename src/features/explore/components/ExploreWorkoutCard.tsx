@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { levelLabel, type Post } from '../../../lib/workoutApi';
+import { useSettings } from '../../../context/SettingsContext';
 
 // The bai tap trong ExploreScreen (doi nguyen van).
 export function ExploreWorkoutCard({
@@ -19,6 +20,7 @@ export function ExploreWorkoutCard({
   onOpen: () => void;
   onMarkBadImg: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.workCard}>
       <TouchableOpacity
@@ -72,7 +74,7 @@ export function ExploreWorkoutCard({
         </View>
         <View style={styles.workMeta}>
           <Text style={styles.workMetaText}>
-            ⏱ {w.duration_min ?? '—'} PHÚT
+            ⏱ {w.duration_min ?? '—'} {t('home.minutes')}
           </Text>
           {w.kcal_estimate != null && (
             <Text style={styles.workMetaText}>
@@ -86,7 +88,7 @@ export function ExploreWorkoutCard({
         <TouchableOpacity
           onPress={onOpen}
         >
-          <Text style={styles.goNow}>Tập ngay →</Text>
+          <Text style={styles.goNow}>{t('explore.startNow')}</Text>
         </TouchableOpacity>
       </View>
     </View>

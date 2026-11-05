@@ -12,6 +12,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { IconBadge } from '../../../components/ui/IconBadge';
 import { AppHeader } from '../../../components/ui/AppHeader';
+import { useSettings } from '../../../context/SettingsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
 import { supabase } from '../../../lib/supabase';
@@ -33,6 +34,7 @@ type Metric = {
 // Vòng tròn nhạt + icon xanh đậm, cùng kiểu ProfileSettings/ProfileSetup.
 
 export default function StepsDetailScreen({ navigation }: any) {
+  const { t, locale } = useSettings();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [range, setRange] = useState<Range>('week');
@@ -326,18 +328,14 @@ export default function StepsDetailScreen({ navigation }: any) {
         const available = await Pedometer.isAvailableAsync().catch(() => false);
         if (!available) {
           setSensorStatus('unsupported');
-          setSensorNote(
-            'Điện thoại này không có cảm biến bước chân (thường gặp trên máy ảo). Dùng ô nhập tay bên dưới, số đó vẫn lưu vào DB bình thường.',
-          );
+          setSensorNote(t('steps.noSensor'));
           return false;
         }
         let perm = await Pedometer.getPermissionsAsync();
         if (!perm.granted) perm = await Pedometer.requestPermissionsAsync();
         if (!perm.granted) {
           setSensorStatus('denied');
-          setSensorNote(
-            'App chưa được cấp quyền chuyển động nên chưa đọc được cảm biến. Bấm "Cấp quyền lại", hoặc dùng ô nhập tay bên dưới.',
-          );
+          setSensorNote(t('steps.noPermission'));
           return false;
         }
         setSensorReady(true);
@@ -354,9 +352,7 @@ export default function StepsDetailScreen({ navigation }: any) {
         if (!force && dbSource === 'manual') {
           setManualToday(true);
           setSensorStatus('manual');
-          setSensorNote(
-            'Hôm nay đang dùng số nhập tay nên đồng bộ tự động không ghi đè. Muốn quay lại đếm tự động thì bấm nút bên dưới.',
-          );
+          setSensorNote(t('steps.manualInUse'));
           return false;
         }
 
@@ -384,9 +380,7 @@ export default function StepsDetailScreen({ navigation }: any) {
           candidate > 100000
         ) {
           setSensorStatus('error');
-          setSensorNote(
-            'Số cảm biến ngoài khoảng 0–100.000 nên app giữ số cũ, không ghi đè.',
-          );
+          setSensorNote(t('steps.outOfRange'));
           return false;
         }
         const effective =
@@ -400,9 +394,7 @@ export default function StepsDetailScreen({ navigation }: any) {
         if (up === 'ok') {
           await markSynced();
         } else if (up === 'error') {
-          setSensorNote(
-            'Đã đọc được cảm biến nhưng chưa lưu lên Supabase, thử kéo làm mới lại.',
-          );
+          setSensorNote(t('steps.notSavedToCloud'));
         }
         setSensorStatus('available');
         if (Platform.OS === 'ios') {
@@ -412,15 +404,13 @@ export default function StepsDetailScreen({ navigation }: any) {
         return true;
       } catch {
         setSensorStatus('error');
-        setSensorNote(
-          'Không đọc được cảm biến lúc này, số đang hiện là số đã lưu trong DB.',
-        );
+        setSensorNote(t('steps.sensorUnreadable'));
         return false;
       } finally {
         setSyncing(false);
       }
     },
-    [loadAll, upsertTodaySteps, backfillWeekIOS, markSynced],
+    [loadAll, upsertTodaySteps, backfillWeekIOS, markSynced, t],
   );
 
   useEffect(() => {
@@ -496,7 +486,7 @@ export default function StepsDetailScreen({ navigation }: any) {
   const saveManual = async () => {
     const v = parseInt(manualInput.replace(/\D/g, ''), 10);
     if (!Number.isFinite(v) || v < 0 || v > 100000) {
-      setSensorNote('Nhập số bước từ 0 tới 100.000.');
+      setSensorNote(t('steps.manualRange'));
       return;
     }
     setSavingManual(true);
@@ -526,7 +516,7 @@ export default function StepsDetailScreen({ navigation }: any) {
       setSensorStatus('manual');
       await loadAll();
     } catch {
-      setSensorNote('Lưu số nhập tay thất bại, thử lại.');
+      setSensorNote(t('steps.manualSaveFailed'));
     } finally {
       setSavingManual(false);
     }
@@ -552,31 +542,31 @@ export default function StepsDetailScreen({ navigation }: any) {
 
   const chartData =
     range === 'today'
-      ? [{ label: 'Hôm nay', steps: todaySteps }]
+      ? [{ label: t('home.today'), steps: todaySteps }]
       : range === 'week'
-        ? buildDaily(displayMap, 7)
-        : buildDaily(displayMap, 30);
+        ? buildDaily(displayMap, 7, locale)
+        : buildDaily(displayMap, 30, locale);
   const chartSum = chartData.reduce((s, x) => s + x.steps, 0);
   const chartAvg =
     range === 'today' ? todaySteps : Math.round(chartSum / chartData.length);
 
   const statusText =
     sensorStatus === 'checking'
-      ? 'Đang kiểm tra cảm biến…'
+      ? t('steps.statusChecking')
       : sensorStatus === 'available'
-        ? 'Đang đếm từ cảm biến điện thoại'
+        ? t('steps.statusAvailable')
         : sensorStatus === 'denied'
-          ? 'Chưa được cấp quyền chuyển động'
+          ? t('steps.statusDenied')
           : sensorStatus === 'unsupported'
-            ? 'Điện thoại này không có cảm biến bước chân'
+            ? t('steps.statusUnsupported')
             : sensorStatus === 'manual'
-              ? 'Hôm nay đang dùng số nhập tay'
-              : 'Không đọc được cảm biến lúc này';
+              ? t('steps.statusManual')
+              : t('steps.statusError');
   const platformNote =
     Platform.OS === 'ios'
-      ? 'iOS: Hệ điều hành đếm cả khi app đóng, mở app là lấy đủ từ 0 giờ.'
+      ? t('steps.platformIos')
       : Platform.OS === 'android'
-        ? 'Android: Số chỉ cập nhật khi app đang mở hoặc vừa mở lại, không đếm nền đầy đủ như iOS.'
+        ? t('steps.platformAndroid')
         : '';
   const showManualForm =
     sensorStatus === 'denied' ||
@@ -602,7 +592,7 @@ export default function StepsDetailScreen({ navigation }: any) {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe}>
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-          <AppHeader title='Theo dõi bước chân chi tiết' withTopInset={false} />
+          <AppHeader title={t('steps.detailTitle')} withTopInset={false} />
         </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -619,7 +609,9 @@ export default function StepsDetailScreen({ navigation }: any) {
               ]}
             />
             <Text style={styles.live}>
-              {sensorStatus === 'available' ? 'TRỰC TIẾP HÔM NAY' : 'HÔM NAY'}
+              {sensorStatus === 'available'
+                ? t('steps.liveToday')
+                : t('steps.today')}
             </Text>
           </View>
 
@@ -649,17 +641,17 @@ export default function StepsDetailScreen({ navigation }: any) {
             <View style={styles.mini}>
               <IconBadge name='flame-outline' />
               <Text style={styles.miniNum}>{Math.round(kcal)}</Text>
-              <Text style={styles.miniLabel}>kcal tiêu thụ (ước tính)</Text>
+              <Text style={styles.miniLabel}>{t('steps.kcalEst')}</Text>
             </View>
             <View style={styles.mini}>
               <IconBadge name='location-outline' />
               <Text style={styles.miniNum}>{distanceKm.toFixed(1)}</Text>
-              <Text style={styles.miniLabel}>km quãng đường (ước tính)</Text>
+              <Text style={styles.miniLabel}>{t('steps.kmEst')}</Text>
             </View>
             <View style={styles.mini}>
               <IconBadge name='time-outline' />
               <Text style={styles.miniNum}>{activeMin}</Text>
-              <Text style={styles.miniLabel}>phút vận động (ước tính)</Text>
+              <Text style={styles.miniLabel}>{t('steps.activeMinEst')}</Text>
             </View>
           </View>
 

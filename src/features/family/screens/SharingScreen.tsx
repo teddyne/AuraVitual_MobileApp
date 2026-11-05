@@ -41,7 +41,7 @@ import { SharingQrScannerModal } from '../components/SharingQrScannerModal';
 import { s } from './SharingScreen.styles';
 
 export default function SharingScreen({ navigation }: any) {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const route = useRoute<any>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,18 +113,18 @@ export default function SharingScreen({ navigation }: any) {
   // (Nút cũ chỉ đọc lại mã cũ nên bấm không đổi mã.)
   const onRotateCode = () => {
     Alert.alert(
-      'Tạo mã mới?',
-      'Mã cũ đang hiển thị sẽ hết hiệu lực ngay.',
+      t('family.rotateTitle'),
+      t('family.rotateBody'),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Tạo mã mới',
+          text: t('family.rotateAction'),
           onPress: async () => {
             setRotating(true);
             const next = await rotateInviteCode();
             setRotating(false);
             if (!next) {
-              Alert.alert('Lỗi', 'Không tạo được mã mới, thử lại sau.');
+              Alert.alert(t('family.errorTitle'), t('family.rotateFailed'));
               return;
             }
             setMyCode(next);
@@ -143,7 +143,7 @@ export default function SharingScreen({ navigation }: any) {
     if (!CODE_RE.test(code)) {
       setSendMsg({
         ok: false,
-        text: 'Mã mời gồm 8 ký tự, không chứa 0, O, 1, I, L.',
+        text: t('family.codeInvalid'),
       });
       return;
     }
@@ -152,19 +152,19 @@ export default function SharingScreen({ navigation }: any) {
     setSending(false);
     if (!res.ok) {
       const map: Record<string, string> = {
-        self: 'Không thể gửi lời mời cho chính mình.',
-        invalid_code: 'Mã không đúng hoặc đã hết hạn (24 giờ).',
-        already_linked: 'Hai bạn đã kết nối rồi.',
-        already_pending: 'Bạn đã gửi lời mời rồi, đang chờ chấp nhận.',
-        too_many_attempts: 'Nhập sai quá nhiều lần, thử lại sau 15 phút.',
-        network: 'Lỗi mạng, thử lại sau.',
+        self: t('family.inviteError.self'),
+        invalid_code: t('family.inviteError.invalidCode'),
+        already_linked: t('family.inviteError.alreadyLinked'),
+        already_pending: t('family.inviteError.alreadyPending'),
+        too_many_attempts: t('family.inviteError.tooManyAttempts'),
+        network: t('family.inviteError.network'),
       };
-      setSendMsg({ ok: false, text: map[res.error] ?? 'Không gửi được lời mời.' });
+      setSendMsg({ ok: false, text: map[res.error] ?? t('family.inviteError.default') });
       return;
     }
     setSendMsg({
       ok: true,
-      text: `Đã gửi lời mời đến ${res.toName}. Họ sẽ thấy lời mời trong tab Chia sẻ.`,
+      text: t('family.inviteSent', { name: res.toName }),
     });
     setCodeInput('');
     const s = await getSentRequests().catch(() => []);
@@ -174,7 +174,7 @@ export default function SharingScreen({ navigation }: any) {
   const onAccept = async (r: FamilyRequest) => {
     const ok = await acceptRequest(r.id);
     if (!ok) {
-      Alert.alert('Lỗi', 'Không chấp nhận được, thử lại sau.');
+      Alert.alert(t('family.errorTitle'), t('family.acceptFailed'));
       return;
     }
     setNicknamePrompt({ ownerId: r.fromUserId, name: r.fromName });
@@ -194,7 +194,7 @@ export default function SharingScreen({ navigation }: any) {
     if (!nicknamePrompt) return;
     const ok = await setNickname(nicknamePrompt.ownerId, nicknameDraft);
     if (!ok) {
-      Alert.alert('Lỗi', 'Không lưu được biệt danh.');
+      Alert.alert(t('family.errorTitle'), t('family.nicknameSaveFailed'));
       return;
     }
     setNicknamePrompt(null);
@@ -205,7 +205,7 @@ export default function SharingScreen({ navigation }: any) {
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        Alert.alert('Cần quyền camera', 'Cho phép dùng camera để quét mã QR.');
+        Alert.alert(t('family.cameraTitle'), t('family.cameraBody'));
         return;
       }
     }
@@ -234,7 +234,7 @@ export default function SharingScreen({ navigation }: any) {
           {/* Header: logo + tiêu đề tab + avatar sang Tài khoản */}
           <View style={s.headerRow}>
             <Text style={[s.logo, { color: theme.primaryDark }]}>🌿 AuraVital</Text>
-            <Text style={[s.headerTitle, { color: theme.text }]}>Chia sẻ</Text>
+            <Text style={[s.headerTitle, { color: theme.text }]}>{t('tabs.share')}</Text>
           </View>
         </View>
         <ScrollView
@@ -254,24 +254,24 @@ export default function SharingScreen({ navigation }: any) {
             />
             <View style={s.bannerOverlay}>
               <Ionicons name='shield-checkmark' size={20} color='#fff' />
-              <Text style={s.bannerText}>Mạng lưới gia đình được bảo vệ 24/7</Text>
+              <Text style={s.bannerText}>{t('family.banner')}</Text>
             </View>
           </View>
 
           {/* Thành viên kết nối */}
           <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>Thành viên kết nối</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.membersTitle')}</Text>
             <Text style={[s.sectionRight, { color: theme.primaryDark }]}>
               {members.length === 0
-                ? 'Chưa có thành viên'
+                ? t('family.noMembers')
                 : syncedToday > 0
-                  ? `${syncedToday} đang đồng bộ`
-                  : `${members.length} thành viên`}
+                  ? t('family.syncingCount', { count: syncedToday })
+                  : t('family.membersCount', { count: members.length })}
             </Text>
           </View>
           {members.length === 0 ? (
             <Text style={[s.empty, { color: theme.muted }]}>
-              Chưa có thành viên. Tạo mã mời bên dưới và gửi cho người thân để bắt đầu.
+              {t('family.emptyMembers')}
             </Text>
           ) : (
             members.map((m) => (
@@ -288,7 +288,7 @@ export default function SharingScreen({ navigation }: any) {
           {received.length > 0 && (
             <>
               <View style={s.sectionHeader}>
-                <Text style={[s.sectionTitle, { color: theme.text }]}>✉️ Lời mời kết nối</Text>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.receivedTitle')}</Text>
               </View>
               {received.map((r) => (
                 <ReceivedRequestCard
@@ -318,7 +318,7 @@ export default function SharingScreen({ navigation }: any) {
           {sent.length > 0 && (
             <>
               <View style={s.sectionHeader}>
-                <Text style={[s.sectionTitle, { color: theme.text }]}>📤 Lời mời đã gửi</Text>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.sentTitle')}</Text>
               </View>
               {sent.map((r) => (
                 <SentRequestCard
@@ -338,7 +338,7 @@ export default function SharingScreen({ navigation }: any) {
               pairY.current = e.nativeEvent.layout.y;
             }}
           >
-            <Text style={[s.sectionTitle, { color: theme.text }]}>Ghép nối tức thì</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.pairTitle')}</Text>
           </View>
 
           <SharingPairCard
@@ -355,20 +355,20 @@ export default function SharingScreen({ navigation }: any) {
           />
 
           {/* Giá trị cốt lõi */}
-          <Text style={[s.sectionTitle, { color: theme.text, marginTop: 30 }]}> Giá trị cốt lõi</Text>
+          <Text style={[s.sectionTitle, { color: theme.text, marginTop: 30 }]}>{t('family.coreValuesTitle')}</Text>
           <View style={[s.valueCard, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 3 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.valueTitle, { color: theme.text }]}>Theo dõi sức khỏe chủ động</Text>
+              <Text style={[s.valueTitle, { color: theme.text }]}>{t('family.valueTrackTitle')}</Text>
               <Text style={[s.valueBody, { color: theme.muted }]}>
-                Tự động đồng bộ số bước chân, thời lượng giấc ngủ và cảnh báo nhịp tim bất thường cho người thân theo thời gian thực.
+                {t('family.valueTrackBody')}
               </Text>
             </View>
           </View>
           <View style={[s.valueCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.valueTitle, { color: theme.text }]}>Thông báo thông minh</Text>
+              <Text style={[s.valueTitle, { color: theme.text }]}>{t('family.valueNotifyTitle')}</Text>
               <Text style={[s.valueBody, { color: theme.muted }]}>
-                Nhận thông báo cập nhật tức thì khi người thân hoàn thành mục tiêu, đạt thành tích hoặc phát hiện cảnh báo cần hỗ trợ y tế kịp thời.
+                {t('family.valueNotifyBody')}
               </Text>
             </View>
           </View>
@@ -380,13 +380,13 @@ export default function SharingScreen({ navigation }: any) {
             }}
             style={[s.cta, { backgroundColor: theme.primaryDark }]}
           >
-            <Text style={s.ctaText}>Bắt đầu chia sẻ với gia đình</Text>
+            <Text style={s.ctaText}>{t('family.ctaStart')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={goSettings}
             style={[s.ctaOutline, { borderColor: theme.border, backgroundColor: theme.card }]}
           >
-            <Text style={[s.ctaOutlineText, { color: theme.text }]}>Cài đặt & Phân quyền chia sẻ</Text>
+            <Text style={[s.ctaOutlineText, { color: theme.text }]}>{t('family.ctaSettings')}</Text>
           </TouchableOpacity>
         </ScrollView>
 

@@ -3,28 +3,31 @@ import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PillButton } from '../../../components/ui/Ui';
 import { colors } from '../../../theme/colors';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './OnboardingScreen.styles';
-
-const STEPS = [
-  {
-    title: 'Khởi đầu hành trình sống khỏe',
-    desc: 'Theo dõi nhịp sinh học, lắng nghe nhịp tim và xây dựng giấc ngủ sâu phục hồi trọn vẹn mỗi ngày.',
-    tag: '1. Vòng lặp vận động',
-  },
-  {
-    title: 'Dinh dưỡng cân bằng',
-    desc: 'Ghi lại bữa ăn, theo dõi calo và chất dinh dưỡng để mỗi ngày ăn uống đều có chủ đích.',
-    tag: '2. Dinh dưỡng',
-  },
-  {
-    title: 'Rèn luyện mỗi ngày',
-    desc: 'Video bài tập theo từng cấp độ, từ giãn cơ buổi sáng đến yoga nhẹ nhàng trước khi ngủ.',
-    tag: '3. Rèn luyện',
-  },
-];
 
 export default function OnboardingScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useSettings();
+  // STEPS nam trong component de dung t(): cac chuoi tieu de/mo ta/tag
+  // doi theo locale; noi dung va thu tu giu nguyen.
+  const STEPS = [
+    {
+      title: t('auth.onboarding.step1.title'),
+      desc: t('auth.onboarding.step1.desc'),
+      tag: t('auth.onboarding.step1.tag'),
+    },
+    {
+      title: t('auth.onboarding.step2.title'),
+      desc: t('auth.onboarding.step2.desc'),
+      tag: t('auth.onboarding.step2.tag'),
+    },
+    {
+      title: t('auth.onboarding.step3.title'),
+      desc: t('auth.onboarding.step3.desc'),
+      tag: t('auth.onboarding.step3.tag'),
+    },
+  ];
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -47,10 +50,12 @@ export default function OnboardingScreen() {
       <View style={styles.content}>
         <View style={styles.top}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>🌿 HỆ SINH THÁI SỨC KHỎE</Text>
+            <Text style={styles.badgeText}>
+              {t('auth.onboarding.badge')}
+            </Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.skip}>Bỏ qua</Text>
+            <Text style={styles.skip}>{t('auth.onboarding.skip')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -64,7 +69,9 @@ export default function OnboardingScreen() {
             Aura<Text style={{ color: colors.sage }}>Vital</Text>
           </Text>
           <View style={styles.subBadge}>
-            <Text style={styles.subBadgeText}>CHỈ SỐ SINH HỌC THÔNG MINH</Text>
+            <Text style={styles.subBadgeText}>
+              {t('auth.onboarding.subBadge')}
+            </Text>
           </View>
         </View>
 
@@ -82,7 +89,9 @@ export default function OnboardingScreen() {
           </View>
 
           <PillButton
-            title={isLast ? 'Bắt đầu ngay →' : 'Tiếp tục khám phá →'}
+            title={
+              isLast ? t('auth.onboarding.start') : t('auth.onboarding.next')
+            }
             onPress={next}
           />
 
@@ -91,9 +100,9 @@ export default function OnboardingScreen() {
             onPress={() => navigation.navigate('Login')}
           >
             <Text style={styles.loginText}>
-              Đã có tài khoản AuraVital?{' '}
+              {t('auth.onboarding.hasAccount')}{' '}
               <Text style={{ color: colors.sageDark, fontWeight: '700' }}>
-                Đăng nhập ngay
+                {t('auth.login.submit')}
               </Text>
             </Text>
           </TouchableOpacity>

@@ -14,9 +14,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getArticles, getPostById, levelLabel, type Post } from '../../../lib/workoutApi';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ArticleDetailScreen.styles';
 
 export default function ArticleDetailScreen() {
+  const { t } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const postId: string = route.params?.postId;
@@ -29,13 +31,13 @@ export default function ArticleDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      if (!postId) throw new Error('Thiếu postId.');
+      if (!postId) throw new Error(t('workout.player.missingPostId'));
       const [p, all] = await Promise.all([getPostById(postId), getArticles(10)]);
-      if (!p) throw new Error('Không tìm thấy bài viết này trong database.');
+      if (!p) throw new Error(t('workout.article.notFound'));
       setPost(p);
       setRelated(all.filter((a) => a.id !== p.id).slice(0, 3));
     } catch (e: any) {
-      setError(e?.message ?? 'Không tải được bài viết.');
+      setError(e?.message ?? t('workout.article.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -60,7 +62,7 @@ export default function ArticleDetailScreen() {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={[styles.center, { backgroundColor: '#fff' }]}>
-          <Text style={styles.error}>{error || 'Không có bài viết.'}</Text>
+          <Text style={styles.error}>{error || t('workout.article.noArticle')}</Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -76,7 +78,7 @@ export default function ArticleDetailScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color="#1B2A1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bài viết</Text>
+        <Text style={styles.headerTitle}>{t('home.article')}</Text>
         <View style={{ width: 26 }} />
       </View>
     </View>
@@ -95,8 +97,8 @@ export default function ArticleDetailScreen() {
       )}
 
       <Text style={styles.tag}>
-        DINH DƯỠNG · {levelLabel(post.level).toUpperCase()}
-        {post.duration_min != null ? ` · ${post.duration_min} PHÚT ĐỌC` : ''}
+        {t('home.nutritionTag')} · {levelLabel(post.level).toUpperCase()}
+        {post.duration_min != null ? ` · ${t('workout.article.readMinutesUpper', { min: post.duration_min })}` : ''}
       </Text>
       <Text style={styles.title}>{post.title}</Text>
       {post.summary ? <Text style={styles.summary}>{post.summary}</Text> : null}
@@ -107,7 +109,7 @@ export default function ArticleDetailScreen() {
 
       {related.length > 0 && (
         <>
-          <Text style={styles.h2}>Bài viết liên quan</Text>
+          <Text style={styles.h2}>{t('workout.article.related')}</Text>
           {related.map((r) => (
             <TouchableOpacity
               key={r.id}
@@ -117,7 +119,7 @@ export default function ArticleDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.relTitle} numberOfLines={2}>{r.title}</Text>
                 <Text style={styles.relMeta}>
-                  {r.duration_min != null ? `${r.duration_min} phút đọc` : 'Bài viết'}
+                  {r.duration_min != null ? t('explore.readMinutes', { min: r.duration_min }) : t('home.article')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#8A968E" />

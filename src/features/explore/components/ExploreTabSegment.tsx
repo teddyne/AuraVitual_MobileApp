@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSettings } from '../../../context/SettingsContext';
 
 // Doan chuyen tab Kham pha / Luyen tap trong ExploreScreen (doi nguyen van).
 export function ExploreTabSegment({
@@ -9,6 +10,7 @@ export function ExploreTabSegment({
   tab: 'explore' | 'workout';
   onTabChange: (t: 'explore' | 'workout') => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={styles.segment}>
       <TouchableOpacity
@@ -21,7 +23,7 @@ export function ExploreTabSegment({
             tab === 'explore' && styles.segTextActive,
           ]}
         >
-          Khám phá
+          {t('tabs.explore')}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -34,7 +36,7 @@ export function ExploreTabSegment({
             tab === 'workout' && styles.segTextActive,
           ]}
         >
-          Luyện tập
+          {t('explore.tabWorkout')}
         </Text>
       </TouchableOpacity>
     </View>

@@ -7,8 +7,10 @@ import {
   PINK_TEXT,
   TODAY_BG,
   WD,
+  WD_EN,
   YELLOW_DOT,
 } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/CycleTrackingScreen.styles';
 
 // Dai ngay ngang 61 ngay quanh ngay trung tam, doi nguyen van tu
@@ -34,6 +36,8 @@ export function CycleDayStrip({
   isFutureKey: (key: string) => boolean;
   onSelect: (key: string) => void;
 }) {
+  const { locale } = useSettings();
+  const wd = locale === 'en' ? WD_EN : WD;
   return (
     <View style={styles.stripRow}>
       <ScrollView
@@ -98,7 +102,7 @@ export function CycleDayStrip({
                   },
                 ]}
               >
-                {WD[d.getDay()]}
+                {wd[d.getDay()]}
               </Text>
               <Text
                 style={[

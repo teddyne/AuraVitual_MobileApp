@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { levelLabel, type Post } from '../../lib/workoutApi';
+import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 
 export function TodayWorkoutCard({
@@ -13,14 +14,15 @@ export function TodayWorkoutCard({
   onPress: (post: Post) => void;
   onSeeAll: () => void;
 }) {
+  const { t } = useSettings();
   const [imgError, setImgError] = useState(false);
   if (!post) {
     return (
       <View>
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Đề xuất bài tập hôm nay</Text>
+          <Text style={styles.sectionTitle}>{t('home.workoutToday')}</Text>
           <TouchableOpacity onPress={onSeeAll}>
-            <Text style={styles.seeAll}>Xem tất cả</Text>
+            <Text style={styles.seeAll}>{t('home.viewAll')}</Text>
           </TouchableOpacity>
         </View>
         <View
@@ -34,7 +36,8 @@ export function TodayWorkoutCard({
           ]}
         >
           <Text style={styles.emptyText}>
-            Chưa có bài tập.{'\n'}
+            {t('home.noWorkoutToday')}
+            {'\n'}
           </Text>
         </View>
       </View>
@@ -43,9 +46,9 @@ export function TodayWorkoutCard({
   return (
     <View>
       <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Đề xuất bài tập hôm nay</Text>
+        <Text style={styles.sectionTitle}>{t('home.workoutToday')}</Text>
         <TouchableOpacity onPress={onSeeAll}>
-          <Text style={styles.seeAll}>Xem tất cả</Text>
+          <Text style={styles.seeAll}>{t('home.viewAll')}</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity
@@ -77,7 +80,9 @@ export function TodayWorkoutCard({
         <View style={styles.chipRow}>
           {post.duration_min != null && (
             <View style={[styles.chip, { backgroundColor: '#2E7D32' }]}>
-              <Text style={styles.chipText}>{post.duration_min} PHÚT</Text>
+              <Text style={styles.chipText}>
+                {post.duration_min} {t('home.minutes')}
+              </Text>
             </View>
           )}
           <View

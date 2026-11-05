@@ -47,7 +47,7 @@ import type { ActivityId, DurationUnit } from '../../../lib/healthCalc';
 
 export default function ProfileSetupScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { theme } = useSettings();
+  const { theme, t, locale } = useSettings();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
@@ -88,15 +88,21 @@ export default function ProfileSetupScreen({ navigation }: any) {
       : durationUnit === 'month'
         ? durationValue * 30
         : durationValue * 7;
+  const durationUnitLabel =
+    durationUnit === 'day'
+      ? t('profile.setup.dayUnit')
+      : durationUnit === 'month'
+        ? t('profile.setup.monthUnit')
+        : t('profile.setup.weekUnit');
   const sleepHours = sleepHoursFromTimes(bedtime, wakeTime);
   const recommendedSleep =
     age === null ? 8 : age < 18 ? 9 : age >= 65 ? 7.5 : 8;
   const recommendedRange =
     age !== null && age < 18
-      ? '8–10 giờ'
+      ? t('profile.setup.sleepRangeTeen')
       : age !== null && age >= 65
-        ? '7–8 giờ'
-        : '7–9 giờ';
+        ? t('profile.setup.sleepRangeSenior')
+        : t('profile.setup.sleepRangeAdult');
 
   const step1Done =
     cleanName !== '' && !cleanName.includes('@') && gender !== '';
@@ -194,26 +200,29 @@ export default function ProfileSetupScreen({ navigation }: any) {
   const onFinish = async () => {
     if (!cleanName || cleanName.includes('@')) {
       Alert.alert(
-        'Tên hiển thị chưa đúng',
-        'Nhập họ tên đầy đủ, không dùng email.',
+        t('profile.setup.alerts.nameTitle'),
+        t('profile.setup.alerts.nameMsg'),
       );
       return;
     }
     if (!gender) {
-      Alert.alert('Chưa chọn giới tính', 'Chọn giới tính.');
+      Alert.alert(
+        t('profile.setup.alerts.genderTitle'),
+        t('profile.setup.alerts.genderMsg'),
+      );
       return;
     }
     if (height < 50 || height > 250 || weight < 20 || weight > 300) {
       Alert.alert(
-        'Chiều cao / cân nặng chưa đúng',
-        'Chiều cao 50–250 cm, cân nặng 20–300 kg.',
+        t('profile.setup.alerts.heightWeightTitle'),
+        t('profile.setup.alerts.heightWeightMsg'),
       );
       return;
     }
     if (birthText && !birthIso) {
       Alert.alert(
-        'Ngày sinh chưa đúng',
-        'Nhập đúng ngày thật, dạng DD/MM/YYYY, không phải ngày tương lai.',
+        t('profile.setup.alerts.birthTitle'),
+        t('profile.setup.alerts.birthMsg'),
       );
       return;
     }
@@ -223,34 +232,37 @@ export default function ProfileSetupScreen({ navigation }: any) {
         parseTimeMinutes(wakeTime) === null)
     ) {
       Alert.alert(
-        'Giờ ngủ chưa đúng',
-        'Nhập giờ dạng HH:MM, ví dụ 22:30 và 06:30.',
+        t('profile.setup.alerts.sleepTimeTitle'),
+        t('profile.setup.alerts.sleepTimeMsg'),
       );
       return;
     }
     if (!goal) {
-      Alert.alert('Chưa chọn mục tiêu', 'Chọn 1 mục tiêu.');
+      Alert.alert(
+        t('profile.setup.alerts.goalTitle'),
+        t('profile.setup.alerts.goalMsg'),
+      );
       return;
     }
     if (isWeightGoal) {
       if (!activity) {
         Alert.alert(
-          'Chưa chọn cường độ',
-          'Mục tiêu cân nặng cần cường độ để tính TDEE.',
+          t('profile.setup.alerts.activityTitle'),
+          t('profile.setup.alerts.activityMsg'),
         );
         return;
       }
       if (goal === 'lose' && !(targetWeight < weight)) {
         Alert.alert(
-          'Cân mục tiêu chưa đúng',
-          'Giảm cân thì cân mục tiêu phải nhỏ hơn cân hiện tại.',
+          t('profile.setup.alerts.targetWeightTitle'),
+          t('profile.setup.alerts.targetWeightLoseMsg'),
         );
         return;
       }
       if (goal === 'gain' && !(targetWeight > weight)) {
         Alert.alert(
-          'Cân mục tiêu chưa đúng',
-          'Tăng cân thì cân mục tiêu phải lớn hơn cân hiện tại.',
+          t('profile.setup.alerts.targetWeightTitle'),
+          t('profile.setup.alerts.targetWeightGainMsg'),
         );
         return;
       }
@@ -258,8 +270,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
         durationUnit === 'day' ? 365 : durationUnit === 'month' ? 12 : 52;
       if (durationValue < 1 || durationValue > maxD) {
         Alert.alert(
-          'Thời gian mục tiêu chưa đúng',
-          'Ngày 1–365, tuần 1–52, tháng 1–12.',
+          t('profile.setup.alerts.durationTitle'),
+          t('profile.setup.alerts.durationMsg'),
         );
         return;
       }
@@ -270,8 +282,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
         exerciseMinutes > 90
       ) {
         Alert.alert(
-          'Luyện tập chưa đúng',
-          'Số buổi 1–7 buổi/tuần, mỗi buổi 15–90 phút.',
+          t('profile.setup.alerts.exerciseTitle'),
+          t('profile.setup.alerts.exerciseMsg'),
         );
         return;
       }
@@ -279,22 +291,22 @@ export default function ProfileSetupScreen({ navigation }: any) {
     if (goal === 'cycle') {
       if (!cycleStartIso) {
         Alert.alert(
-          'Ngày bắt đầu chưa đúng',
-          'Nhập ngày bắt đầu kỳ dạng DD/MM/YYYY hoặc chọn từ lịch.',
+          t('profile.setup.alerts.cycleStartTitle'),
+          t('profile.setup.alerts.cycleStartMsg'),
         );
         return;
       }
       if (cycleLength < 20 || cycleLength > 45) {
         Alert.alert(
-          'Độ dài chu kỳ chưa đúng',
-          'Độ dài chu kỳ từ 20 đến 45 ngày.',
+          t('profile.setup.alerts.cycleLengthTitle'),
+          t('profile.setup.alerts.cycleLengthMsg'),
         );
         return;
       }
       if (periodDays < 2 || periodDays > 10) {
         Alert.alert(
-          'Số ngày hành kinh chưa đúng',
-          'Số ngày hành kinh từ 2 đến 10 ngày.',
+          t('profile.setup.alerts.periodTitle'),
+          t('profile.setup.alerts.periodMsg'),
         );
         return;
       }
@@ -342,8 +354,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
           .eq('id', user.id);
         if (sleepError) {
           Alert.alert(
-            'Chưa lưu được lịch ngủ',
-            'Chạy migration thêm bedtime_time, wake_time, sleep_reminder_enabled, alarm_enabled vào profiles rồi thử lại.',
+            t('profile.setup.alerts.sleepSaveTitle'),
+            t('profile.setup.alerts.sleepSaveMsg'),
           );
           return;
         }
@@ -386,7 +398,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={[s.wrap, { backgroundColor: theme.background }]}>
-          <Text style={{ color: theme.text }}>Đang tải hồ sơ...</Text>
+          <Text style={{ color: theme.text }}>
+            {t('settings.loadingProfile')}
+          </Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -405,46 +419,55 @@ export default function ProfileSetupScreen({ navigation }: any) {
           }
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         >
-          <Text style={[s.title, { color: theme.text }]}>Thiết lập hồ sơ</Text>
+          <Text style={[s.title, { color: theme.text }]}>
+            {t('settings.setupProfile')}
+          </Text>
           <View style={s.steps}>
             <Text style={step1Done ? s.stepDone : s.stepDefault}>
-              {step1Done ? '✓ Cơ bản' : '① Cơ bản'}
+              {step1Done
+                ? `✓ ${t('profile.setup.stepBasic')}`
+                : `① ${t('profile.setup.stepBasic')}`}
             </Text>
             <Text style={s.stepLine}>━━</Text>
             <Text style={step2Done ? s.stepDone : s.stepDefault}>
-              {step2Done ? '✓ Chỉ số sinh học' : '② Chỉ số sinh học'}
+              {step2Done
+                ? `✓ ${t('profile.setup.stepBiometrics')}`
+                : `② ${t('profile.setup.stepBiometrics')}`}
             </Text>
             <Text style={s.stepLine}>━━</Text>
             <Text style={step3Done ? s.stepDone : s.stepDefault}>
-              {step3Done ? '✓ Mục tiêu' : '③ Mục tiêu'}
+              {step3Done
+                ? `✓ ${t('profile.setup.stepGoal')}`
+                : `③ ${t('profile.setup.stepGoal')}`}
             </Text>
           </View>
           <Text style={[s.heading, { color: theme.primaryDark }]}>
-            CÁ NHÂN HÓA NHỊP SINH HỌC
+            {t('profile.setup.eyebrow')}
           </Text>
           <Text style={[s.big, { color: theme.text }]}>
-            Khởi tạo hồ sơ năng lượng
+            {t('profile.setup.heading')}
           </Text>
           <Text style={[s.muted, { color: theme.muted }]}>
-            AuraVital phân tích các chỉ số nền tảng để tính chỉnh lộ trình vận
-            động, nhịp ngủ và đường chất vì mô hài hòa.
+            {t('profile.setup.intro')}
           </Text>
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon="person-outline" theme={theme}>
-              1. Danh tính & Ngày sinh
+              {t('profile.setup.cardIdentity')}
             </CardTitle>
-            <Text style={[s.label, { color: theme.text }]}>Tên hiển thị</Text>
+            <Text style={[s.label, { color: theme.text }]}>
+              {t('settings.displayName')}
+            </Text>
             <TextInput
               style={[s.input, { color: theme.text }]}
               value={name}
               onChangeText={setName}
-              placeholder='Nhập họ tên đầy đủ, ví dụ Bùi Ngọc Hiền'
+              placeholder={t('profile.setup.namePlaceholder')}
               placeholderTextColor={theme.muted}
               autoCapitalize='words'
             />
             <Text style={[s.label, { color: theme.text }]}>
-              Giới tính sinh học
+              {t('profile.setup.bioGender')}
             </Text>
             <View style={s.row}>
               {GENDERS.map((g) => (
@@ -454,12 +477,12 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   onPress={() => setGender(g.id)}
                 >
                   <IconBadge name={g.icon} />
-                  <Text style={{ color: theme.text }}>{g.id}</Text>
+                  <Text style={{ color: theme.text }}>{t(g.labelKey)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <Text style={[s.label, { color: theme.text }]}>
-              Ngày sinh của bạn
+              {t('profile.setup.yourBirthDate')}
             </Text>
             <View style={s.row}>
               <TextInput
@@ -479,16 +502,18 @@ export default function ProfileSetupScreen({ navigation }: any) {
             </View>
             {age !== null && (
               <Text style={{ color: theme.muted, marginTop: 6 }}>
-                {age} tuổi
+                {t('settings.ageYears', { age })}
               </Text>
             )}
           </View>
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon="expand-outline" theme={theme}>
-              2. Chỉ số sinh học
+              {t('profile.setup.cardBiometrics')}
             </CardTitle>
-            <Text style={[s.label, { color: theme.text }]}>Chiều cao</Text>
+            <Text style={[s.label, { color: theme.text }]}>
+              {t('settings.height')}
+            </Text>
             <View style={s.adjustRow}>
               <TouchableOpacity
                 style={s.adjust}
@@ -527,7 +552,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               onDragEnd={() => setScrollEnabled(true)}
             />
             <Text style={[s.label, { color: theme.text, marginTop: 14 }]}>
-              Cân nặng
+              {t('settings.weight')}
             </Text>
             <View style={s.adjustRow}>
               <TouchableOpacity
@@ -574,7 +599,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon="flag-outline" theme={theme}>
-              3. Mục tiêu của bạn
+              {t('profile.setup.cardGoal')}
             </CardTitle>
             <View style={{ gap: 8 }}>
               {GOALS.map((g) => (
@@ -586,10 +611,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   <IconBadge name={g.icon} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: theme.text, fontWeight: '700' }}>
-                      {g.title}
+                      {t(g.titleKey)}
                     </Text>
                     <Text style={{ color: theme.muted, fontSize: 13 }}>
-                      {g.desc}
+                      {t(g.descKey)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -600,14 +625,13 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {goal === 'sleep' && (
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon="moon-outline" theme={theme}>
-              Lịch ngủ quen thuộc
+              {t('profile.setup.cardSleepSchedule')}
             </CardTitle>
             <Text style={{ color: theme.muted }}>
-              Giờ này dùng cho nhắc đi ngủ và báo thức ở màn hình giấc ngủ,
-              và để so với số giờ ngủ đề xuất ở thẻ bên dưới.
+              {t('profile.setup.sleepDesc')}
             </Text>
             <FieldLabel icon="moon-outline" theme={theme}>
-              Giờ bắt đầu ngủ (thói quen)
+              {t('profile.setup.bedtimeLabel')}
             </FieldLabel>
             <TextInput
               style={[s.input, { color: theme.text }]}
@@ -618,7 +642,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               keyboardType='numbers-and-punctuation'
             />
             <FieldLabel icon="sunny-outline" theme={theme}>
-              Giờ dậy (thói quen)
+              {t('profile.setup.wakeLabel')}
             </FieldLabel>
             <TextInput
               style={[s.input, { color: theme.text }]}
@@ -637,7 +661,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               }}
             >
               <Text style={{ color: theme.text, fontWeight: '700' }}>
-                Nhắc đi ngủ
+                {t('settings.sleepReminder')}
               </Text>
               <Switch value={sleepReminder} onValueChange={setSleepReminder} />
             </View>
@@ -650,7 +674,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               }}
             >
               <Text style={{ color: theme.text, fontWeight: '700' }}>
-                Báo thức giờ dậy
+                {t('profile.setup.wakeAlarm')}
               </Text>
               <Switch value={alarmEnabled} onValueChange={setAlarmEnabled} />
             </View>
@@ -660,7 +684,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {isWeightGoal && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="flash-outline" theme={theme}>
-                Cường độ luyện tập hiện tại
+                {t('profile.setup.cardActivity')}
               </CardTitle>
               <View style={{ gap: 8 }}>
                 {ACTIVITY_LEVELS.map((a) => (
@@ -672,10 +696,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
                     <IconBadge name={ACTIVITY_ICONS[a.id] || 'walk-outline'} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: theme.text, fontWeight: '700' }}>
-                        {a.title}
+                        {t(a.titleKey)}
                       </Text>
                       <Text style={{ color: theme.muted, fontSize: 13 }}>
-                        {a.desc}
+                        {t(a.descKey)}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -687,7 +711,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {(goal === 'lose' || goal === 'gain') && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="barbell-outline" theme={theme}>
-                Cân nặng mục tiêu
+                {t('settings.targetWeight')}
               </CardTitle>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -740,10 +764,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {isWeightGoal && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="hourglass-outline" theme={theme}>
-                Muốn đạt trong bao lâu?
+                {t('profile.setup.cardDuration')}
               </CardTitle>
               <Text style={{ color: theme.muted }}>
-                1 tuần = 7 ngày, 1 tháng = 30 ngày.
+                {t('profile.setup.durationNote')}
               </Text>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -771,11 +795,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                     }}
                   />
                   <Text style={{ color: theme.text }}>
-                    {durationUnit === 'day'
-                      ? 'ngày'
-                      : durationUnit === 'month'
-                        ? 'tháng'
-                        : 'tuần'}
+                    {durationUnitLabel}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -804,7 +824,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
                     setDurationValue(90);
                   }}
                 >
-                  <Text style={{ color: theme.text }}>Ngày</Text>
+                  <Text style={{ color: theme.text }}>
+                    {t('profile.setup.dayUnit')}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.optBtn, durationUnit === 'week' && s.goalActive]}
@@ -813,7 +835,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
                     setDurationValue(12);
                   }}
                 >
-                  <Text style={{ color: theme.text }}>Tuần</Text>
+                  <Text style={{ color: theme.text }}>
+                    {t('profile.setup.weekUnit')}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.optBtn, durationUnit === 'month' && s.goalActive]}
@@ -822,17 +846,17 @@ export default function ProfileSetupScreen({ navigation }: any) {
                     setDurationValue(3);
                   }}
                 >
-                  <Text style={{ color: theme.text }}>Tháng</Text>
+                  <Text style={{ color: theme.text }}>
+                    {t('profile.setup.monthUnit')}
+                  </Text>
                 </TouchableOpacity>
               </View>
               <Text style={{ color: theme.muted, marginTop: 6 }}>
-                Bạn đã set: {durationValue}{' '}
-                {durationUnit === 'day'
-                  ? 'ngày'
-                  : durationUnit === 'month'
-                    ? 'tháng'
-                    : 'tuần'}{' '}
-                (tương đương {durationDays} ngày để tính).
+                {t('profile.setup.durationSummary', {
+                  value: durationValue,
+                  unit: durationUnitLabel,
+                  days: durationDays,
+                })}
               </Text>
             </View>
           )}
@@ -840,10 +864,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {isWeightGoal && activity !== '' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="walk-outline" theme={theme}>
-                Thời gian luyện tập bạn muốn
+                {t('profile.setup.cardExercise')}
               </CardTitle>
               <Text style={[s.label, { color: theme.text }]}>
-                Số buổi / tuần
+                {t('profile.setup.sessionsPerWeek')}
               </Text>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -867,7 +891,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
               <Text style={[s.label, { color: theme.text }]}>
-                Số phút / buổi
+                {t('profile.setup.minutesPerSession')}
               </Text>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -897,7 +921,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   marginTop: 8,
                 }}
               >
-                Tổng: {exerciseSessions * exerciseMinutes} phút/tuần
+                {t('profile.setup.exerciseTotal', {
+                  minutes: exerciseSessions * exerciseMinutes,
+                })}
               </Text>
             </View>
           )}
@@ -905,24 +931,32 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {goal === 'sleep' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="moon-outline" theme={theme}>
-                Giấc ngủ của bạn
+                {t('profile.setup.cardSleep')}
               </CardTitle>
               <Text style={{ color: theme.text }}>
-                Hệ thống đề xuất:{' '}
+                {t('profile.setup.systemSuggests')}{' '}
                 <Text style={{ fontWeight: '800', color: theme.primaryDark }}>
-                  {recommendedSleep} giờ/ngày
+                  {t('profile.setup.hoursPerDay', {
+                    value: recommendedSleep,
+                  })}
                 </Text>{' '}
-                ({recommendedRange} cho lứa tuổi của bạn).
+                {t('profile.setup.sleepRangeForAge', {
+                  range: recommendedRange,
+                })}
               </Text>
               <Text style={{ color: theme.muted, marginTop: 8 }}>
-                Giờ ngủ và giờ dậy lấy từ thẻ Lịch ngủ quen thuộc ở trên.
+                {t('profile.setup.sleepSourceNote')}
               </Text>
               {sleepHours !== null && (
                 <Text style={{ color: theme.muted, marginTop: 8 }}>
-                  Thói quen của bạn: ngủ {fmtSleepHours(sleepHours)} mỗi đêm
+                  {t('profile.setup.sleepHabit', {
+                    hours: fmtSleepHours(sleepHours, locale),
+                  })}
                   {sleepHours < recommendedSleep
-                    ? `, thiếu ${(recommendedSleep - sleepHours).toFixed(1)} giờ so với đề xuất.`
-                    : ' — đã đạt đề xuất.'}
+                    ? t('profile.setup.sleepDeficit', {
+                        diff: (recommendedSleep - sleepHours).toFixed(1),
+                      })
+                    : t('profile.setup.sleepMet')}
                 </Text>
               )}
             </View>
@@ -931,10 +965,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
           {goal === 'cycle' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon="flower-outline" theme={theme}>
-                Chu kỳ của bạn
+                {t('profile.setup.cardCycle')}
               </CardTitle>
               <FieldLabel icon="calendar-outline" theme={theme}>
-                Ngày bắt đầu kỳ gần nhất
+                {t('profile.setup.cycleStartLabel')}
               </FieldLabel>
               <View style={s.row}>
                 <TextInput
@@ -953,7 +987,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
               <FieldLabel icon="repeat-outline" theme={theme}>
-                Độ dài chu kỳ (ngày)
+                {t('profile.setup.cycleLengthLabel')}
               </FieldLabel>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -979,7 +1013,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
               <FieldLabel icon="water-outline" theme={theme}>
-                Số ngày hành kinh (ngày)
+                {t('profile.setup.periodLabel')}
               </FieldLabel>
               <View style={s.adjustRow}>
                 <TouchableOpacity
@@ -1011,7 +1045,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
             style={[s.primaryBtn, { backgroundColor: theme.primaryDark }]}
             onPress={onFinish}
           >
-            <Text style={s.primaryBtnText}>Hoàn tất thiết lập →</Text>
+            <Text style={s.primaryBtnText}>
+              {t('profile.setup.finish')}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
         <Modal visible={calVisible} animationType='slide' transparent>
@@ -1027,8 +1063,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 }}
               >
                 {calTarget === 'birth'
-                  ? 'Chọn ngày sinh'
-                  : 'Chọn ngày bắt đầu kỳ'}
+                  ? t('profile.setup.pickBirth')
+                  : t('profile.setup.pickCycleStart')}
               </Text>
               <View style={s.row}>
                 <TouchableOpacity
@@ -1048,7 +1084,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
                   onPress={() => setShowYearList(!showYearList)}
                 >
                   <Text style={{ color: theme.text, fontWeight: '700' }}>
-                    Tháng {calMonth + 1} / {calYear}
+                    {t('profile.setup.monthYear', {
+                      month: calMonth + 1,
+                      year: calYear,
+                    })}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1108,7 +1147,9 @@ export default function ProfileSetupScreen({ navigation }: any) {
                 style={s.closeBtn}
                 onPress={() => setCalVisible(false)}
               >
-                <Text style={{ color: '#fff', fontWeight: '700' }}>Đóng</Text>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>
+                  {t('common.close')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

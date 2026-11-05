@@ -27,6 +27,7 @@ import {
 } from '../../../lib/workoutApi';
 import { toKey } from '../../../utils/dates';
 import { displayDate, fmtHM } from '../utils/workoutFormat';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './WorkoutLogScreen.styles';
 
 // CO TINH DE NGUYEN TAI CHO, khong thay bang addDays trong
@@ -39,6 +40,7 @@ function addDays(iso: string, days: number): string {
 }
 
 export default function WorkoutLogScreen() {
+  const { t } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user } = useAuth() as { user: { id: string } | null };
@@ -77,7 +79,7 @@ export default function WorkoutLogScreen() {
         if (pre?.duration_min) setMinutesText(String(pre.duration_min));
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Không tải được dữ liệu.');
+      setError(e?.message ?? t('common.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -107,15 +109,15 @@ export default function WorkoutLogScreen() {
 
   const onSave = async () => {
     if (!user?.id) {
-      Alert.alert('Chưa đăng nhập', 'Đăng nhập rồi mới ghi nhận được.');
+      Alert.alert(t('workout.log.notLoggedInTitle'), t('workout.log.notLoggedInBody'));
       return;
     }
     if (!selected) {
-      Alert.alert('Chưa chọn bài tập', 'Chọn 1 bài tập trong danh sách bên dưới.');
+      Alert.alert(t('workout.log.noWorkoutTitle'), t('workout.log.noWorkoutBody'));
       return;
     }
     if (!minutesValid) {
-      Alert.alert('Số phút chưa đúng', 'Nhập số phút từ 1 đến 480.');
+      Alert.alert(t('workout.log.invalidMinutesTitle'), t('workout.log.invalidMinutesBody'));
       return;
     }
     setSaving(true);
@@ -127,26 +129,26 @@ export default function WorkoutLogScreen() {
       }
       setEditingId(null);
       await load();
-      Alert.alert('Đã lưu', editingId ? 'Đã cập nhật số phút.' : 'Đã ghi nhận buổi tập.');
+      Alert.alert(t('workout.log.savedTitle'), editingId ? t('workout.log.savedUpdated') : t('workout.log.savedLogged'));
     } catch (e: any) {
-      Alert.alert('Không lưu được', e?.message ?? 'Thử lại sau.');
+      Alert.alert(t('workout.log.saveFailedTitle'), e?.message ?? t('common.tryAgainLater'));
     } finally {
       setSaving(false);
     }
   };
 
   const onDelete = (log: WorkoutLog) => {
-    Alert.alert('Xóa buổi tập này?', `${log.post?.title ?? 'Bài tập'} · ${log.minutes} phút`, [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert(t('workout.log.deleteConfirmTitle'), t('workout.log.deleteConfirmBody', { title: log.post?.title ?? t('home.workout'), min: log.minutes }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Xóa',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteWorkoutLog(log.id);
             await load();
           } catch (e: any) {
-            Alert.alert('Không xóa được', e?.message ?? 'Thử lại sau.');
+            Alert.alert(t('workout.log.deleteFailedTitle'), e?.message ?? t('common.tryAgainLater'));
           }
         },
       },
@@ -156,7 +158,7 @@ export default function WorkoutLogScreen() {
   const changeDate = (delta: number) => {
     const next = addDays(date, delta);
     if (next > toKey(new Date())) {
-      Alert.alert('Ngày tương lai', 'Không ghi nhận cho ngày chưa tới.');
+      Alert.alert(t('workout.log.futureDateTitle'), t('workout.log.futureDateBody'));
       return;
     }
     setDate(next);
@@ -184,7 +186,7 @@ export default function WorkoutLogScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FBF9' }}>
         <View style={{ flex: 1 }}>
     <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-      <AppHeader title='Ghi nhận tập luyện' withTopInset={false} />
+      <AppHeader title={t('workout.log.title')} withTopInset={false} />
     </View>
     <ScrollView
       style={styles.wrap}
@@ -197,20 +199,20 @@ export default function WorkoutLogScreen() {
         <TouchableOpacity style={styles.dateBtn} onPress={() => changeDate(-1)}>
           <Text style={styles.dateBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.dateText}>{displayDate(date)}{date === toKey(new Date()) ? ' (Hôm nay)' : ''}</Text>
+        <Text style={styles.dateText}>{displayDate(date)}{date === toKey(new Date()) ? ` (${t('home.today')})` : ''}</Text>
         <TouchableOpacity style={styles.dateBtn} onPress={() => changeDate(1)}>
           <Text style={styles.dateBtnText}>›</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.totalBox}>
-        <Text style={styles.totalLabel}>Tổng tuần kết thúc ngày {displayDate(date)}</Text>
+        <Text style={styles.totalLabel}>{t('workout.log.weekTotalEnding', { date: displayDate(date) })}</Text>
         <Text style={styles.totalBig}>{fmtHM(weekMinutes)}</Text>
-        <Text style={styles.totalSub}>Ngày {displayDate(date)}: {logs.reduce((s, l) => s + l.minutes, 0)} phút · {logs.reduce((s, l) => s + l.kcal, 0)} kcal ước lượng</Text>
+        <Text style={styles.totalSub}>{t('workout.log.daySummary', { date: displayDate(date), minutes: logs.reduce((s, l) => s + l.minutes, 0), kcal: logs.reduce((s, l) => s + l.kcal, 0) })}</Text>
       </View>
 
-      <Text style={styles.h2}>Chọn bài tập</Text>
-      {workouts.length === 0 && <Text style={styles.empty}>Chưa có bài tập trong database. Chạy seed v6 rồi tải lại.</Text>}
+      <Text style={styles.h2}>{t('workout.log.chooseWorkout')}</Text>
+      {workouts.length === 0 && <Text style={styles.empty}>{t('workout.log.noWorkoutsDb')}</Text>}
       {workouts.map((w) => (
         <TouchableOpacity
           key={w.id}
@@ -220,30 +222,30 @@ export default function WorkoutLogScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.workTitle}>{w.title}</Text>
             <Text style={styles.workSub}>
-              {w.duration_min ?? '—'} phút chuẩn{w.kcal_estimate != null ? ` · ${w.kcal_estimate} kcal/buổi` : ''}
+              {t('workout.log.standardDuration', { min: w.duration_min ?? '—' })}{w.kcal_estimate != null ? ` · ${t('workout.log.kcalPerSession', { kcal: w.kcal_estimate })}` : ''}
             </Text>
           </View>
           {selectedId === w.id && <Text style={styles.check}>✓</Text>}
         </TouchableOpacity>
       ))}
 
-      <Text style={styles.h2}>{editingId ? 'Sửa số phút đã tập' : 'Số phút bạn đã tập'}</Text>
+      <Text style={styles.h2}>{editingId ? t('workout.log.editMinutes') : t('workout.log.enterMinutes')}</Text>
       <TextInput
         style={styles.input}
         value={minutesText}
         onChangeText={setMinutesText}
         keyboardType="number-pad"
-        placeholder="Ví dụ: 20"
+        placeholder={t('workout.log.minutesPlaceholder')}
         placeholderTextColor="#9AA59E"
       />
       {!minutesValid && minutesText !== '' && (
-        <Text style={styles.error}>Số phút phải từ 1 đến 480.</Text>
+        <Text style={styles.error}>{t('workout.log.minutesRangeError')}</Text>
       )}
       <Text style={styles.kcalLine}>
-        Kcal ước lượng: {selected ? `${kcalPreview} kcal` : '—'} (tính theo tỉ lệ với buổi chuẩn)
+        {t('workout.log.kcalEstimate', { value: selected ? t('workout.log.kcalValue', { kcal: kcalPreview }) : '—' })}
       </Text>
       <TouchableOpacity style={styles.saveBtn} onPress={onSave} disabled={saving}>
-        <Text style={styles.saveText}>{saving ? 'Đang lưu...' : editingId ? 'Cập nhật' : 'Lưu buổi tập'}</Text>
+        <Text style={styles.saveText}>{saving ? t('common.saving') : editingId ? t('workout.log.update') : t('workout.log.saveSession')}</Text>
       </TouchableOpacity>
       {editingId && (
         <TouchableOpacity
@@ -253,23 +255,23 @@ export default function WorkoutLogScreen() {
             setMinutesText(selected?.duration_min ? String(selected.duration_min) : '');
           }}
         >
-          <Text style={styles.cancelText}>Hủy sửa</Text>
+          <Text style={styles.cancelText}>{t('workout.log.cancelEdit')}</Text>
         </TouchableOpacity>
       )}
 
-      <Text style={styles.h2}>Buổi tập ngày {displayDate(date)}</Text>
-      {logs.length === 0 && <Text style={styles.empty}>Chưa ghi nhận buổi nào trong ngày này.</Text>}
+      <Text style={styles.h2}>{t('workout.log.sessionsOnDate', { date: displayDate(date) })}</Text>
+      {logs.length === 0 && <Text style={styles.empty}>{t('workout.log.noSessions')}</Text>}
       {logs.map((log) => (
         <View key={log.id} style={styles.logRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.workTitle}>{log.post?.title ?? 'Bài tập'}</Text>
-            <Text style={styles.workSub}>{log.minutes} phút · {log.kcal} kcal ước lượng</Text>
+            <Text style={styles.workTitle}>{log.post?.title ?? t('home.workout')}</Text>
+            <Text style={styles.workSub}>{t('workout.log.sessionSummary', { min: log.minutes, kcal: log.kcal })}</Text>
           </View>
           <TouchableOpacity onPress={() => startEdit(log)}>
-            <Text style={styles.action}>Sửa</Text>
+            <Text style={styles.action}>{t('common.edit')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => onDelete(log)}>
-            <Text style={[styles.action, { color: '#B23A3A' }]}>Xóa</Text>
+            <Text style={[styles.action, { color: '#B23A3A' }]}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
       ))}

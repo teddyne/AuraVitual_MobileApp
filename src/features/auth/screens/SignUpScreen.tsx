@@ -24,10 +24,12 @@ import { AuthField } from '../components/AuthField';
 import { focusInput } from '../utils/focusInput';
 import { passwordScore } from '../utils/passwordScore';
 import { EMAIL_RE, ICON_MUTED } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './SignUpScreen.styles';
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useSettings();
   const { register, signInWithProvider } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -48,31 +50,29 @@ export default function SignUpScreen() {
 
   const submit = async () => {
     if (submitting) return;
-    if (!name.trim()) return setError('Hãy nhập họ và tên.');
+    if (!name.trim()) return setError(t('auth.validation.nameRequired'));
     if (!EMAIL_RE.test(email.trim()))
-      return setError('Email chưa đúng định dạng.');
+      return setError(t('auth.validation.invalidEmail'));
     if (password.length < 8)
-      return setError('Mật khẩu phải từ 8 ký tự trở lên.');
-    if (!confirmOk) return setError('Xác nhận mật khẩu chưa khớp.');
+      return setError(t('auth.validation.passwordMin8'));
+    if (!confirmOk) return setError(t('auth.validation.confirmMismatch'));
     if (!agreed)
-      return setError(
-        'Hãy tick đồng ý Điều khoản & Bảo mật trước khi đăng ký.',
-      );
+      return setError(t('auth.validation.termsRequired'));
 
     setSubmitting(true);
     try {
       const res = await register(name, email, password);
-      if (!res.ok) return setError(res.message ?? 'Đăng ký thất bại.');
+      if (!res.ok) return setError(res.message ?? t('auth.signup.failed'));
       if (res.needsConfirmation) {
         Alert.alert(
-          'Cần xác nhận email',
-          'Mở Mailpit ở cổng local, bấm link xác nhận rồi đăng nhập lại.',
+          t('auth.signup.confirmTitle'),
+          t('auth.signup.confirmBody'),
         );
         navigation.navigate('Login');
         return;
       }
       if (!res.user)
-        return setError('Không lấy được tài khoản sau khi đăng ký.');
+        return setError(t('auth.signup.noAccount'));
       const profile = await getProfile(res.user.id);
       navigation.replace(profile ? 'Main' : 'ProfileSetup');
     } finally {
@@ -87,11 +87,11 @@ export default function SignUpScreen() {
     try {
       const res = await signInWithProvider(provider);
       if (!res.ok) {
-        setError(res.message ?? 'Đăng nhập thất bại.');
+        setError(res.message ?? t('auth.login.failed'));
         return;
       }
       if (!res.user) {
-        setError('Không lấy được tài khoản sau khi đăng nhập.');
+        setError(t('auth.login.noAccount'));
         return;
       }
       const profile = await getProfile(res.user.id);
@@ -116,7 +116,9 @@ export default function SignUpScreen() {
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Ionicons name="chevron-back" size={32} color={colors.ink} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Đăng ký</Text>
+              <Text style={styles.headerTitle}>
+                {t('auth.signup.title')}
+              </Text>
               <View style={styles.avatar}>
                 <Ionicons
                   name="person-outline"
@@ -134,21 +136,18 @@ export default function SignUpScreen() {
               />
               <Text style={styles.badgeText}>AURAVITAL HOLISTIC ID</Text>
             </View>
-            <Text style={styles.title}>Tạo tài khoản mới</Text>
-            <Text style={styles.sub}>
-              Bắt đầu hành trình sống khỏe, cân bằng và tràn đầy năng lượng cùng
-              AuraVital.
-            </Text>
+            <Text style={styles.title}>{t('auth.signup.heading')}</Text>
+            <Text style={styles.sub}>{t('auth.signup.subtitle')}</Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <AuthField
               inputRef={nameRef}
-              label="HỌ VÀ TÊN"
+              label={t('auth.fields.fullName')}
               icon="person-outline"
               value={name}
               onChangeText={setName}
-              placeholder="Nguyễn Văn A"
+              placeholder={t('auth.fields.fullNamePlaceholder')}
               autoCapitalize="words"
               returnKeyType="next"
               onSubmitEditing={() => focusInput(emailRef)}
@@ -156,7 +155,7 @@ export default function SignUpScreen() {
             />
             <AuthField
               inputRef={emailRef}
-              label="ĐỊA CHỈ EMAIL"
+              label={t('auth.fields.email')}
               icon="mail-outline"
               value={email}
               onChangeText={setEmail}
@@ -168,9 +167,11 @@ export default function SignUpScreen() {
               blurOnSubmit={false}
             />
             <View style={styles.passLabelRow}>
-              <Text style={styles.passLabel}>MẬT KHẨU</Text>
+              <Text style={styles.passLabel}>
+                {t('auth.fields.password')}
+              </Text>
               <Text style={styles.passHint}>
-                {score === 4 ? 'Mật khẩu an toàn' : ''}
+                {score === 4 ? t('auth.signup.passwordStrong') : ''}
               </Text>
             </View>
             <AuthField
@@ -198,11 +199,11 @@ export default function SignUpScreen() {
 
             <AuthField
               inputRef={confirmRef}
-              label="XÁC NHẬN MẬT KHẨU"
+              label={t('auth.fields.confirmPassword')}
               icon="shield-checkmark-outline"
               value={confirm}
               onChangeText={setConfirm}
-              placeholder="Nhập lại mật khẩu"
+              placeholder={t('auth.fields.confirmPasswordPlaceholder')}
               secureTextEntry
               returnKeyType="go"
               onSubmitEditing={submit}
@@ -219,22 +220,33 @@ export default function SignUpScreen() {
 
             <CheckBox checked={agreed} onPress={() => setAgreed(!agreed)}>
               <Text style={styles.terms}>
-                Tôi đồng ý với{' '}
-                <Text style={styles.termsLink}>Điều khoản dịch vụ</Text> và{' '}
-                <Text style={styles.termsLink}>Chính sách bảo mật</Text> chuẩn y
-                tế của AuraVital.
+                {t('auth.signup.agreePrefix')}{' '}
+                <Text style={styles.termsLink}>
+                  {t('auth.signup.terms')}
+                </Text>{' '}
+                {t('auth.signup.and')}{' '}
+                <Text style={styles.termsLink}>
+                  {t('auth.signup.privacy')}
+                </Text>{' '}
+                {t('auth.signup.agreeSuffix')}
               </Text>
             </CheckBox>
 
             <PillButton
-              title={submitting ? 'Đang đăng ký...' : 'Đăng ký ngay →'}
+              title={
+                submitting
+                  ? t('auth.signup.submitting')
+                  : t('auth.signup.submit')
+              }
               onPress={submit}
               disabled={submitting}
             />
 
             <View style={styles.divider}>
               <View style={styles.line} />
-              <Text style={styles.dividerText}>HOẶC ĐĂNG KÝ VỚI</Text>
+              <Text style={styles.dividerText}>
+                {t('auth.signup.orWith')}
+              </Text>
               <View style={styles.line} />
             </View>
 
@@ -259,9 +271,9 @@ export default function SignUpScreen() {
               onPress={() => navigation.navigate('Login')}
             >
               <Text style={styles.footerText}>
-                Đã có tài khoản?{' '}
+                {t('auth.signup.hasAccount')}{' '}
                 <Text style={{ color: colors.sageDark, fontWeight: '700' }}>
-                  Đăng nhập ngay
+                  {t('auth.login.submit')}
                 </Text>
               </Text>
             </TouchableOpacity>

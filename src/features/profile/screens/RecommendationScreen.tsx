@@ -19,10 +19,14 @@ import {
   saveRecommendation,
   syncRecommendationToProfile,
 } from '../../../lib/auravitalApi';
-import { isoToLabel } from '../../../lib/healthCalc';
+import {
+  isoToLabel,
+  localizeBmiLabel,
+  localizeBmiRisk,
+} from '../../../lib/healthCalc';
 
 export default function RecommendationScreen({ route, navigation }: any) {
-  const { theme } = useSettings();
+  const { theme, t, locale } = useSettings();
   const { user } = useAuth();
   const [rec, setRec] = useState<any>(route.params?.recommendation ?? null);
   const [loading, setLoading] = useState(!route.params?.recommendation);
@@ -75,7 +79,9 @@ export default function RecommendationScreen({ route, navigation }: any) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={[s.wrap, { backgroundColor: theme.background }]}>
-          <Text style={{ color: theme.text }}>Đang tải đề xuất...</Text>
+          <Text style={{ color: theme.text }}>
+            {t('profile.recommendation.loading')}
+          </Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -84,13 +90,15 @@ export default function RecommendationScreen({ route, navigation }: any) {
       <SafeAreaProvider>
         <SafeAreaView style={[s.wrap, { backgroundColor: theme.background }]}>
           <Text style={[s.title, { color: theme.text }]}>
-            Chưa có đề xuất cá nhân
+            {t('profile.recommendation.empty')}
           </Text>
           <TouchableOpacity
             style={[s.primaryBtn, { backgroundColor: theme.primaryDark }]}
             onPress={() => navigation.replace('ProfileSetup')}
           >
-            <Text style={s.primaryBtnText}>Thiết lập hồ sơ</Text>
+            <Text style={s.primaryBtnText}>
+              {t('settings.setupProfile')}
+            </Text>
           </TouchableOpacity>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -110,61 +118,71 @@ export default function RecommendationScreen({ route, navigation }: any) {
       <SafeAreaView style={[s.wrap, { backgroundColor: theme.background }]}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
           <View style={[s.hero, { backgroundColor: theme.primaryDark }]}>
-            <Text style={s.eyebrow}>ĐỀ XUẤT CÁ NHÂN</Text>
-            <Text style={s.heroName}>{rec.displayName || 'Bạn'}</Text>
+            <Text style={s.eyebrow}>
+              {t('profile.recommendation.eyebrow')}
+            </Text>
+            <Text style={s.heroName}>
+              {rec.displayName || t('profile.recommendation.defaultName')}
+            </Text>
             {updated && (
               <Text style={s.heroSub}>
-                Cập nhật {updated.toLocaleDateString('vi-VN')} lúc{' '}
-                {updated.toLocaleTimeString('vi-VN', {
-                  hour: '2-digit',
-                  minute: '2-digit',
+                {t('profile.recommendation.updatedAt', {
+                  date: updated.toLocaleDateString(
+                    locale === 'vi' ? 'vi-VN' : 'en-US',
+                  ),
+                  time: updated.toLocaleTimeString(
+                    locale === 'vi' ? 'vi-VN' : 'en-US',
+                    { hour: '2-digit', minute: '2-digit' },
+                  ),
                 })}
               </Text>
             )}
             <View style={s.pill}>
-              <Text style={s.pillText}>{GOAL_LABEL[rec.goal] || rec.goal}</Text>
+              <Text style={s.pillText}>
+                {GOAL_LABEL[rec.goal] ? t(GOAL_LABEL[rec.goal]) : rec.goal}
+              </Text>
             </View>
           </View>
 
           {rec.goal === 'sleep' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon='moon-outline' theme={theme}>
-                Giấc ngủ đề xuất
+                {t('profile.recommendation.sleepTitle')}
               </CardTitle>
               <Text style={[s.big, { color: theme.text }]}>
-                {rec.recommendedSleepHours} giờ / ngày
+                {t('profile.recommendation.hoursPerDay', {
+                  value: rec.recommendedSleepHours,
+                })}
               </Text>
               <Text style={{ color: theme.muted }}>
-                Khoảng bình thường cho lứa tuổi của bạn:{' '}
-                {rec.recommendedSleepRange}.
+                {t('profile.recommendation.sleepNormalRange', {
+                  range: rec.recommendedSleepRange,
+                })}
               </Text>
               <Text style={{ color: theme.text, marginTop: 10 }}>
-                Thói quen của bạn: đi ngủ {rec.sleepBedtime} — dậy{' '}
-                {rec.sleepWakeTime} (
-                {rec.habitualSleepHours !== null
-                  ? fmtHours(rec.habitualSleepHours)
-                  : 'chưa tính được'}{' '}
-                mỗi đêm).
+                {t('profile.recommendation.sleepHabit', {
+                  bedtime: rec.sleepBedtime,
+                  wake: rec.sleepWakeTime,
+                  habit:
+                    rec.habitualSleepHours !== null
+                      ? fmtHours(rec.habitualSleepHours, locale)
+                      : t('profile.recommendation.notCalculated'),
+                })}
               </Text>
               {rec.habitualSleepHours !== null &&
                 rec.habitualSleepHours < rec.recommendedSleepHours && (
                   <Text style={{ color: '#E65100', marginTop: 8 }}>
-                    Bạn đang ngủ thiếu{' '}
-                    {(
-                      rec.recommendedSleepHours - rec.habitualSleepHours
-                    ).toFixed(1)}{' '}
-                    giờ so với đề xuất. Thử đi ngủ sớm hơn khoảng{' '}
-                    {(
-                      rec.recommendedSleepHours - rec.habitualSleepHours
-                    ).toFixed(1)}{' '}
-                    giờ, giữ giờ ngủ đều mỗi ngày.
+                    {t('profile.recommendation.sleepDeficit', {
+                      deficit: (
+                        rec.recommendedSleepHours - rec.habitualSleepHours
+                      ).toFixed(1),
+                    })}
                   </Text>
                 )}
               {rec.habitualSleepHours !== null &&
                 rec.habitualSleepHours >= rec.recommendedSleepHours && (
                   <Text style={{ color: '#4E8A47', marginTop: 8 }}>
-                    Thói quen ngủ của bạn đã đạt đề xuất, giữ đều giờ ngủ mỗi
-                    ngày.
+                    {t('profile.recommendation.sleepMet')}
                   </Text>
                 )}
             </View>
@@ -172,29 +190,32 @@ export default function RecommendationScreen({ route, navigation }: any) {
           {rec.goal === 'cycle' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon='flower-outline' theme={theme}>
-                Chu kỳ của bạn
+                {t('profile.setup.cardCycle')}
               </CardTitle>
               <Text style={{ color: theme.text }}>
-                Ngày bắt đầu kỳ gần nhất: {isoToLabel(rec.cycleStartDate)} • Độ
-                dài chu kỳ: {rec.cycleLengthDays} ngày • Số ngày hành kinh:{' '}
-                {rec.periodLengthDays} ngày.
+                {t('profile.recommendation.cycleSummary', {
+                  start: isoToLabel(rec.cycleStartDate),
+                  length: rec.cycleLengthDays,
+                  period: rec.periodLengthDays,
+                })}
               </Text>
               <Text style={{ color: theme.text, marginTop: 10 }}>
-                Kỳ sau dự kiến:{' '}
+                {t('profile.recommendation.cycleNext')}{' '}
                 <Text style={{ fontWeight: '800' }}>
                   {rec.cycleNextPeriodLabel}
                 </Text>
               </Text>
               <Text style={{ color: theme.text, marginTop: 4 }}>
-                Rụng trứng ước tính: {rec.cycleOvulationLabel} (kỳ dài − 14
-                ngày, chỉ là ước tính, không phải chẩn đoán).
+                {t('profile.recommendation.cycleOvulation', {
+                  label: rec.cycleOvulationLabel,
+                })}
               </Text>
             </View>
           )}
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon='flash-outline' theme={theme}>
-              Năng lượng
+              {t('profile.recommendation.energyTitle')}
             </CardTitle>
             <View style={s.row}>
               <View style={s.badge}>
@@ -205,18 +226,28 @@ export default function RecommendationScreen({ route, navigation }: any) {
                       ? `+${rec.surplus}`
                       : '0'}
                 </Text>
-                <Text style={s.badgeSub}>kcal/ngày</Text>
+                <Text style={s.badgeSub}>
+                  {t('profile.recommendation.kcalPerDayUnit')}
+                </Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.big, { color: theme.text }]}>
-                  {rec.calorieTarget.toLocaleString('vi-VN')} kcal/ngày
+                  {t('profile.recommendation.kcalPerDay', {
+                    value: rec.calorieTarget.toLocaleString(
+                      locale === 'vi' ? 'vi-VN' : 'en-US',
+                    ),
+                  })}
                 </Text>
                 <Text style={{ color: theme.muted }}>
                   {rec.goal === 'lose'
-                    ? `Thâm hụt ${rec.deficit} kcal/ngày`
+                    ? t('profile.recommendation.deficit', {
+                        value: rec.deficit,
+                      })
                     : rec.goal === 'gain'
-                      ? `Thặng dư ${rec.surplus} kcal/ngày`
-                      : 'Bằng TDEE, để duy trì cân nặng'}
+                      ? t('profile.recommendation.surplus', {
+                          value: rec.surplus,
+                        })
+                      : t('profile.recommendation.maintainEnergy')}
                 </Text>
               </View>
             </View>
@@ -224,33 +255,46 @@ export default function RecommendationScreen({ route, navigation }: any) {
               <View style={s.stat}>
                 <Text style={{ color: theme.muted }}>TDEE</Text>
                 <Text style={{ color: theme.text, fontWeight: '700' }}>
-                  {rec.tdee.toLocaleString('vi-VN')} kcal
+                  {rec.tdee.toLocaleString(
+                    locale === 'vi' ? 'vi-VN' : 'en-US',
+                  )}{' '}
+                  kcal
                 </Text>
               </View>
               <View style={s.stat}>
                 <Text style={{ color: theme.muted }}>BMR</Text>
                 <Text style={{ color: theme.text, fontWeight: '700' }}>
-                  {rec.bmr.toLocaleString('vi-VN')} kcal
+                  {rec.bmr.toLocaleString(
+                    locale === 'vi' ? 'vi-VN' : 'en-US',
+                  )}{' '}
+                  kcal
                 </Text>
               </View>
             </View>
             <Text style={{ color: theme.muted, marginTop: 8 }}>
-              Cường độ: {rec.activityLabel} (hệ số {rec.factor})
+              {t('profile.recommendation.intensity', {
+                label: rec.activityLabel,
+                factor: rec.factor,
+              })}
               {!isWeight
-                ? ' — mục tiêu này không hỏi cường độ nên calo tính theo hệ số trung bình mặc định.'
+                ? t('profile.recommendation.intensityDefaultNote')
                 : ''}
             </Text>
             {rec.durationLabel && (
               <Text style={{ color: theme.muted, marginTop: 4 }}>
-                Trong {rec.durationLabel}
+                {t('profile.recommendation.durationPrefix', {
+                  label: rec.durationLabel,
+                })}
                 {rec.weeklyChangeKg
-                  ? ` • Cần đổi ${rec.weeklyChangeKg} kg/tuần`
+                  ? t('profile.recommendation.weeklyChange', {
+                      kg: rec.weeklyChangeKg,
+                    })
                   : ''}
               </Text>
             )}
             {rec.ageEstimated && (
               <Text style={{ color: theme.muted, marginTop: 4 }}>
-                Chưa nhập ngày sinh nên BMR tính với tuổi ước tính 25.
+                {t('profile.recommendation.ageEstimated')}
               </Text>
             )}
             {rec.isTooFast && rec.adviceText && (
@@ -261,7 +305,9 @@ export default function RecommendationScreen({ route, navigation }: any) {
                     size={18}
                     color='#E65100'
                   />
-                  <Text style={s.adviceTitle}>Lời khuyên</Text>
+                  <Text style={s.adviceTitle}>
+                    {t('profile.recommendation.adviceTitle')}
+                  </Text>
                 </View>
                 <Text
                   style={{ color: theme.muted, marginTop: 4, lineHeight: 19 }}
@@ -274,19 +320,26 @@ export default function RecommendationScreen({ route, navigation }: any) {
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon='bar-chart-outline' theme={theme}>
-              Chỉ số BMI
+              {t('profile.recommendation.bmiTitle')}
             </CardTitle>
             <View style={s.row}>
               <Text style={[s.big, { color: theme.text }]}>
                 {rec.bmi.toFixed(1)}
               </Text>
               <View style={[s.pill, { backgroundColor: bmiColor }]}>
-                <Text style={s.pillText}>{rec.asia.label}</Text>
+                <Text style={s.pillText}>
+                  {localizeBmiLabel(rec.asia.label)}
+                </Text>
               </View>
             </View>
-            <Text style={{ color: theme.muted }}>{rec.asia.risk}</Text>
+            <Text style={{ color: theme.muted }}>
+              {localizeBmiRisk(rec.asia.risk)}
+            </Text>
             <Text style={{ color: theme.text, marginTop: 8 }}>
-              Chiều cao {rec.heightCm} cm • Cân nặng {rec.weightKg} kg
+              {t('profile.recommendation.heightWeight', {
+                height: rec.heightCm,
+                weight: rec.weightKg,
+              })}
             </Text>
             <View style={s.scale}>
               {[14, 18.5, 23, 25, 30, 35].map((v, i) => null)}
@@ -309,27 +362,43 @@ export default function RecommendationScreen({ route, navigation }: any) {
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <CardTitle icon='water-outline' theme={theme}>
-              Nước mỗi ngày
+              {t('profile.recommendation.waterTitle')}
             </CardTitle>
             <Text style={[s.big, { color: theme.text }]}>
-              {rec.waterMl.toLocaleString('vi-VN')} ml / ngày
+              {t('profile.recommendation.waterPerDay', {
+                value: rec.waterMl.toLocaleString(
+                  locale === 'vi' ? 'vi-VN' : 'en-US',
+                ),
+              })}
             </Text>
             <Text style={{ color: theme.muted }}>
-              ≈ {rec.waterCups} ly 250 ml • Công thức: {rec.weightKg} kg × 35 ml
-              {rec.waterExtra ? ` + ${rec.waterExtra} ml theo cường độ` : ''}.
+              {t('profile.recommendation.waterFormula', {
+                cups: rec.waterCups,
+                weight: rec.weightKg,
+                extra: rec.waterExtra
+                  ? t('profile.recommendation.waterExtra', {
+                      value: rec.waterExtra,
+                    })
+                  : '',
+              })}
             </Text>
           </View>
 
           {isWeight && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon='walk-outline' theme={theme}>
-                Thời gian luyện tập
+                {t('profile.recommendation.exerciseTitle')}
               </CardTitle>
               <Text style={[s.big, { color: theme.text }]}>
-                {rec.exercise.minutes} phút / tuần
+                {t('profile.recommendation.exercisePerWeek', {
+                  minutes: rec.exercise.minutes,
+                })}
               </Text>
               <Text style={{ color: theme.muted }}>
-                {rec.exercise.desc} ≈ {rec.exercise.kcalPerWeek} kcal/tuần.
+                {t('profile.recommendation.exerciseDesc', {
+                  desc: rec.exercise.desc,
+                  kcal: rec.exercise.kcalPerWeek,
+                })}
               </Text>
               <View style={s.dotRow}>
                 {Array.from({ length: 7 }, (_, i) => (
@@ -345,8 +414,11 @@ export default function RecommendationScreen({ route, navigation }: any) {
                 ))}
               </View>
               <Text style={{ color: theme.muted, marginTop: 8 }}>
-                {rec.exercise.sessions} buổi × {rec.exercise.duration} phút ={' '}
-                {rec.exercise.minutes} phút/tuần.
+                {t('profile.recommendation.exerciseSummary', {
+                  sessions: rec.exercise.sessions,
+                  duration: rec.exercise.duration,
+                  minutes: rec.exercise.minutes,
+                })}
               </Text>
             </View>
           )}
@@ -354,7 +426,7 @@ export default function RecommendationScreen({ route, navigation }: any) {
           {(rec.goal === 'lose' || rec.goal === 'gain') && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon='flag-outline' theme={theme}>
-                Biểu đồ mục tiêu
+                {t('profile.recommendation.goalChartTitle')}
               </CardTitle>
               <View style={s.barRow}>
                 <View style={{ alignItems: 'center' }}>
@@ -362,7 +434,9 @@ export default function RecommendationScreen({ route, navigation }: any) {
                     style={[s.bar, { height: 80, backgroundColor: '#D1D5DB' }]}
                   />
                   <Text style={{ color: theme.muted }}>
-                    Hiện tại {rec.weightKg} kg
+                    {t('profile.recommendation.currentWeight', {
+                      weight: rec.weightKg,
+                    })}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
@@ -381,7 +455,9 @@ export default function RecommendationScreen({ route, navigation }: any) {
                     ]}
                   />
                   <Text style={{ color: theme.muted }}>
-                    Mục tiêu {rec.targetWeightKg} kg
+                    {t('profile.recommendation.targetWeightLabel', {
+                      weight: rec.targetWeightKg,
+                    })}
                   </Text>
                 </View>
               </View>
@@ -396,9 +472,18 @@ export default function RecommendationScreen({ route, navigation }: any) {
                 ]}
               >
                 <Text style={s.pillText}>
-                  Cần {rec.targetDiff > 0 ? 'tăng' : 'giảm'}{' '}
-                  {Math.abs(rec.targetDiff)} kg • Trong{' '}
-                  {rec.durationLabel || `${rec.durationWeeks} tuần`} (bạn set)
+                  {t('profile.recommendation.needChange', {
+                    direction:
+                      rec.targetDiff > 0
+                        ? t('profile.recommendation.increase')
+                        : t('profile.recommendation.decrease'),
+                    diff: Math.abs(rec.targetDiff),
+                    label:
+                      rec.durationLabel ||
+                      t('profile.recommendation.durationFallback', {
+                        weeks: rec.durationWeeks,
+                      }),
+                  })}
                 </Text>
               </View>
             </View>
@@ -406,7 +491,7 @@ export default function RecommendationScreen({ route, navigation }: any) {
           {rec.goal === 'maintain' && (
             <View style={[s.card, { backgroundColor: theme.card }]}>
               <CardTitle icon='flag-outline' theme={theme}>
-                Biểu đồ mục tiêu
+                {t('profile.recommendation.goalChartTitle')}
               </CardTitle>
               <View
                 style={[
@@ -415,8 +500,11 @@ export default function RecommendationScreen({ route, navigation }: any) {
                 ]}
               >
                 <Text style={s.pillText}>
-                  Duy trì trong khoảng {rec.healthyMinKg}–{rec.healthyMaxKg} kg
-                  {rec.durationLabel}
+                  {t('profile.recommendation.maintainRange', {
+                    min: rec.healthyMinKg,
+                    max: rec.healthyMaxKg,
+                    label: rec.durationLabel ?? '',
+                  })}
                 </Text>
               </View>
             </View>
@@ -427,7 +515,9 @@ export default function RecommendationScreen({ route, navigation }: any) {
             onPress={() => navigation.replace('Main')}
           >
             <View style={s.btnRow}>
-              <Text style={s.primaryBtnText}>Vào trang chủ</Text>
+              <Text style={s.primaryBtnText}>
+                {t('profile.recommendation.goHome')}
+              </Text>
               <Ionicons name='arrow-forward' size={18} color='#fff' />
             </View>
           </TouchableOpacity>
@@ -436,13 +526,13 @@ export default function RecommendationScreen({ route, navigation }: any) {
             onPress={() => navigation.replace('ProfileSetup')}
           >
             <Text style={[s.secondaryText, { color: theme.primaryDark }]}>
-              Chỉnh sửa hồ sơ
+              {t('settings.editProfile')}
             </Text>
           </TouchableOpacity>
           <Text
             style={{ color: theme.muted, textAlign: 'center', marginTop: 12 }}
           >
-            Các con số chỉ là ước tính, không thay cho tư vấn y tế.
+            {t('profile.recommendation.disclaimer')}
           </Text>
         </ScrollView>
       </SafeAreaView>

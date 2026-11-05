@@ -31,7 +31,7 @@ import { makeStyles } from './NutritionTrackerScreen.styles';
 
 export default function NutritionTrackerScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { theme, t, locale } = useSettings();
+  const { theme, t } = useSettings();
   const [day, setDay] = useState<DayNutrition | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,15 +96,7 @@ export default function NutritionTrackerScreen({ navigation }: any) {
   const isOver = day ? day.calorieGoal > 0 && remaining < 0 : false;
   const macroPct = (macroKcal: number) =>
     eatenKcal > 0 ? Math.round((macroKcal / eatenKcal) * 100) : 0;
-  const loadFailedText = (() => {
-    try {
-      const v = (t as any)('nutrition.loadFailed');
-      if (v && v !== 'nutrition.loadFailed') return v;
-    } catch {}
-    return locale === 'en'
-      ? 'Failed to load nutrition data'
-      : 'Không tải được dữ liệu dinh dưỡng';
-  })();
+  const loadFailedText = t('nutrition.loadFailed');
 
   return (
     <SafeAreaProvider>
@@ -167,9 +159,7 @@ export default function NutritionTrackerScreen({ navigation }: any) {
                   style={[styles.heroSmall, isOver && styles.overRemaining]}
                 >
                   {isOver
-                    ? locale === 'en'
-                      ? `Over goal by ${Math.abs(remaining)} kcal`
-                      : `Đã nạp dư ${Math.abs(remaining)} kcal so với mục tiêu`
+                    ? t('nutrition.overGoal', { kcal: Math.abs(remaining) })
                     : `${remaining} kcal ${t('nutrition.remaining')}`}
                 </Text>
               )}

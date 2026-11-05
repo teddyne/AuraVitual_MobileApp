@@ -11,6 +11,7 @@ import {
 import { useToast } from './NotificationToast';
 import type { ToastTarget } from './NotificationToast';
 import { appendHistory } from '../lib/notificationHistory';
+import { displayLocale, translate } from '../i18n/locale';
 
 // =====================================================================
 // Theo dõi gia đình khi app đang mở:
@@ -50,7 +51,7 @@ export default function FamilyWatcher() {
     showToast({ title: `${icon} ${title}`, body, target });
     appendHistory({
       kind: 'family',
-      category: 'CHIA SẺ GIA ĐÌNH',
+      category: translate('family.category'),
       title,
       body,
       icon,
@@ -77,8 +78,8 @@ export default function FamilyWatcher() {
         if (fresh.length > 0) {
           const first = fresh[0];
           showToast({
-            title: '👨‍👩‍👧 Lời mời kết nối mới',
-            body: `${first.fromName} muốn kết nối gia đình với bạn.`,
+            title: translate('family.inviteToastTitle'),
+            body: translate('family.inviteToastBody', { name: first.fromName }),
             target: { screen: 'Sharing' },
           });
         }
@@ -130,8 +131,11 @@ export default function FamilyWatcher() {
         ) {
           toastFamilyEvent(
             '🎉',
-            'Thành viên đạt mục tiêu',
-            `${name} vừa hoàn thành mục tiêu ${m.stepGoal.toLocaleString('vi-VN')} bước!`,
+            translate('family.toastStepsTitle'),
+            translate('family.toastStepsBody', {
+              name,
+              goal: m.stepGoal.toLocaleString(displayLocale()),
+            }),
             target,
             m.ownerId,
             cur.log_date,
@@ -147,8 +151,8 @@ export default function FamilyWatcher() {
         ) {
           toastFamilyEvent(
             '🌙',
-            'Giấc ngủ đủ giấc',
-            `${name} vừa ngủ đủ mục tiêu ${m.sleepGoalHours} giờ.`,
+            translate('family.toastSleepTitle'),
+            translate('family.toastSleepBody', { name, hours: m.sleepGoalHours }),
             target,
             m.ownerId,
             cur.log_date,
@@ -164,8 +168,8 @@ export default function FamilyWatcher() {
         ) {
           toastFamilyEvent(
             '💧',
-            'Uống đủ nước',
-            `${name} vừa uống đủ nước hôm nay.`,
+            translate('family.toastWaterTitle'),
+            translate('family.toastWaterBody', { name }),
             target,
             m.ownerId,
             cur.log_date,
@@ -174,8 +178,8 @@ export default function FamilyWatcher() {
         } else if (!toasted && cur.log_date !== prev.log_date) {
           toastFamilyEvent(
             '💚',
-            'Cập nhật sức khỏe',
-            `${name} vừa cập nhật chỉ số ngày mới.`,
+            translate('family.toastUpdateTitle'),
+            translate('family.toastUpdateBody', { name }),
             target,
             m.ownerId,
             cur.log_date,

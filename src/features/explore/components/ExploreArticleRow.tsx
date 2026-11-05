@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Post } from '../../../lib/workoutApi';
+import { useSettings } from '../../../context/SettingsContext';
 
 // Hang bai viet suc khoe trong ExploreScreen (doi nguyen van).
 export function ExploreArticleRow({
@@ -15,6 +16,7 @@ export function ExploreArticleRow({
   onOpen: () => void;
   onMarkBadImg: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <TouchableOpacity
       style={styles.articleRow}
@@ -42,12 +44,12 @@ export function ExploreArticleRow({
       )}
       <View style={{ flex: 1 }}>
         <Text style={styles.articleTag}>
-          DINH DƯỠNG · {a.duration_min ?? '—'} phút đọc
+          {t('home.nutritionTag')} · {t('explore.readMinutes', { min: a.duration_min ?? '—' })}
         </Text>
         <Text style={styles.articleTitle} numberOfLines={2}>
           {a.title}
         </Text>
-        <Text style={styles.readMore}>Đọc tiếp →</Text>
+        <Text style={styles.readMore}>{t('explore.readMore')}</Text>
       </View>
     </TouchableOpacity>
   );

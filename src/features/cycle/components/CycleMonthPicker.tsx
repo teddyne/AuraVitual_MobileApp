@@ -1,7 +1,8 @@
 import React from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MONTH_NAMES } from '../constants';
+import { MONTH_NAMES, MONTH_NAMES_EN } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/CycleTrackingScreen.styles';
 
 // Modal chon thang/nam, doi nguyen van tu CycleTrackingScreen.
@@ -24,6 +25,8 @@ export function CycleMonthPicker({
   onPickMonth: (year: number, month: number) => void;
   onClose: () => void;
 }) {
+  const { t, locale } = useSettings();
+  const monthNames = locale === 'en' ? MONTH_NAMES_EN : MONTH_NAMES;
   return (
     <Modal visible={visible} transparent animationType='slide'>
       <View style={styles.modalBackdrop}>
@@ -32,7 +35,9 @@ export function CycleMonthPicker({
             <TouchableOpacity onPress={() => onYearChange(pickerYear - 1)}>
               <Ionicons name='chevron-back' size={26} color='#111111' />
             </TouchableOpacity>
-            <Text style={styles.monthLabel}>Năm {pickerYear}</Text>
+            <Text style={styles.monthLabel}>
+              {t('cycle.yearLabel', { year: pickerYear })}
+            </Text>
             <TouchableOpacity
               disabled={pickerYear >= todayYear}
               onPress={() => {
@@ -48,7 +53,7 @@ export function CycleMonthPicker({
             </TouchableOpacity>
           </View>
           <View style={styles.yearGrid}>
-            {MONTH_NAMES.map((name, m) => (
+            {monthNames.map((name, m) => (
               <TouchableOpacity
                 key={name}
                 style={[
@@ -73,7 +78,7 @@ export function CycleMonthPicker({
             ))}
           </View>
           <TouchableOpacity style={styles.saveButton} onPress={onClose}>
-            <Text style={styles.saveButtonText}>Đóng</Text>
+            <Text style={styles.saveButtonText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>

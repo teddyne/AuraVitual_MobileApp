@@ -24,12 +24,14 @@ import {
 } from '../../../lib/pendingDeepLink';
 import { AuthField } from '../components/AuthField';
 import { BG } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ResetPasswordScreen.styles';
 
 type Status = 'checking' | 'ready' | 'invalid';
 
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useSettings();
   const { updatePassword } = useAuth();
   const [status, setStatus] = useState<Status>('checking');
   const [password, setPassword] = useState('');
@@ -107,11 +109,11 @@ export default function ResetPasswordScreen() {
   const submit = async () => {
     if (submitting || status !== 'ready') return;
     if (password.length < 8) {
-      setError('Mật khẩu phải từ 8 ký tự trở lên.');
+      setError(t('auth.validation.passwordMin8'));
       return;
     }
     if (confirm !== password) {
-      setError('Xác nhận mật khẩu chưa khớp.');
+      setError(t('auth.validation.confirmMismatch'));
       return;
     }
     setError('');
@@ -119,12 +121,12 @@ export default function ResetPasswordScreen() {
     try {
       const res = await updatePassword(password);
       if (!res.ok) {
-        setError(res.message ?? 'Đổi mật khẩu thất bại.');
+        setError(res.message ?? t('auth.reset.failed'));
         return;
       }
-      Alert.alert('Đổi mật khẩu thành công', 'Hãy đăng nhập lại bằng mật khẩu mới nếu app yêu cầu.', [
+      Alert.alert(t('auth.reset.successTitle'), t('auth.reset.successBody'), [
         {
-          text: 'Tiếp tục',
+          text: t('auth.reset.continue'),
           onPress: async () => {
             const { data } = await supabase.auth.getSession();
             const userId = data.session?.user?.id;
@@ -156,18 +158,22 @@ export default function ResetPasswordScreen() {
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 hitSlop={8}
-                accessibilityLabel="Quay lại"
+                accessibilityLabel={t('common.back')}
               >
                 <Ionicons name="chevron-back" size={30} color={colors.ink} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Đặt lại mật khẩu</Text>
+              <Text style={styles.headerTitle}>
+                {t('auth.reset.title')}
+              </Text>
               <View style={styles.headerSpacer} />
             </View>
 
             {status === 'checking' ? (
               <View style={styles.centerBox}>
                 <ActivityIndicator size="large" color={colors.sageDark} />
-                <Text style={styles.centerText}>Đang kiểm tra link...</Text>
+                <Text style={styles.centerText}>
+                  {t('auth.reset.checkingLink')}
+                </Text>
               </View>
             ) : status === 'invalid' ? (
               <View style={styles.centerBox}>
@@ -177,18 +183,19 @@ export default function ResetPasswordScreen() {
                   color={colors.danger}
                 />
                 <Text style={styles.invalidTitle}>
-                  Link không hợp lệ hoặc đã hết hạn
+                  {t('auth.reset.invalidTitle')}
                 </Text>
                 <Text style={styles.invalidText}>
-                  Link đặt lại mật khẩu chỉ dùng được một lần và có thời hạn.
-                  Hãy gửi lại link mới rồi mở link trong email để tiếp tục.
+                  {t('auth.reset.invalidBody')}
                 </Text>
                 <TouchableOpacity
                   style={styles.submitBtn}
                   onPress={() => navigation.navigate('ForgotPassword')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.submitBtnText}>Gửi lại link</Text>
+                  <Text style={styles.submitBtnText}>
+                    {t('auth.reset.resendLink')}
+                  </Text>
                   <Ionicons
                     name="arrow-forward"
                     size={18}
@@ -199,26 +206,27 @@ export default function ResetPasswordScreen() {
                   style={styles.textBtn}
                   onPress={() => navigation.navigate('Login')}
                 >
-                  <Text style={styles.textBtnText}>Về đăng nhập</Text>
+                  <Text style={styles.textBtnText}>
+                    {t('auth.backToLogin')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                <Text style={styles.title}>Tạo mật khẩu mới</Text>
-                <Text style={styles.sub}>
-                  Nhập mật khẩu mới từ 8 ký tự trở lên, rồi xác nhận lại để
-                  hoàn tất.
+                <Text style={styles.title}>
+                  {t('auth.reset.heading')}
                 </Text>
+                <Text style={styles.sub}>{t('auth.reset.subtitle')}</Text>
 
                 <View style={styles.formCard}>
                   {error ? <Text style={styles.error}>{error}</Text> : null}
 
                   <AuthField
-                    label="MẬT KHẨU MỚI"
+                    label={t('auth.fields.newPassword')}
                     icon="lock-closed-outline"
                     value={password}
                     onChangeText={setPassword}
-                    placeholder="Nhập mật khẩu mới"
+                    placeholder={t('auth.fields.newPasswordPlaceholder')}
                     secureTextEntry={!showPass}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -230,7 +238,9 @@ export default function ResetPasswordScreen() {
                         onPress={() => setShowPass(!showPass)}
                         hitSlop={8}
                         accessibilityLabel={
-                          showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'
+                          showPass
+                            ? t('auth.fields.hidePassword')
+                            : t('auth.fields.showPassword')
                         }
                       >
                         <Ionicons
@@ -243,11 +253,11 @@ export default function ResetPasswordScreen() {
                   />
 
                   <AuthField
-                    label="XÁC NHẬN MẬT KHẨU"
+                    label={t('auth.fields.confirmPassword')}
                     icon="shield-checkmark-outline"
                     value={confirm}
                     onChangeText={setConfirm}
-                    placeholder="Nhập lại mật khẩu mới"
+                    placeholder={t('auth.fields.confirmNewPasswordPlaceholder')}
                     secureTextEntry={!showConfirm}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -270,8 +280,8 @@ export default function ResetPasswordScreen() {
                           hitSlop={8}
                           accessibilityLabel={
                             showConfirm
-                              ? 'Ẩn xác nhận mật khẩu'
-                              : 'Hiện xác nhận mật khẩu'
+                              ? t('auth.fields.hideConfirmPassword')
+                              : t('auth.fields.showConfirmPassword')
                           }
                         >
                           <Ionicons
@@ -296,7 +306,9 @@ export default function ResetPasswordScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.submitBtnText}>
-                      {submitting ? 'Đang lưu...' : 'Đổi mật khẩu'}
+                      {submitting
+                        ? t('auth.reset.saving')
+                        : t('auth.reset.submit')}
                     </Text>
                     {!submitting ? (
                       <Ionicons

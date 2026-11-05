@@ -27,7 +27,7 @@ import { SharingMemberRow } from '../components/SharingMemberRow';
 import { s } from './SharingSettingsScreen.styles';
 
 export default function SharingSettingsScreen({ navigation }: any) {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<SharingSettings>(DEFAULT_SHARING);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -53,23 +53,23 @@ export default function SharingSettingsScreen({ navigation }: any) {
     setSettings(next);
     const ok = await saveMySharingSettings(patch);
     if (!ok) {
-      Alert.alert('Lỗi', 'Không lưu được cài đặt.');
+      Alert.alert(t('family.errorTitle'), t('family.settingsSaveFailed'));
       void load();
     }
   };
 
   const onRevoke = (m: FamilyMember) => {
     Alert.alert(
-      'Hủy kết nối',
-      `Ngừng chia sẻ với ${displayNameOf(m)}? Cả hai bên sẽ không còn xem được nhau.`,
+      t('family.revoke'),
+      t('family.revokeBody', { name: displayNameOf(m) }),
       [
-        { text: 'Giữ lại', style: 'cancel' },
+        { text: t('family.keep'), style: 'cancel' },
         {
-          text: 'Hủy kết nối',
+          text: t('family.revoke'),
           style: 'destructive',
           onPress: async () => {
             const ok = await revokeLink(m.ownerId);
-            if (!ok) Alert.alert('Lỗi', 'Không hủy được kết nối.');
+            if (!ok) Alert.alert(t('family.errorTitle'), t('family.revokeFailed'));
             void load();
           },
         },
@@ -98,7 +98,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
             </TouchableOpacity>
             
             <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>
-              Cài đặt & Phân quyền chia sẻ
+              {t('family.settingsTitle')}
             </Text>
           </View>
 
@@ -106,9 +106,9 @@ export default function SharingSettingsScreen({ navigation }: any) {
             <View style={s.row}>
               <Text style={s.icon}>👨‍👩‍👧</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>Chia sẻ sức khỏe</Text>
+                <Text style={[s.rowTitle, { color: theme.text }]}>{t('family.shareHealth')}</Text>
                 <Text style={[s.muted, { color: theme.muted }]}>
-                  Khi tắt, người được chia sẻ vẫn thấy tên bạn nhưng không xem được chỉ số.
+                  {t('family.shareHealthDesc')}
                 </Text>
               </View>
               <Switch
@@ -121,7 +121,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
           </View>
 
           <Text style={[s.sectionTitle, { color: theme.text }]}>
-            Nội dung được chia sẻ
+            {t('family.sharedContent')}
           </Text>
           <View
             style={[
@@ -134,8 +134,8 @@ export default function SharingSettingsScreen({ navigation }: any) {
               <View key={row.key} style={s.row}>
                 <Text style={s.icon}></Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.rowTitle, { color: theme.text }]}>{row.title}</Text>
-                  <Text style={[s.muted, { color: theme.muted }]}>{row.desc}</Text>
+                  <Text style={[s.rowTitle, { color: theme.text }]}>{t(row.titleKey)}</Text>
+                  <Text style={[s.muted, { color: theme.muted }]}>{t(row.descKey)}</Text>
                 </View>
                 <Switch
                   disabled={!settings.share_enabled}
@@ -148,10 +148,10 @@ export default function SharingSettingsScreen({ navigation }: any) {
             ))}
           </View>
 
-          <Text style={[s.sectionTitle, { color: theme.text }]}>Thành viên đã kết nối</Text>
+          <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.connectedMembers')}</Text>
           {members.length === 0 ? (
             <Text style={[s.muted, { color: theme.muted }]}>
-              Chưa có thành viên nào.
+              {t('family.noMembersYet')}
             </Text>
           ) : (
             members.map((m) => (

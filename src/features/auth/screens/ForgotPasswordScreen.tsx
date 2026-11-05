@@ -15,10 +15,12 @@ import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
 import { AuthField } from '../components/AuthField';
 import { BG, EMAIL_RE } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ForgotPasswordScreen.styles';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useSettings();
   const { requestPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +29,7 @@ export default function ForgotPasswordScreen() {
   const submit = async () => {
     if (submitting) return;
     if (!EMAIL_RE.test(email.trim())) {
-      setError('Email chưa đúng định dạng.');
+      setError(t('auth.validation.invalidEmail'));
       return;
     }
     setError('');
@@ -35,14 +37,12 @@ export default function ForgotPasswordScreen() {
     try {
       const res = await requestPasswordReset(email.trim().toLowerCase());
       if (!res.ok) {
-        setError(res.message ?? 'Không gửi được link đặt lại mật khẩu.');
+        setError(res.message ?? t('auth.forgot.sendFailed'));
         return;
       }
-      Alert.alert(
-        'Đã gửi link đặt lại',
-        'Hãy mở hộp thư của bạn và bấm vào link trong email để đặt lại mật khẩu. Nếu đang chạy bản local, hãy mở Mailpit ở cổng local để lấy link.',
-        [{ text: 'Về đăng nhập', onPress: () => navigation.navigate('Login') }],
-      );
+      Alert.alert(t('auth.forgot.sentTitle'), t('auth.forgot.sentBody'), [
+        { text: t('auth.backToLogin'), onPress: () => navigation.navigate('Login') },
+      ]);
     } finally {
       setSubmitting(false);
     }
@@ -60,26 +60,24 @@ export default function ForgotPasswordScreen() {
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 hitSlop={8}
-                accessibilityLabel='Quay lại'
+                accessibilityLabel={t('common.back')}
               >
                 <Ionicons name='chevron-back' size={30} color={colors.ink} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Quên mật khẩu</Text>
+              <Text style={styles.headerTitle}>
+                {t('auth.forgot.title')}
+              </Text>
               <View style={styles.headerSpacer} />
             </View>
 
-            <Text style={styles.title}>Đặt lại mật khẩu</Text>
-            <Text style={styles.sub}>
-              Nhập email bạn đã dùng để đăng ký. AuraVital sẽ gửi link đặt lại
-              mật khẩu tới hộp thư đó — nếu đang chạy bản local, hãy mở Mailpit
-              để lấy link.
-            </Text>
+            <Text style={styles.title}>{t('auth.reset.title')}</Text>
+            <Text style={styles.sub}>{t('auth.forgot.subtitle')}</Text>
 
             <View style={styles.formCard}>
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               <AuthField
-                label='ĐỊA CHỈ EMAIL'
+                label={t('auth.fields.email')}
                 icon='mail-outline'
                 value={email}
                 onChangeText={setEmail}
@@ -102,7 +100,9 @@ export default function ForgotPasswordScreen() {
                 activeOpacity={0.85}
               >
                 <Text style={styles.submitBtnText}>
-                  {submitting ? 'Đang gửi...' : 'Gửi link đặt lại'}
+                  {submitting
+                    ? t('auth.forgot.sending')
+                    : t('auth.forgot.submit')}
                 </Text>
                 {!submitting ? (
                   <Ionicons
@@ -119,9 +119,9 @@ export default function ForgotPasswordScreen() {
               onPress={() => navigation.navigate('Login')}
             >
               <Text style={styles.footerText}>
-                Nhớ mật khẩu rồi?{' '}
+                {t('auth.forgot.remembered')}{' '}
                 <Text style={{ color: colors.sageDark, fontWeight: '700' }}>
-                  Đăng nhập ngay
+                  {t('auth.login.submit')}
                 </Text>
               </Text>
             </TouchableOpacity>

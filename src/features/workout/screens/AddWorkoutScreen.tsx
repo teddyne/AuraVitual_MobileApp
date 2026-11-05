@@ -11,10 +11,12 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { addCustomWorkout, levelLabel } from '../../../lib/workoutApi';
+import { useSettings } from '../../../context/SettingsContext';
 import { LEVELS } from '../constants';
 import { styles } from './AddWorkoutScreen.styles';
 
 export default function AddWorkoutScreen() {
+  const { t } = useSettings();
   const navigation = useNavigation<any>();
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
@@ -28,17 +30,17 @@ export default function AddWorkoutScreen() {
     const duration = parseInt(durationText, 10);
     const kcal = kcalText.trim() === '' ? null : parseInt(kcalText, 10);
     if (!title.trim()) {
-      Alert.alert('Thiếu tên bài tập', 'Nhập tên bài tập trước.');
+      Alert.alert(t('workout.add.missingTitle'), t('workout.add.missingTitleBody'));
       return;
     }
     if (!Number.isInteger(duration) || duration < 1 || duration > 480) {
-      Alert.alert('Thời lượng chưa đúng', 'Nhập số phút từ 1 đến 480.');
+      Alert.alert(t('workout.add.invalidDurationTitle'), t('workout.log.invalidMinutesBody'));
       return;
     }
     if (kcal !== null && (!Number.isInteger(kcal) || kcal < 0)) {
       Alert.alert(
-        'Kcal chưa đúng',
-        'Kcal phải là số nguyên từ 0 trở lên, hoặc để trống.',
+        t('workout.add.invalidKcalTitle'),
+        t('workout.add.invalidKcalBody'),
       );
       return;
     }
@@ -53,12 +55,12 @@ export default function AddWorkoutScreen() {
         video_url: videoUrl.trim() || null,
       });
       Alert.alert(
-        'Đã thêm bài tập',
-        'Bài tập mới đã có trong danh sách để chọn và ghi nhận.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
+        t('workout.add.savedTitle'),
+        t('workout.add.savedBody'),
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }],
       );
     } catch (e: any) {
-      Alert.alert('Không lưu được', e?.message ?? 'Thử lại sau.');
+      Alert.alert(t('workout.log.saveFailedTitle'), e?.message ?? t('common.tryAgainLater'));
     } finally {
       setSaving(false);
     }
@@ -71,49 +73,49 @@ export default function AddWorkoutScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name='chevron-back' size={26} color='#1B2A1E' />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thêm bài tập mới</Text>
+          <Text style={styles.headerTitle}>{t('workout.add.title')}</Text>
           <View style={{ width: 26 }} />
         </View>
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
 
-          <Text style={styles.label}>Tên bài tập *</Text>
+          <Text style={styles.label}>{t('workout.add.nameLabel')}</Text>
           <TextInput
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder='Ví dụ: Giãn cơ vai gáy 10 phút'
+            placeholder={t('workout.add.namePlaceholder')}
           />
 
-          <Text style={styles.label}>Mô tả ngắn</Text>
+          <Text style={styles.label}>{t('workout.add.summaryLabel')}</Text>
           <TextInput
             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
             value={summary}
             onChangeText={setSummary}
-            placeholder='Bài tập này giúp gì, tập như thế nào?'
+            placeholder={t('workout.add.summaryPlaceholder')}
             multiline
           />
 
-          <Text style={styles.label}>Thời lượng chuẩn (phút) *</Text>
+          <Text style={styles.label}>{t('workout.add.durationLabel')}</Text>
           <TextInput
             style={styles.input}
             value={durationText}
             onChangeText={setDurationText}
             keyboardType='number-pad'
-            placeholder='Ví dụ: 15'
+            placeholder={t('workout.add.durationPlaceholder')}
           />
 
           <Text style={styles.label}>
-            Kcal ước lượng / buổi (để trống nếu chưa biết)
+            {t('workout.add.kcalLabel')}
           </Text>
           <TextInput
             style={styles.input}
             value={kcalText}
             onChangeText={setKcalText}
             keyboardType='number-pad'
-            placeholder='Ví dụ: 120'
+            placeholder={t('workout.add.kcalPlaceholder')}
           />
 
-          <Text style={styles.label}>Cấp độ</Text>
+          <Text style={styles.label}>{t('workout.add.levelLabel')}</Text>
           <View style={styles.levelRow}>
             {LEVELS.map((lv) => (
               <TouchableOpacity
@@ -136,7 +138,7 @@ export default function AddWorkoutScreen() {
             ))}
           </View>
 
-          <Text style={styles.label}>Link video (không bắt buộc)</Text>
+          <Text style={styles.label}>{t('workout.add.videoLabel')}</Text>
           <TextInput
             style={styles.input}
             value={videoUrl}
@@ -145,8 +147,7 @@ export default function AddWorkoutScreen() {
             autoCapitalize='none'
           />
           <Text style={styles.hint}>
-            Không có link thì trình phát vẫn chạy bộ đếm bước tập, chỉ không có
-            video.
+            {t('workout.add.videoHint')}
           </Text>
 
           <TouchableOpacity
@@ -155,7 +156,7 @@ export default function AddWorkoutScreen() {
             disabled={saving}
           >
             <Text style={styles.saveText}>
-              {saving ? 'Đang lưu...' : 'Lưu bài tập'}
+              {saving ? t('common.saving') : t('workout.add.save')}
             </Text>
           </TouchableOpacity>
         </ScrollView>

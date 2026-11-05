@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSettings } from '../../../context/SettingsContext';
 import { s } from '../screens/ProfileSettingsScreen.styles';
 
 // Icon kiểu ảnh bạn gửi: vòng tròn nhạt + icon xanh đậm.
@@ -9,6 +10,7 @@ import { s } from '../screens/ProfileSettingsScreen.styles';
 // style s.row / s.iconBadge / s.rowTitle / s.muted / s.rowRight vẫn nằm
 // trong ProfileSettingsScreen.styles.ts vì màn hình cũng dùng trực tiếp.
 export function Row({ icon, solid, title, sub, right, onPress, theme, dark }: any) {
+  const { t } = useSettings();
   const iconBg = solid ? '#2E7D32' : dark ? theme.cardAlt : '#EAF0FF';
   const iconColor = solid ? '#fff' : '#2E7D32';
   return (
@@ -17,10 +19,7 @@ export function Row({ icon, solid, title, sub, right, onPress, theme, dark }: an
       onPress={
         onPress ||
         (() =>
-          Alert.alert(
-            'Chưa làm',
-            'Mục này chưa nối dữ liệu thật, chỉ là hàng giao diện.',
-          ))
+          Alert.alert(t('common.notImplemented'), t('common.notImplementedDesc')))
       }
     >
       <View style={[s.iconBadge, { backgroundColor: iconBg }]}>

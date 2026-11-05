@@ -3,6 +3,7 @@ import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { PRIMARY } from '../constants';
 import { fmt, type Range } from '../utils/stepsFormat';
+import { useSettings } from '../../../context/SettingsContext';
 import { styles } from '../screens/StepsDetailScreen.styles';
 
 const SAGE = '#8FBF9A';
@@ -38,6 +39,7 @@ export function StepsChart({
   todaySteps: number;
   goal: number;
 }) {
+  const { t } = useSettings();
   // Biểu đồ đường trơn
   const chartW = Dimensions.get('window').width - 64;
   const chartH = 160;
@@ -52,11 +54,14 @@ export function StepsChart({
   const goalY = chartH - 20 - (goal / maxY) * (chartH - 40);
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Xu hướng vận động</Text>
+      <Text style={styles.cardTitle}>{t('steps.trendTitle')}</Text>
       <Text style={styles.cardText}>
         {range === 'today'
-          ? `Hôm nay: ${fmt(todaySteps)} bước`
-          : `Trung bình ${fmt(chartAvg)} bước/ngày (${chartData.length} ngày, ngày chưa ghi tính là 0)`}
+          ? t('steps.todaySteps', { steps: fmt(todaySteps) })
+          : t('steps.avgSteps', {
+              avg: fmt(chartAvg),
+              n: chartData.length,
+            })}
       </Text>
       <View style={styles.switchRow}>
         {(['today', 'week', 'month'] as Range[]).map((r) => (
@@ -71,7 +76,11 @@ export function StepsChart({
                 range === r && styles.switchTextActive,
               ]}
             >
-              {r === 'today' ? 'Hôm nay' : r === 'week' ? 'Tuần' : 'Tháng'}
+              {r === 'today'
+                ? t('home.today')
+                : r === 'week'
+                  ? t('steps.week')
+                  : t('steps.month')}
             </Text>
           </TouchableOpacity>
         ))}

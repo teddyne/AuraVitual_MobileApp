@@ -1,5 +1,6 @@
 import { DAY_SHORT } from '../constants';
 import { AlarmItem } from '../../../lib/sleepSession';
+import { translate } from '../../../i18n/locale';
 
 export function fmtMMSS(sec: number) {
   if (!sec || sec < 0 || !isFinite(sec)) return '00:00';
@@ -9,14 +10,15 @@ export function fmtMMSS(sec: number) {
 }
 
 export function displayLabel(label: string) {
-  const v = (label || 'Báo thức').trim();
-  if (!v) return 'Báo thức';
+  const v = (label || translate('sleep.alarm')).trim();
+  if (!v) return translate('sleep.alarm');
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
 export function alarmSub(a: AlarmItem) {
   const days = a.days ?? [];
-  if (days.length === 0) return `${displayLabel(a.label)}, Một lần`;
+  if (days.length === 0)
+    return `${displayLabel(a.label)}, ${translate('sleep.once')}`;
   const short = [...days]
     .sort((x, y) => x - y)
     .map((d) => DAY_SHORT[d])

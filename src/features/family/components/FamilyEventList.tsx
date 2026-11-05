@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import type { MemberEvent } from '../../../lib/familyApi';
 
 // Cum Lich su su kien hom nay trong FamilyDetailScreen (doi nguyen van).
@@ -11,10 +11,11 @@ export function FamilyEventList({
   events: MemberEvent[];
   theme: ThemePalette;
 }) {
+  const { t } = useSettings();
   if (events.length === 0) {
     return (
       <Text style={[styles.notice, { color: theme.muted }]}>
-        Hôm nay chưa có sự kiện (đạt mục tiêu bước chân, ngủ đủ giấc hoặc uống đủ nước sẽ hiện ở đây).
+        {t('family.eventsEmpty')}
       </Text>
     );
   }
@@ -30,7 +31,7 @@ export function FamilyEventList({
             <Text style={[styles.eventSub, { color: theme.text }]}>{e.subtitle}</Text>
             <Text style={[styles.eventBody, { color: theme.muted }]}>{e.body}</Text>
           </View>
-          <Text style={[styles.eventTime, { color: theme.muted }]}>Hôm nay</Text>
+          <Text style={[styles.eventTime, { color: theme.muted }]}>{t('home.today')}</Text>
         </View>
       ))}
     </>

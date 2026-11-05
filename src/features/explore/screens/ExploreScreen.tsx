@@ -18,6 +18,7 @@ import {
   type Post,
 } from '../../../lib/workoutApi';
 import { FAV_KEY } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
 import { ExploreWorkoutCard } from '../components/ExploreWorkoutCard';
 import { ExploreArticleRow } from '../components/ExploreArticleRow';
 import { ExploreChipButton } from '../components/ExploreChipButton';
@@ -28,6 +29,7 @@ type Chip = 'all' | 'foryou' | 'nutrition' | 'workout';
 type Tab = 'explore' | 'workout';
 
 export default function ExploreScreen() {
+  const { t } = useSettings();
   const navigation = useNavigation<any>();
   const [workouts, setWorkouts] = useState<Post[]>([]);
   const [articles, setArticles] = useState<Post[]>([]);
@@ -50,7 +52,7 @@ export default function ExploreScreen() {
       const saved = await AsyncStorage.getItem(FAV_KEY);
       if (saved) setFavs(JSON.parse(saved) as string[]);
     } catch (e: any) {
-      setError(e?.message ?? 'Không tải được dữ liệu.');
+      setError(e?.message ?? t('common.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -108,7 +110,7 @@ export default function ExploreScreen() {
         <SafeAreaView style={[styles.center, { backgroundColor: '#F9FBF9' }]}>
           <Text style={styles.error}>{error}</Text>
           <Text style={styles.hint}>
-            Kiểm tra đã chạy migration v6 + seed v6 chưa, rồi mở lại tab này.
+            {t('explore.migrationHint')}
           </Text>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -122,7 +124,7 @@ export default function ExploreScreen() {
           <View style={{ paddingHorizontal: 16 }}>
             <View style={styles.header}>
               <Text style={styles.logo}>🌿 AuraVital</Text>
-              <Text style={styles.headerTitle}>Khám phá</Text>
+              <Text style={styles.headerTitle}>{t('tabs.explore')}</Text>
             </View>
           </View>
           <ScrollView
@@ -139,7 +141,7 @@ export default function ExploreScreen() {
               <Ionicons name='search' size={20} color='#8A968E' />
               <TextInput
                 style={styles.searchInput}
-                placeholder='Tìm kiếm chủ đề, bài tập, công thức...'
+                placeholder={t('explore.searchPlaceholder')}
                 value={query}
                 onChangeText={setQuery}
               />
@@ -150,16 +152,16 @@ export default function ExploreScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipRow}
             >
-              <ExploreChipButton label='Tất cả' active={chip === 'all'} onPress={() => setChip('all')} />
-              <ExploreChipButton label='✨ Dành cho bạn' active={chip === 'foryou'} onPress={() => setChip('foryou')} />
-              <ExploreChipButton label='Dinh dưỡng' active={chip === 'nutrition'} onPress={() => setChip('nutrition')} />
-              <ExploreChipButton label='Bài tập' active={chip === 'workout'} onPress={() => setChip('workout')} />
+              <ExploreChipButton label={t('explore.chipAll')} active={chip === 'all'} onPress={() => setChip('all')} />
+              <ExploreChipButton label={t('explore.chipForYou')} active={chip === 'foryou'} onPress={() => setChip('foryou')} />
+              <ExploreChipButton label={t('home.nutrition')} active={chip === 'nutrition'} onPress={() => setChip('nutrition')} />
+              <ExploreChipButton label={t('home.workout')} active={chip === 'workout'} onPress={() => setChip('workout')} />
             </ScrollView>
 
-            <Text style={styles.h2}> Bài tập nổi bật</Text>
+            <Text style={styles.h2}> {t('explore.featuredWorkouts')}</Text>
             {shownWorkouts.length === 0 && (
               <Text style={styles.empty}>
-                Không có bài tập nào khớp bộ lọc.
+                {t('explore.noWorkoutsMatch')}
               </Text>
             )}
             {shownWorkouts.map((w) => (
@@ -178,10 +180,10 @@ export default function ExploreScreen() {
 
             {tab === 'explore' && (
               <>
-                <Text style={styles.h2}> Bài viết sức khỏe mới nhất</Text>
+                <Text style={styles.h2}> {t('explore.latestArticles')}</Text>
                 {shownArticles.length === 0 && (
                   <Text style={styles.empty}>
-                    Không có bài viết nào khớp bộ lọc.
+                    {t('explore.noArticlesMatch')}
                   </Text>
                 )}
                 {shownArticles.map((a) => (

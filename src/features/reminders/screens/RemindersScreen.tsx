@@ -23,16 +23,29 @@ import {
 import { buildNextReminders } from '../utils/nextReminders';
 import { ReminderToggleCard } from '../components/ReminderToggleCard';
 import { ReminderTimeRow } from '../components/ReminderTimeRow';
+import { AppHeader } from '../../../components/ui/AppHeader';
 import { s } from './RemindersScreen.styles';
 
 export default function RemindersScreen({ navigation }: any) {
-  const { theme, locale, t } = useSettings();
+  const { theme, t } = useSettings();
   const [notif, setNotif] = useState<NotifSettings>(DEFAULT_NOTIF);
   const [sleepTimeDraft, setSleepTimeDraft] = useState('22:00');
   const [breakfastDraft, setBreakfastDraft] = useState('07:00');
   const [lunchDraft, setLunchDraft] = useState('12:00');
   const [dinnerDraft, setDinnerDraft] = useState('18:30');
   const [wakeDraft, setWakeDraft] = useState('07:30');
+
+  // The nao dang mo rong (so xuong) de xem/sua chi tiet; mac dinh gap
+  // het cho gon, chi hien dong tom tat.
+  const [open, setOpen] = useState({
+    water: false,
+    meal: false,
+    wake: false,
+    sleep: false,
+    cycle: false,
+  });
+  const toggleOpen = (key: keyof typeof open) =>
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     (async () => {
@@ -80,7 +93,7 @@ export default function RemindersScreen({ navigation }: any) {
   const goNotifications = () =>
     (navigation.getParent() ?? navigation).navigate('Notifications');
 
-  const nextReminders = buildNextReminders(notif, locale);
+  const nextReminders = buildNextReminders(notif);
 
   const pillStyle = (selected: boolean) => ({
     backgroundColor: selected ? theme.primaryDark : GREY_PILL,
@@ -89,23 +102,37 @@ export default function RemindersScreen({ navigation }: any) {
     color: selected ? '#fff' : theme.text,
   });
 
+  // Gio ket thuc cua khung nuoc cuoi ("21:00 – 22:00" -> "22:00").
+  const waterRangeEnd = (range: string) => {
+    const end = (range.split('–')[1] ?? range).trim();
+    const [h, m] = end.split(':');
+    return `${h.padStart(2, '0')}:${m}`;
+  };
+  const waterSummary = t('reminders.waterSummary', {
+    from: WATER_WINDOWS[0].time,
+    to: waterRangeEnd(WATER_WINDOWS[WATER_WINDOWS.length - 1].range),
+    count: WATER_WINDOWS.length,
+  });
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-          <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[s.back, { color: theme.primaryDark }]}>‹</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[s.title, { color: theme.text }]}>
-            {t('settings.notificationsSection')}
-          </Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <AppHeader
+            title={t('settings.notificationsSection')}
+            withTopInset={false}
+          />
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 4,
+            paddingBottom: 32,
+          }}
+        >
 
           <ReminderToggleCard
-            icon='🔔'
             title={t('settings.notificationsEnabled')}
             desc={t('settings.notificationsEnabledDesc')}
             value={notif.enabled}
@@ -114,53 +141,76 @@ export default function RemindersScreen({ navigation }: any) {
           />
 
           <ReminderToggleCard
-            icon='💧'
             title={t('settings.waterReminder')}
-            desc={
-              locale === 'vi'
-                ? '8 khung giờ cố định, nhắc 1 lần vào đầu mỗi khung'
-                : '8 fixed windows, reminded once at each window start'
-            }
+            desc={t('reminders.waterDesc')}
             value={notif.water}
             disabled={!notif.enabled}
             dimmed={!notif.enabled}
             theme={theme}
             onValueChange={(v) => updateNotif({ water: v })}
+            expandable
+            expanded={open.water}
+            onToggleExpand={() => toggleOpen('water')}
+            summary={
+              <View style={s.summaryRow}>
+                <View
+                  style={[s.summaryChip, { backgroundColor: theme.cardAlt }]}
+                >
+                  <Text style={[s.summaryChipText, { color: theme.text }]}>
+                    {waterSummary}
+                  </Text>
+                </View>
+              </View>
+            }
           >
             {notif.water && (
               <View style={{ marginTop: 4 }}>
                 {WATER_WINDOWS.map((w) => (
                   <Text key={w.time} style={[s.windowLine, { color: theme.muted }]}>
-                    • {w.time} ({w.range}): {w.title}
+                    • {w.time} ({w.range}): {t(w.titleKey)}
                   </Text>
                 ))}
-                <Text style={[s.windowNote, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? 'Đã uống đủ mục tiêu trong ngày thì không nhắc nữa.'
-                    : 'No more reminders once the daily goal is met.'}
-                </Text>
               </View>
             )}
           </ReminderToggleCard>
 
           <ReminderToggleCard
-            icon='🍽'
-            title={locale === 'vi' ? 'Nhắc bữa ăn' : 'Meal reminders'}
-            desc={
-              locale === 'vi'
-                ? `Sáng ${notif.mealBreakfast} • Trưa ${notif.mealLunch} • Tối ${notif.mealDinner}`
-                : `Breakfast ${notif.mealBreakfast} • Lunch ${notif.mealLunch} • Dinner ${notif.mealDinner}`
-            }
+            title={t('reminders.mealTitle')}
+            desc={t('reminders.mealShort')}
             value={notif.meal}
             disabled={!notif.enabled}
             dimmed={!notif.enabled}
             theme={theme}
             onValueChange={(v) => updateNotif({ meal: v })}
+            expandable
+            expanded={open.meal}
+            onToggleExpand={() => toggleOpen('meal')}
+            summary={
+              <View style={s.summaryRow}>
+                {[
+                  { time: notif.mealBreakfast, label: t('nutrition.breakfast') },
+                  { time: notif.mealLunch, label: t('nutrition.lunch') },
+                  { time: notif.mealDinner, label: t('nutrition.dinner') },
+                ].map((m) => (
+                  <View
+                    key={m.label}
+                    style={[s.summaryPill, { backgroundColor: theme.cardAlt }]}
+                  >
+                    <Text style={[s.summaryTime, { color: theme.text }]}>
+                      {m.time}
+                    </Text>
+                    <Text style={[s.summaryLabel, { color: theme.muted }]}>
+                      {m.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            }
           >
             {notif.meal && (
               <>
                 <ReminderTimeRow
-                  label={locale === 'vi' ? 'Bữa sáng' : 'Breakfast'}
+                  label={t('nutrition.breakfast')}
                   value={breakfastDraft}
                   placeholder='07:00'
                   theme={theme}
@@ -179,7 +229,7 @@ export default function RemindersScreen({ navigation }: any) {
                   }
                 />
                 <ReminderTimeRow
-                  label={locale === 'vi' ? 'Bữa trưa' : 'Lunch'}
+                  label={t('nutrition.lunch')}
                   value={lunchDraft}
                   placeholder='12:00'
                   theme={theme}
@@ -197,7 +247,7 @@ export default function RemindersScreen({ navigation }: any) {
                   }
                 />
                 <ReminderTimeRow
-                  label={locale === 'vi' ? 'Bữa tối' : 'Dinner'}
+                  label={t('nutrition.dinner')}
                   value={dinnerDraft}
                   placeholder='18:30'
                   theme={theme}
@@ -219,22 +269,31 @@ export default function RemindersScreen({ navigation }: any) {
           </ReminderToggleCard>
 
           <ReminderToggleCard
-            icon='⏰'
-            title={locale === 'vi' ? 'Nhắc thức dậy' : 'Wake reminder'}
-            desc={
-              locale === 'vi'
-                ? 'Chỉ là cài đặt nhắc, không phải báo thức trong màn hình giấc ngủ.'
-                : 'Reminder setting only, not the alarm in the sleep screen.'
-            }
+            title={t('reminders.wakeTitle')}
+            desc={t('reminders.wakeDesc')}
             value={notif.wake}
             disabled={!notif.enabled}
             dimmed={!notif.enabled}
             theme={theme}
             onValueChange={(v) => updateNotif({ wake: v })}
+            expandable
+            expanded={open.wake}
+            onToggleExpand={() => toggleOpen('wake')}
+            summary={
+              <View style={s.summaryRow}>
+                <View
+                  style={[s.summaryChip, { backgroundColor: theme.cardAlt }]}
+                >
+                  <Text style={[s.summaryChipText, { color: theme.text }]}>
+                    {notif.wakeTime}
+                  </Text>
+                </View>
+              </View>
+            }
           >
             {notif.wake && (
               <ReminderTimeRow
-                label={locale === 'vi' ? 'Giờ thức dậy' : 'Wake time'}
+                label={t('reminders.wakeTimeLabel')}
                 value={wakeDraft}
                 placeholder='07:30'
                 theme={theme}
@@ -249,18 +308,27 @@ export default function RemindersScreen({ navigation }: any) {
           </ReminderToggleCard>
 
           <ReminderToggleCard
-            icon='😴'
             title={t('settings.sleepReminder')}
-            desc={
-              locale === 'vi'
-                ? `Lúc ${notif.sleepTime} mỗi ngày`
-                : `Daily at ${notif.sleepTime}`
-            }
+            desc={t('reminders.sleepShort')}
             value={notif.sleep}
             disabled={!notif.enabled}
             dimmed={!notif.enabled}
             theme={theme}
             onValueChange={(v) => updateNotif({ sleep: v })}
+            expandable
+            expanded={open.sleep}
+            onToggleExpand={() => toggleOpen('sleep')}
+            summary={
+              <View style={s.summaryRow}>
+                <View
+                  style={[s.summaryChip, { backgroundColor: theme.cardAlt }]}
+                >
+                  <Text style={[s.summaryChipText, { color: theme.text }]}>
+                    {notif.sleepTime}
+                  </Text>
+                </View>
+              </View>
+            }
           >
             {notif.sleep && (
               <ReminderTimeRow
@@ -285,20 +353,30 @@ export default function RemindersScreen({ navigation }: any) {
           </ReminderToggleCard>
 
           <ReminderToggleCard
-            icon='🌸'
             title={t('settings.cycleReminder')}
-            desc={
-              locale === 'vi'
-                ? `Trước ${notif.cycleDaysBefore} ngày`
-                : `${notif.cycleDaysBefore} days before`
-            }
+            desc={t('reminders.cycleDesc', { days: notif.cycleDaysBefore })}
             value={notif.cycle}
             disabled={!notif.enabled}
             dimmed={!notif.enabled}
             theme={theme}
             onValueChange={(v) => updateNotif({ cycle: v })}
+            expandable
+            expanded={open.cycle}
+            onToggleExpand={() => toggleOpen('cycle')}
+            summary={
+              <View style={s.summaryRow}>
+                <View
+                  style={[s.summaryChip, { backgroundColor: theme.cardAlt }]}
+                >
+                  <Text style={[s.summaryChipText, { color: theme.text }]}>
+                    {t('reminders.cycleDays', { days: notif.cycleDaysBefore })}
+                  </Text>
+                </View>
+              </View>
+            }
           >
-            <View style={s.pillRow}>
+            {notif.cycle && (
+              <View style={s.pillRow}>
               {CYCLE_DAYS.map((d) => (
                 <TouchableOpacity
                   key={d}
@@ -312,11 +390,12 @@ export default function RemindersScreen({ navigation }: any) {
                       pillTextStyle(notif.cycleDaysBefore === d),
                     ]}
                   >
-                    {locale === 'vi' ? `${d} ngày` : `${d} days`}
+                    {t('reminders.cycleDays', { days: d })}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+            )}
           </ReminderToggleCard>
 
           <TouchableOpacity
@@ -324,9 +403,7 @@ export default function RemindersScreen({ navigation }: any) {
             onPress={goNotifications}
           >
             <Text style={s.primaryBtnText}>
-              {locale === 'vi'
-                ? 'Đi đến trang thông báo →'
-                : 'Go to notifications →'}
+              {t('settings.goToNotifications')}
             </Text>
           </TouchableOpacity>
         </ScrollView>

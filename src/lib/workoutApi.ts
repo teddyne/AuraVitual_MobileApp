@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { translate } from '../i18n/locale';
 
 export type Post = {
   id: string;
@@ -47,14 +48,17 @@ export type WeeklySummary = {
   sleepAvgHours: number;
 };
 
+// Map cap do -> key i18n (khong phai chuoi hien thi truc tiep);
+// levelLabel() dich qua translate() de doi theo locale.
 export const LEVEL_LABEL: Record<string, string> = {
-  beginner: 'Cơ bản',
-  intermediate: 'Trung cấp',
-  advanced: 'Nâng cao',
+  beginner: 'workout.level.beginner',
+  intermediate: 'workout.level.intermediate',
+  advanced: 'workout.level.advanced',
 };
 
 export function levelLabel(level: string | null): string {
-  return LEVEL_LABEL[level ?? ''] ?? 'Cơ bản';
+  const key = LEVEL_LABEL[level ?? ''] ?? 'workout.level.beginner';
+  return translate(key);
 }
 
 /** Kcal ước lượng theo số phút thật, tỉ lệ với kcal của 1 buổi chuẩn. */

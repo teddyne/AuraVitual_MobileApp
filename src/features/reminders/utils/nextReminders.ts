@@ -2,13 +2,11 @@
 // Luu y: man hinh goc tinh ra nextReminders nhung khong render no ra UI
 // (chi con lai style previewCard/previewLine thua); giu nguyen phep tinh
 // de khong doi hanh vi.
+import { translate } from '../../../i18n/locale';
 import { nextWaterWindow } from '../../../lib/reminders';
 import type { NotifSettings } from './reminderSettings';
 
-export function buildNextReminders(
-  notif: NotifSettings,
-  locale: string,
-): string[] {
+export function buildNextReminders(notif: NotifSettings): string[] {
   const nextReminders: string[] = [];
   if (notif.enabled) {
     const now = new Date();
@@ -16,35 +14,36 @@ export function buildNextReminders(
     if (notif.water) {
       const { window, tomorrow } = nextWaterWindow(now);
       nextReminders.push(
-        `💧 ${locale === 'vi' ? 'Uống nước lúc' : 'Drink water at'} ${window.time}${tomorrow ? (locale === 'vi' ? ' (ngày mai)' : ' (tomorrow)') : ''}`,
+        `💧 ${translate('reminders.nextWater', {
+          time: window.time,
+          tomorrow: tomorrow ? translate('reminders.nextTomorrow') : '',
+        })}`,
       );
     }
     if (notif.meal) {
       nextReminders.push(
-        `🍽 ${locale === 'vi' ? 'Bữa sáng' : 'Breakfast'} ${notif.mealBreakfast} • ${locale === 'vi' ? 'Bữa trưa' : 'Lunch'} ${notif.mealLunch} • ${locale === 'vi' ? 'Bữa tối' : 'Dinner'} ${notif.mealDinner}`,
+        `🍽 ${translate('nutrition.breakfast')} ${notif.mealBreakfast} • ${translate('nutrition.lunch')} ${notif.mealLunch} • ${translate('nutrition.dinner')} ${notif.mealDinner}`,
       );
     }
     if (notif.wake) {
       nextReminders.push(
-        `⏰ ${locale === 'vi' ? 'Nhắc thức dậy lúc' : 'Wake reminder at'} ${notif.wakeTime}`,
+        `⏰ ${translate('reminders.nextWake', { time: notif.wakeTime })}`,
       );
     }
     if (notif.sleep) {
       const [h, m] = notif.sleepTime.split(':').map(Number);
       if (!Number.isNaN(h) && !Number.isNaN(m)) {
-        if (h * 60 + m > nowMin)
-          nextReminders.push(
-            `😴 ${locale === 'vi' ? 'Đi ngủ lúc' : 'Bedtime at'} ${notif.sleepTime}`,
-          );
-        else
-          nextReminders.push(
-            `😴 ${locale === 'vi' ? 'Đi ngủ lúc' : 'Bedtime at'} ${notif.sleepTime} (${locale === 'vi' ? 'ngày mai' : 'tomorrow'})`,
-          );
+        const base = translate('reminders.nextSleep', { time: notif.sleepTime });
+        nextReminders.push(
+          h * 60 + m > nowMin
+            ? `😴 ${base}`
+            : `😴 ${base}${translate('reminders.nextTomorrow')}`,
+        );
       }
     }
     if (notif.cycle) {
       nextReminders.push(
-        `🌸 ${locale === 'vi' ? `Nhắc chu kỳ trước ${notif.cycleDaysBefore} ngày` : `Cycle reminder ${notif.cycleDaysBefore} days before`}`,
+        `🌸 ${translate('reminders.nextCycle', { days: notif.cycleDaysBefore })}`,
       );
     }
   }

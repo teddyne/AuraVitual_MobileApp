@@ -13,12 +13,14 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { getPostById, getWorkoutSteps, levelLabel, type Post, type WorkoutStep } from '../../../lib/workoutApi';
+import { useSettings } from '../../../context/SettingsContext';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { fmtClock } from '../utils/workoutFormat';
 import { styles } from './WorkoutPlayerScreen.styles';
 
 export default function WorkoutPlayerScreen() {
   useKeepAwake();
+  const { t } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const postId: string = route.params?.postId;
@@ -39,13 +41,13 @@ export default function WorkoutPlayerScreen() {
   // Tải lại khi kéo refresh (không reset bộ đếm đang chạy).
   const load = useCallback(async () => {
     try {
-      if (!postId) throw new Error('Thiếu postId.');
+      if (!postId) throw new Error(t('workout.player.missingPostId'));
       const [p, s] = await Promise.all([getPostById(postId), getWorkoutSteps(postId)]);
-      if (!p) throw new Error('Không tìm thấy bài tập này trong database.');
+      if (!p) throw new Error(t('workout.player.notFound'));
       setPost(p);
       setSteps(s);
     } catch (e: any) {
-      setError(e?.message ?? 'Không tải được bài tập.');
+      setError(e?.message ?? t('workout.player.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -94,7 +96,7 @@ export default function WorkoutPlayerScreen() {
 
   const goToStep = (idx: number) => {
     if (idx > stepIdx && !finished) {
-      Alert.alert('Chưa mở', 'Hoàn thành bước trước rồi mới mở bước này.');
+      Alert.alert(t('workout.player.lockedTitle'), t('workout.player.lockedBody'));
       return;
     }
     let start = 0;
@@ -118,7 +120,7 @@ export default function WorkoutPlayerScreen() {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={[styles.center, { backgroundColor: '#fff' }]}>
-          <Text style={styles.error}>{error || 'Không có bài tập.'}</Text>
+          <Text style={styles.error}>{error || t('workout.player.noWorkout')}</Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -135,7 +137,7 @@ export default function WorkoutPlayerScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color="#1B2A1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Trình phát bài tập</Text>
+        <Text style={styles.headerTitle}>{t('workout.player.title')}</Text>
       </View>
     </View>
     <ScrollView
@@ -147,7 +149,7 @@ export default function WorkoutPlayerScreen() {
       {post.video_url ? (
         <View style={styles.videoWrap}>
           <VideoPlayer uri={post.video_url} />
-          <Text style={styles.videoNote}>Video mẫu</Text>
+          <Text style={styles.videoNote}>{t('workout.player.sampleVideo')}</Text>
         </View>
       ) : post.cover_url && !imgError ? (
         <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
@@ -188,38 +190,38 @@ export default function WorkoutPlayerScreen() {
         <View style={[styles.barFill, { width: `${Math.min(100, progressPct)}%` }]} />
       </View>
       {curStep && !finished && (
-        <Text style={styles.nowPlaying}>Đang phát: {curStep.title}</Text>
+        <Text style={styles.nowPlaying}>{t('workout.player.nowPlaying', { title: curStep.title })}</Text>
       )}
-      {finished && <Text style={styles.nowPlaying}>✓ Hoàn thành chuỗi động tác!</Text>}
+      {finished && <Text style={styles.nowPlaying}>{t('workout.player.finished')}</Text>}
 
       <Text style={styles.title}>{post.title}</Text>
       {post.summary ? <Text style={styles.summary}>{post.summary}</Text> : null}
 
       <View style={styles.infoGrid}>
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>THỜI LƯỢNG</Text>
-          <Text style={styles.infoValue}>{post.duration_min ?? '—'} Phút</Text>
+          <Text style={styles.infoLabel}>{t('workout.player.durationLabel')}</Text>
+          <Text style={styles.infoValue}>{t('workout.player.minutesValue', { min: post.duration_min ?? '—' })}</Text>
         </View>
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>ĐỐT CHÁY</Text>
-          <Text style={styles.infoValue}>{post.kcal_estimate != null ? `${post.kcal_estimate} Kcal` : 'Chưa có'}</Text>
+          <Text style={styles.infoLabel}>{t('workout.player.burnLabel')}</Text>
+          <Text style={styles.infoValue}>{post.kcal_estimate != null ? t('workout.player.kcalValue', { kcal: post.kcal_estimate }) : t('workout.player.noKcal')}</Text>
         </View>
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>CẤP ĐỘ</Text>
+          <Text style={styles.infoLabel}>{t('workout.player.levelLabel')}</Text>
           <Text style={styles.infoValue}>{levelLabel(post.level)}</Text>
         </View>
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>SỐ ĐỘNG TÁC</Text>
-          <Text style={styles.infoValue}>{steps.length} động tác</Text>
+          <Text style={styles.infoLabel}>{t('workout.player.movesLabel')}</Text>
+          <Text style={styles.infoValue}>{t('workout.player.movesValue', { count: steps.length })}</Text>
         </View>
       </View>
 
       <View style={styles.stepsHead}>
-        <Text style={styles.h2}>Chuỗi động tác</Text>
-        <Text style={styles.stepsTotal}>{steps.length} động tác ({fmtClock(totalSec)})</Text>
+        <Text style={styles.h2}>{t('workout.player.stepsTitle')}</Text>
+        <Text style={styles.stepsTotal}>{t('workout.player.stepsTotal', { count: steps.length, time: fmtClock(totalSec) })}</Text>
       </View>
       {steps.length === 0 && (
-        <Text style={styles.empty}>Bài này chưa có bước tập trong bảng workout_steps. Vẫn ghi nhận được theo thời lượng chuẩn của bài.</Text>
+        <Text style={styles.empty}>{t('workout.player.noSteps')}</Text>
       )}
       {steps.map((s, idx) => {
         const isCurrent = idx === stepIdx && !finished;
@@ -245,7 +247,7 @@ export default function WorkoutPlayerScreen() {
               </Text>
               <Text style={styles.stepSub}>
                 {s.instruction ?? ''} · {fmtClock(s.duration_sec)}
-                {isCurrent ? ' (Đang phát)' : ''}
+                {isCurrent ? t('workout.player.playingSuffix') : ''}
               </Text>
             </View>
             <Text style={styles.stepNum}>{String(idx + 1).padStart(2, '0')}</Text>
@@ -265,7 +267,7 @@ export default function WorkoutPlayerScreen() {
         }}
       >
         <Text style={styles.startText}>
-          {finished || steps.length === 0 ? '✓ Hoàn thành & Ghi nhận' : '▶ Bắt đầu luyện tập ngay'}
+          {finished || steps.length === 0 ? t('workout.player.finishAndLog') : t('workout.player.startNow')}
         </Text>
       </TouchableOpacity>
       {steps.length > 0 && !finished && (
@@ -273,7 +275,7 @@ export default function WorkoutPlayerScreen() {
           style={styles.logLink}
           onPress={() => navigation.navigate('WorkoutLog', { postId: post.id, minutes: post.duration_min ?? finishMinutes })}
         >
-          <Text style={styles.logLinkText}>Hoặc ghi nhận ngay mà không cần tập hết →</Text>
+          <Text style={styles.logLinkText}>{t('workout.player.logWithoutFinishing')}</Text>
         </TouchableOpacity>
       )}
     </ScrollView>

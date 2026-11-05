@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from './supabase';
 import { getProfile, getTodayMetric } from './auravitalApi';
 import { setupNotificationChannels } from './sleepSession';
+import { translate } from '../i18n/locale';
 
 // =====================================================================
 // Nhắc hẹn giờ bằng local push (expo-notifications, DAILY trigger).
@@ -18,68 +19,66 @@ export const NOTIF_SETTINGS_KEY = '@auravital:notifications';
 const SCHED_IDS_KEY = '@auravital:reminder_notif_ids';
 // Cờ dọn lịch mồ côi 1 lần (bản vá trùng nhắc 2/11/2026).
 const MIGRATION_KEY = '@auravital:reminder_fixed_ids_migrated';
-
-// Khóa chống chạy chồng: syncReminderNotifications được gọi từ nhiều
-// nơi (mở app, lưu cài đặt, ghi nước) và app dev reload liên tục —
-// không có khóa này, 2 lần chạy gối nhau sẽ làm lịch cũ bị mồ côi.
 let syncInFlight = false;
 let syncQueued = false;
 
 export type WaterWindow = {
   time: string; // HH:MM, mốc bắt đầu
   range: string; // khung giờ hiển thị
-  title: string;
-  body: string;
+  // Key i18n (reminders.waterWindows.*); tieu de/noi dung lay bang
+  // translate() luc dung, khong dong cung tieng Viet o day.
+  titleKey: string;
+  bodyKey: string;
 };
 
 export const WATER_WINDOWS: WaterWindow[] = [
   {
     time: '06:00',
     range: '6:00 – 7:00',
-    title: 'Uống nước buổi sáng',
-    body: 'Uống 1 ly nước ấm (200–250ml) để kích hoạt hệ tiêu hóa và bù nước sau giấc ngủ dài.',
+    titleKey: 'reminders.waterWindows.morning.title',
+    bodyKey: 'reminders.waterWindows.morning.body',
   },
   {
     time: '08:00',
     range: '8:00 – 9:00',
-    title: 'Uống nước sau bữa sáng',
-    body: 'Uống thêm 1 ly nước để bắt đầu ngày làm việc, tăng sự tập trung và trao đổi chất.',
+    titleKey: 'reminders.waterWindows.afterBreakfast.title',
+    bodyKey: 'reminders.waterWindows.afterBreakfast.body',
   },
   {
     time: '11:00',
     range: '11:00 – 12:00',
-    title: 'Uống nước trước bữa trưa',
-    body: 'Uống khoảng 250ml nước để giữ ẩm cho da và hỗ trợ tiêu hóa hấp thụ dinh dưỡng.',
+    titleKey: 'reminders.waterWindows.beforeLunch.title',
+    bodyKey: 'reminders.waterWindows.beforeLunch.body',
   },
   {
     time: '13:00',
     range: '13:00 – 14:00',
-    title: 'Uống nước sau giờ nghỉ trưa',
-    body: 'Uống 200–250ml nước giúp phục hồi tuần hoàn máu và hỗ trợ tiêu hóa.',
+    titleKey: 'reminders.waterWindows.afterLunch.title',
+    bodyKey: 'reminders.waterWindows.afterLunch.body',
   },
   {
     time: '15:00',
     range: '15:00 – 16:00',
-    title: 'Uống nước buổi chiều',
-    body: 'Uống 1 ly nước để xua tan cảm giác buồn ngủ, mệt mỏi và duy trì năng lượng.',
+    titleKey: 'reminders.waterWindows.afternoon.title',
+    bodyKey: 'reminders.waterWindows.afternoon.body',
   },
   {
     time: '17:00',
     range: '17:00',
-    title: 'Uống nước trước khi tan làm',
-    body: 'Uống 250–300ml nước giúp giảm cảm giác đói và phục hồi cơ thể sau một ngày làm việc.',
+    titleKey: 'reminders.waterWindows.beforeLeave.title',
+    bodyKey: 'reminders.waterWindows.beforeLeave.body',
   },
   {
     time: '19:00',
     range: '19:00 – 20:00',
-    title: 'Uống nước trước bữa tối',
-    body: 'Uống 1 ly nước giúp hỗ trợ thanh lọc cơ thể và kiểm soát lượng thức ăn nạp vào.',
+    titleKey: 'reminders.waterWindows.beforeDinner.title',
+    bodyKey: 'reminders.waterWindows.beforeDinner.body',
   },
   {
     time: '21:00',
     range: '21:00 – 22:00',
-    title: 'Uống nước trước khi đi ngủ',
-    body: 'Uống một lượng nhỏ (100–150ml) để phòng mất nước ban đêm, tránh uống quá nhiều.',
+    titleKey: 'reminders.waterWindows.beforeBed.title',
+    bodyKey: 'reminders.waterWindows.beforeBed.body',
   },
 ];
 
@@ -161,12 +160,6 @@ async function cancelTracked(): Promise<void> {
   } catch {}
 }
 
-// Dọn lịch mồ côi 1 lần duy nhất (bản vá 2/11/2026): các lịch do bản
-// cũ đặt bằng id ngẫu nhiên, bị mất dấu sau reload giữa chừng hoặc
-// chạy chồng, nên cancelTracked không với tới được. Hủy dựa theo
-// data.kind — lịch báo thức ngủ (sleepSession) không có data.kind
-// nên không bị đụng tới. Chạy lại cũng an toàn (idempotent): nếu
-// cờ chưa kịp ghi mà app reload, lần sau nó dọn lại từ đầu.
 async function migrateOrphanCleanup(): Promise<void> {
   try {
     const migrated = await AsyncStorage.getItem(MIGRATION_KEY).catch(
@@ -189,10 +182,6 @@ async function migrateOrphanCleanup(): Promise<void> {
   } catch {}
 }
 
-// Đồng bộ toàn bộ nhắc hẹn giờ. Chạy khi mở app, khi lưu cài đặt và
-// mỗi lần ghi nhận nước (để hủy nhắc nước khi đã đủ mục tiêu).
-// Wrapper khóa chống chạy chồng: nếu đang chạy thì chỉ đánh dấu chạy
-// lại 1 lần sau khi xong, thay vì chạy song song gây mồ côi lịch.
 export async function syncReminderNotifications(): Promise<void> {
   if (syncInFlight) {
     syncQueued = true;
@@ -268,8 +257,8 @@ async function syncReminderNotificationsInner(): Promise<void> {
             // THAY THẾ lịch cũ thay vì tạo thêm — không còn trùng được.
             identifier: `water-${w.time}`,
             content: {
-              title: `💧 ${w.title}`,
-              body: w.body,
+              title: `💧 ${translate(w.titleKey)}`,
+              body: translate(w.bodyKey),
               data: { kind: 'water', screen: 'Notifications', window: w.time },
               sound: 'default',
             },
@@ -288,19 +277,20 @@ async function syncReminderNotificationsInner(): Promise<void> {
     // Bữa ăn: đúng giờ đã thiết lập trong cài đặt.
     if (settings.meal) {
       const meals = [
-        { key: 'breakfast', label: 'Bữa sáng', time: settings.mealBreakfast },
-        { key: 'lunch', label: 'Bữa trưa', time: settings.mealLunch },
-        { key: 'dinner', label: 'Bữa tối', time: settings.mealDinner },
+        { key: 'breakfast', labelKey: 'nutrition.breakfast', time: settings.mealBreakfast },
+        { key: 'lunch', labelKey: 'nutrition.lunch', time: settings.mealLunch },
+        { key: 'dinner', labelKey: 'nutrition.dinner', time: settings.mealDinner },
       ];
       for (const meal of meals) {
         const hm = parseHM(meal.time);
         if (!hm) continue;
+        const mealLabel = translate(meal.labelKey).toLowerCase();
         const id = await Notifications.scheduleNotificationAsync({
           identifier: `meal-${meal.key}`,
           content: {
-            title: `🍽 Nhắc ${meal.label.toLowerCase()}`,
-            body: `Đến giờ ${meal.label.toLowerCase()} (${meal.time}).`,
-            data: { kind: 'meal', screen: 'Notifications', meal: meal.label },
+            title: translate('reminders.mealNotifyTitle', { meal: mealLabel }),
+            body: translate('reminders.mealNotifyBody', { meal: mealLabel, time: meal.time }),
+            data: { kind: 'meal', screen: 'Notifications', meal: mealLabel },
             sound: 'default',
           },
           trigger: {
@@ -321,8 +311,8 @@ async function syncReminderNotificationsInner(): Promise<void> {
         const id = await Notifications.scheduleNotificationAsync({
           identifier: 'sleep-reminder',
           content: {
-            title: '😴 Đến giờ đi ngủ',
-            body: `Đã đến giờ đi ngủ (${settings.sleepTime}). Chuẩn bị giấc ngủ phục hồi nhé.`,
+            title: translate('reminders.sleepNotifyTitle'),
+            body: translate('reminders.sleepNotifyBody', { time: settings.sleepTime }),
             data: { kind: 'sleep', screen: 'Notifications' },
             sound: 'default',
           },

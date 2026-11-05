@@ -30,7 +30,7 @@ import { FamilySosBanner } from '../components/FamilySosBanner';
 import { s } from './FamilyDetailScreen.styles';
 
 export default function FamilyDetailScreen({ navigation, route }: any) {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const memberId: string | undefined = route?.params?.memberId;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,7 +65,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
     if (!member) return;
     const ok = await setNickname(member.ownerId, nickDraft);
     if (!ok) {
-      Alert.alert('Lỗi', 'Không lưu được biệt danh.');
+      Alert.alert(t('family.errorTitle'), t('family.nicknameSaveFailed'));
       return;
     }
     setEditingNick(false);
@@ -74,8 +74,8 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
 
   const onSosSettings = () => {
     Alert.alert(
-      'SOS 24/7 (bản demo giao diện)',
-      'Tính năng bảo vệ khẩn cấp hiện chỉ hiển thị giao diện. Khi hoàn thiện, hệ thống sẽ gọi liên lạc ưu tiên và gửi vị trí khi phát hiện ngã té hoặc nhịp tim cao kéo dài lúc nghỉ ngơi.',
+      t('family.sosDemoTitle'),
+      t('family.sosDemoBody'),
     );
   };
 
@@ -98,7 +98,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
               <Ionicons name="chevron-back" size={28}/>
             </TouchableOpacity>
             <Text style={[s.notFound, { color: theme.text }]}>
-              Không tìm thấy thành viên (có thể liên kết đã bị hủy).
+              {t('family.detailNotFound')}
             </Text>
           </View>
         </SafeAreaView>
@@ -128,7 +128,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
             </TouchableOpacity>
 
             <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>
-              Sức khỏe của {name}
+              {t('family.detailTitle', { name })}
             </Text>
 
             <View style={s.headerBtns}>
@@ -158,16 +158,16 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
                   <TextInput
                     value={nickDraft}
                     onChangeText={setNickDraft}
-                    placeholder='Biệt danh, ví dụ: Bố'
+                    placeholder={t('family.nickPlaceholder')}
                     placeholderTextColor={theme.muted}
                     maxLength={30}
                     style={[s.nickInput, { backgroundColor: '#FFFFFF', color: theme.text }]}
                   />
                   <TouchableOpacity onPress={onSaveNick}>
-                    <Text style={[s.nickSave, { color: theme.primaryDark }]}>Lưu</Text>
+                    <Text style={[s.nickSave, { color: theme.primaryDark }]}>{t('common.save')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setEditingNick(false)}>
-                    <Text style={[s.nickSave, { color: theme.muted }]}>Hủy</Text>
+                    <Text style={[s.nickSave, { color: theme.muted }]}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -187,9 +187,9 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
                   </TouchableOpacity>
                 </View>
               )}
-              <Text style={[s.profileSub, { color: theme.text }]}>● Đang kết nối</Text>
+              <Text style={[s.profileSub, { color: theme.text }]}>{t('family.connected')}</Text>
               <Text style={[s.profileSub2, { color: theme.muted }]}>
-                {metric ? `Đồng bộ ngày ${timeAgo(metric.updated_at)}` : 'Chưa có dữ liệu'}
+                {metric ? t('family.syncedOn', { time: timeAgo(metric.updated_at) }) : t('family.noData')}
               </Text>
             </View>
             {score != null && (
@@ -201,16 +201,16 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
 
           {/* Chỉ số sinh hiệu */}
           <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>Chỉ số sinh hiệu</Text>
-            <Text style={[s.live, { color: theme.primaryDark }]}>● Trực tiếp</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.vitalsTitle')}</Text>
+            <Text style={[s.live, { color: theme.primaryDark }]}>{t('family.live')}</Text>
           </View>
 
           <FamilyVitalGrid member={member} metric={metric} settings={settings} theme={theme} />
 
           {/* Lịch sử sự kiện hôm nay (suy ra từ dữ liệu thật) */}
           <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>Lịch sử sự kiện hôm nay</Text>
-            <Text style={[s.sectionRight, { color: theme.muted }]}>{events.length} sự kiện</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>{t('family.eventsTitle')}</Text>
+            <Text style={[s.sectionRight, { color: theme.muted }]}>{t('family.eventsCount', { count: events.length })}</Text>
           </View>
           <FamilyEventList events={events} theme={theme} />
 

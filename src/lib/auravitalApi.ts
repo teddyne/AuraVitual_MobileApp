@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { translate } from '../i18n/locale';
 
 export type Profile = {
   id: string;
@@ -35,7 +36,7 @@ function dayRange(dateStr: string) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 export function formatSleep(hours: number | null): string {
-  if (hours == null) return 'Chưa ghi nhận';
+  if (hours == null) return translate('home.noData');
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
   return `${h}h ${m}m`;

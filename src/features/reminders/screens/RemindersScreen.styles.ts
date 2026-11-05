@@ -4,12 +4,25 @@ import { StyleSheet } from 'react-native';
 // gio ra components/ (cac muc da doi giu nguyen van tai do).
 export const s = StyleSheet.create({
   safe: { flex: 1 },
-  headerRow: { marginBottom: 8 },
-  back: { fontSize: 30, fontWeight: '800' },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: 12 },
   pillRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   pillBtn: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
   pillText: { fontWeight: '700' },
+  summaryRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  summaryChip: {
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  summaryChipText: { fontWeight: '700', fontSize: 14 },
+  summaryPill: {
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    minWidth: 84,
+  },
+  summaryTime: { fontWeight: '800', fontSize: 15 },
+  summaryLabel: { fontSize: 12, marginTop: 2 },
   previewCard: { borderRadius: 16, padding: 14, marginTop: 12 },
   previewTitle: { fontWeight: '800', marginBottom: 6 },
   previewLine: { lineHeight: 20, marginTop: 2 },

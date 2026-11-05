@@ -52,7 +52,16 @@ import {
 } from '../../../lib/sleepSession';
 import { AppHeader } from '../../../components/ui/AppHeader';
 import { AppIcon } from '../../../components/ui/AppIcon';
-import { PRIMARY, RAIN_SOUND, ALARM_SOUND, WD, DAY_SHORT } from '../constants';
+import { useSettings } from '../../../context/SettingsContext';
+import {
+  PRIMARY,
+  RAIN_SOUND,
+  ALARM_SOUND,
+  WD,
+  WD_EN,
+  DAY_SHORT,
+  DAY_SHORT_EN,
+} from '../constants';
 import { fmtMMSS, displayLabel, alarmSub } from '../utils/sleepFormat';
 import { ProgressTrack } from '../components/SleepProgressTrack';
 import { styles } from './SleepTrackerScreen.styles';
@@ -60,6 +69,9 @@ import { styles } from './SleepTrackerScreen.styles';
 type SleepRow = { log_date: string; sleep_hours: number | null };
 
 export default function SleepTrackerScreen({ navigation, route }: any) {
+  const { t, locale } = useSettings();
+  const wd = locale === 'en' ? WD_EN : WD;
+  const dayShort = locale === 'en' ? DAY_SHORT_EN : DAY_SHORT;
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -145,7 +157,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         interruptionMode: 'doNotMix',
       });
       alarmPlayer.setActiveForLockScreen(true, {
-        title: 'Báo thức thức dậy',
+        title: t('sleep.alarmWakeTitle'),
         artist: 'AuraVital',
       });
       alarmPlayer.seekTo(0);
@@ -153,7 +165,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     } catch (e) {
       console.warn('Cannot play alarm sound', e);
     }
-  }, [alarmPlayer]);
+  }, [alarmPlayer, t]);
   const ringAlarm = useCallback(
     async (custom: AlarmItem | null) => {
       await stopRain();
@@ -569,12 +581,12 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     if (!userId) return;
     if (!hasProfile) {
       Alert.alert(
-        'Chưa có hồ sơ',
-        'Tài khoản này chưa có hồ sơ, cần thiết lập hồ sơ trước rồi mới lưu được lịch ngủ.',
+        t('home.noProfile'),
+        t('sleep.noProfileDesc'),
         [
-          { text: 'Để sau', style: 'cancel' },
+          { text: t('sleep.later'), style: 'cancel' },
           {
-            text: 'Thiết lập hồ sơ',
+            text: t('settings.setupProfile'),
             onPress: () => navigation?.navigate('ProfileSetup'),
           },
         ],
@@ -583,14 +595,17 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     }
     if (parseHHMM(bedtimeInput) === null || parseHHMM(wakeInput) === null) {
       Alert.alert(
-        'Giờ chưa đúng',
-        'Nhập giờ dạng HH:MM, ví dụ 22:00 và 07:30.',
+        t('sleep.invalidTimeTitle'),
+        t('sleep.invalidTimeDesc'),
       );
       return;
     }
     const goalNum = parseFloat(goalInput.replace(',', '.'));
     if (isNaN(goalNum) || goalNum < 4 || goalNum > 12) {
-      Alert.alert('Mục tiêu chưa đúng', 'Mục tiêu giấc ngủ từ 4 đến 12 giờ.');
+      Alert.alert(
+        t('sleep.invalidGoalTitle'),
+        t('sleep.invalidGoalDesc'),
+      );
       return;
     }
     setSaving(true);
@@ -605,7 +620,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       .eq('id', userId);
     setSaving(false);
     if (error) {
-      Alert.alert('Lưu thất bại', error.message);
+      Alert.alert(t('sleep.saveFailed'), error.message);
       return;
     }
     const nextProfile: SleepProfile = {
@@ -624,8 +639,8 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     await scheduleSleepNotifications(nextProfile);
     setEditingSchedule(false);
     Alert.alert(
-      'Đã lưu lịch ngủ',
-      'Lịch này sẽ dùng cho chế độ ngủ và giờ dậy.',
+      t('sleep.savedScheduleTitle'),
+      t('sleep.savedScheduleDesc'),
     );
   };
 
@@ -644,7 +659,10 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       setAlarms(next);
       await syncAllAlarmNotifications(next, profile);
     } catch (e: any) {
-      Alert.alert('Không lưu được báo thức', e?.message || 'Vui lòng thử lại.');
+      Alert.alert(
+        t('sleep.alarmSaveFailed'),
+        e?.message || t('sleep.tryAgain'),
+      );
     }
   };
 
@@ -668,12 +686,18 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
 
   const saveAlarm = async () => {
     if (parseHHMM(alarmTimeInput) === null) {
-      Alert.alert('Giờ chưa đúng', 'Nhập giờ dạng HH:MM, ví dụ 07:30.');
+      Alert.alert(
+        t('sleep.invalidTimeTitle'),
+        t('sleep.invalidAlarmTimeDesc'),
+      );
       return;
     }
     const snoozeNum = parseInt(alarmSnoozeInput, 10);
     if (isNaN(snoozeNum) || snoozeNum < 1 || snoozeNum > 120) {
-      Alert.alert('Thời lượng báo lại chưa đúng', 'Nhập số phút từ 1 đến 120.');
+      Alert.alert(
+        t('sleep.invalidSnoozeTitle'),
+        t('sleep.invalidSnoozeDesc'),
+      );
       return;
     }
     const [h, m] = alarmTimeInput.trim().split(':');
@@ -686,7 +710,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
             ? {
                 ...x,
                 time,
-                label: alarmLabelInput.trim() || 'Báo thức',
+                label: alarmLabelInput.trim() || t('sleep.alarm'),
                 days,
                 snoozeMinutes: snoozeNum,
               }
@@ -699,7 +723,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         {
           id: Date.now().toString(),
           time,
-          label: alarmLabelInput.trim() || 'Báo thức',
+          label: alarmLabelInput.trim() || t('sleep.alarm'),
           enabled: true,
           days,
           snoozeMinutes: snoozeNum,
@@ -712,10 +736,10 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   };
 
   const deleteAlarm = (id: string) => {
-    Alert.alert('Xóa báo thức', 'Xóa báo thức này?', [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert(t('sleep.deleteAlarmTitle'), t('sleep.deleteAlarmDesc'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Xóa',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => saveAlarms(alarms.filter((a) => a.id !== id)),
       },
@@ -736,7 +760,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const k = toKey(d);
-    last7.push({ key: k, label: WD[d.getDay()], hours: map.get(k) ?? null });
+    last7.push({ key: k, label: wd[d.getDay()], hours: map.get(k) ?? null });
   }
   const withData = last7.filter((x) => x.hours !== null);
   const avgMin = withData.length
@@ -797,16 +821,19 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       await cancelSnoozeNotification();
       await markWakeHandled();
       if (!result) {
-        Alert.alert('Chưa lưu được', 'Phiên ngủ quá ngắn hoặc quá 24 giờ.');
+        Alert.alert(t('sleep.notSavedTitle'), t('sleep.notSavedDesc'));
         return;
       }
       Alert.alert(
-        'Đã lưu giấc ngủ',
-        `${fmtDur(result.minutes)} cho ngày ${keyToDisplay(result.wakeKey)}.`,
+        t('sleep.savedSleepTitle'),
+        t('sleep.savedSleepDesc', {
+          dur: fmtDur(result.minutes),
+          date: keyToDisplay(result.wakeKey),
+        }),
       );
       loadAll();
     } catch (e: any) {
-      Alert.alert('Lưu thất bại', e?.message || 'Thử lại sau.');
+      Alert.alert(t('sleep.saveFailed'), e?.message || t('sleep.tryAgainLater'));
     } finally {
       setSaving(false);
       finishingRef.current = false;
@@ -824,15 +851,15 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       setSession(next);
       try {
         await scheduleSnoozeNotification(
-          'Báo thức thức dậy',
-          'Đã đến giờ dậy rồi!',
+          t('sleep.alarmWakeTitle'),
+          t('sleep.wakeUpNow'),
           10,
           null,
         );
       } catch {
         Alert.alert(
-          'Không đặt được thông báo báo lại',
-          'Hãy kiểm tra quyền thông báo. Báo thức trong ứng dụng vẫn sẽ được thử lại khi ứng dụng đang mở.',
+          t('sleep.snoozeNotifyFailedTitle'),
+          t('sleep.snoozeNotifyFailedDesc'),
         );
       }
       setAlarmVisible(false);
@@ -849,15 +876,15 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       );
       try {
         await scheduleSnoozeNotification(
-          ringingAlarm.label || 'Báo thức',
-          `Báo lại sau ${mins} phút.`,
+          ringingAlarm.label || t('sleep.alarm'),
+          t('sleep.snoozeAfter', { mins }),
           mins,
           ringingAlarm.id,
         );
       } catch {
         Alert.alert(
-          'Không đặt được thông báo báo lại',
-          'Hãy kiểm tra quyền thông báo. Báo thức trong ứng dụng vẫn sẽ được thử lại khi ứng dụng đang mở.',
+          t('sleep.snoozeNotifyFailedTitle'),
+          t('sleep.snoozeNotifyFailedDesc'),
         );
       }
       setAlarmVisible(false);
@@ -910,18 +937,18 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               color='#fff'
               style={{ marginBottom: 12 }}
             />
-            <Text style={styles.alarmTitle}>BÁO THỨC</Text>
+            <Text style={styles.alarmTitle}>{t('sleep.alarmTitle')}</Text>
             <Text style={styles.alarmTime}>{fmtHHMM(new Date())}</Text>
             <Text style={styles.alarmText}>
               {session
-                ? `Bạn đã ngủ ${fmtDur(elapsed)}.`
+                ? t('sleep.sleptFor', { dur: fmtDur(elapsed) })
                 : ringingAlarm
                   ? `${ringingAlarm.label} • ${ringingAlarm.time}`
-                  : 'Đã đến giờ dậy.'}
+                  : t('sleep.wakeTimeReached')}
             </Text>
             <TouchableOpacity style={styles.snoozeButton} onPress={snooze}>
               <Text style={styles.snoozeText}>
-                Phát lại sau {snoozeMins} phút
+                {t('sleep.snoozeIn', { mins: snoozeMins })}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -930,7 +957,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               disabled={saving}
             >
               <Text style={styles.wakeText}>
-                {saving ? 'Đang lưu...' : 'Đã dậy'}
+                {saving ? t('sleep.saving') : t('home.wokeUp')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -956,18 +983,25 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
           >
             <Ionicons name='moon' size={90} color='#FDE68A' />
           </Animated.View>
-          <Text style={styles.darkTitle}>Chế độ ngủ</Text>
+          <Text style={styles.darkTitle}>{t('sleep.sleepMode')}</Text>
           <Text style={styles.darkText}>
-            Bắt đầu lúc {fmtHHMM(new Date(session.startedAt))}
+            {t('sleep.startedAt', {
+              time: fmtHHMM(new Date(session.startedAt)),
+            })}
           </Text>
-          <Text style={styles.darkText}>Đã ngủ {fmtDur(elapsed)}</Text>
+          <Text style={styles.darkText}>
+            {t('sleep.slept', { dur: fmtDur(elapsed) })}
+          </Text>
           {wakeAt ? (
             <Text style={styles.darkText}>
-              Dự kiến dậy {fmtHHMM(wakeAt)} ngày {keyToDisplay(toKey(wakeAt))}
+              {t('sleep.wakeExpected', {
+                time: fmtHHMM(wakeAt),
+                date: keyToDisplay(toKey(wakeAt)),
+              })}
             </Text>
           ) : null}
           <View style={styles.darkRow}>
-            <Text style={styles.darkText}>Tiếng mưa</Text>
+            <Text style={styles.darkText}>{t('sleep.rainSound')}</Text>
             <Switch value={noiseOn} onValueChange={toggleNoise} />
           </View>
           <TouchableOpacity
@@ -976,16 +1010,15 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
             disabled={saving}
           >
             <Text style={styles.wakeText}>
-              {saving ? 'Đang lưu...' : 'Đã dậy'}
+              {saving ? t('sleep.saving') : t('home.wokeUp')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.darkGhost} onPress={exitSleepScreen}>
-            <Text style={styles.darkGhostText}>Rời màn hình ngủ</Text>
+            <Text style={styles.darkGhostText}>
+              {t('sleep.leaveSleepScreen')}
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.darkNote}>
-            Rời màn hình không hủy phiên ngủ. Bạn vẫn có thể bấm Đã dậy ở đây
-            hoặc ở Trang chủ vào sáng hôm sau.
-          </Text>
+          <Text style={styles.darkNote}>{t('sleep.leaveNote')}</Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -1029,7 +1062,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         >
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             <AppHeader
-              title='Theo dõi giấc ngủ'
+              title={t('sleep.title')}
               withTopInset={false}
             />
           </View>
@@ -1046,23 +1079,36 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
               >
                 <Ionicons name='moon-outline' size={14} color='#A8E6A1' />
-                <Text style={styles.bannerTag}>GIẤC NGỦ PHỤC HỒI</Text>
+                <Text style={styles.bannerTag}>
+                  {t('sleep.restorativeTag')}
+                </Text>
               </View>
-              <Text style={styles.bannerLabel}>Thời lượng ngủ trung bình</Text>
+              <Text style={styles.bannerLabel}>
+                {t('sleep.avgDuration')}
+              </Text>
               <Text style={styles.bannerNumber}>
                 {avgMin !== null ? fmtDur(avgMin) : '--'}
               </Text>
               <Text style={styles.bannerText}>
                 {avgMin === null
-                  ? 'Chưa có ngày nào ghi sleep_hours trong 7 ngày qua.'
+                  ? t('sleep.noData7d')
                   : goal
-                    ? `Tính trên ${withData.length} ngày có dữ liệu, mục tiêu ${goal} giờ. ${avgMin >= goal * 60 ? 'Đã đạt mục tiêu.' : `Còn thiếu ${fmtDur(goal * 60 - avgMin)} so với mục tiêu.`}`
-                    : `Tính trên ${withData.length} ngày có dữ liệu.`}
+                    ? avgMin >= goal * 60
+                      ? t('sleep.statsWithGoalReached', {
+                          n: withData.length,
+                          goal,
+                        })
+                      : t('sleep.statsWithGoalMissing', {
+                          n: withData.length,
+                          goal,
+                          dur: fmtDur(goal * 60 - avgMin),
+                        })
+                    : t('sleep.statsNoGoal', { n: withData.length })}
               </Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Thống kê giấc ngủ (7 ngày)</Text>
+              <Text style={styles.cardTitle}>{t('sleep.statsTitle')}</Text>
               <View style={styles.barArea}>
                 {goal ? (
                   <View
@@ -1101,7 +1147,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                   />
                 </View>
                 <Text style={[styles.cardTitle, { marginBottom: 0 }]}>
-                  Rừng mưa nhiệt đới
+                  {t('sleep.rainforest')}
                 </Text>
               </View>
               <View style={styles.progressRow}>
@@ -1132,15 +1178,17 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                   </View>
                 </View>
               </View>
-              <Text style={styles.note}>Tự tắt sau 45 phút</Text>
+              <Text style={styles.note}>{t('sleep.autoOff')}</Text>
             </View>
 
             {editingSchedule ? (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>
-                  {hasSchedule ? 'Sửa lịch ngủ' : 'Thiết lập lịch ngủ'}
+                  {hasSchedule
+                    ? t('sleep.editSchedule')
+                    : t('sleep.setupSchedule')}
                 </Text>
-                <Text style={styles.label}>Giờ đi ngủ</Text>
+                <Text style={styles.label}>{t('sleep.bedtime')}</Text>
                 <TextInput
                   style={styles.input}
                   value={bedtimeInput}
@@ -1148,7 +1196,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                   placeholder='22:00'
                   keyboardType='numbers-and-punctuation'
                 />
-                <Text style={styles.label}>Giờ dậy</Text>
+                <Text style={styles.label}>{t('sleep.wakeTime')}</Text>
                 <TextInput
                   style={styles.input}
                   value={wakeInput}
@@ -1156,7 +1204,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                   placeholder='07:30'
                   keyboardType='numbers-and-punctuation'
                 />
-                <Text style={styles.label}>Mục tiêu giấc ngủ (giờ)</Text>
+                <Text style={styles.label}>{t('sleep.sleepGoal')}</Text>
                 <TextInput
                   style={styles.input}
                   value={goalInput}
@@ -1170,7 +1218,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                   disabled={saving}
                 >
                   <Text style={styles.saveButtonText}>
-                    {saving ? 'Đang lưu...' : 'Lưu lịch ngủ'}
+                    {saving ? t('sleep.saving') : t('sleep.saveSchedule')}
                   </Text>
                 </TouchableOpacity>
                 {hasSchedule ? (
@@ -1178,7 +1226,9 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     style={styles.secondaryButton}
                     onPress={cancelEditSchedule}
                   >
-                    <Text style={styles.secondaryButtonText}>Hủy</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      {t('common.cancel')}
+                    </Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -1186,9 +1236,11 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               <View style={styles.card}>
                 <View style={styles.scheduleHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Lịch biểu phục hồi</Text>
+                    <Text style={styles.cardTitle}>
+                      {t('sleep.scheduleTitle')}
+                    </Text>
                     <Text style={styles.cardText}>
-                      Đồng bộ với nhịp sinh học tự nhiên
+                      {t('sleep.scheduleSub')}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -1201,7 +1253,9 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                         size={14}
                         color='#111'
                       />
-                      <Text style={styles.editPillText}>Chỉnh sửa</Text>
+                      <Text style={styles.editPillText}>
+                        {t('common.edit')}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -1215,14 +1269,16 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                       }}
                     >
                       <Ionicons name='moon-outline' size={14} color='#333' />
-                      <Text style={styles.timeBoxLabel}>GIỜ ĐI NGỦ</Text>
+                      <Text style={styles.timeBoxLabel}>
+                        {t('sleep.bedtimeUpper')}
+                      </Text>
                     </View>
                     <Text style={styles.timeBoxTime}>
                       {profile?.bedtime_time
                         ? toTimeInput(profile.bedtime_time)
                         : '--:--'}
                     </Text>
-                    <Text style={styles.timeBoxSub}>Giờ đi ngủ</Text>
+                    <Text style={styles.timeBoxSub}>{t('sleep.bedtime')}</Text>
                   </View>
                   <View style={styles.timeBox}>
                     <View
@@ -1233,32 +1289,38 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                       }}
                     >
                       <Ionicons name='sunny-outline' size={14} color='#333' />
-                      <Text style={styles.timeBoxLabel}>GIỜ THỨC DẬY</Text>
+                      <Text style={styles.timeBoxLabel}>
+                        {t('sleep.wakeTimeUpper')}
+                      </Text>
                     </View>
                     <Text style={styles.timeBoxTime}>
                       {profile?.wake_time
                         ? toTimeInput(profile.wake_time)
                         : '--:--'}
                     </Text>
-                    <Text style={styles.timeBoxSub}>Giờ dậy</Text>
+                    <Text style={styles.timeBoxSub}>{t('sleep.wakeTime')}</Text>
                   </View>
                 </View>
                 <Text style={[styles.cardText, { marginTop: 12 }]}>
-                  Mục tiêu: {goal ? `${goal} giờ` : 'Chưa thiết lập'}
+                  {goal
+                    ? t('sleep.goalLine', { goal })
+                    : t('sleep.goalNotSet')}
                 </Text>
               </View>
             )}
 
             {session && isWakeOverdue ? (
               <View style={styles.questionCard}>
-                <Text style={styles.questionTitle}>Bạn đã dậy chưa?</Text>
-                <Text style={styles.cardText}>
-                  Đã quá giờ dậy
-                  {bannerWakeAt ? ` ${fmtHHMM(bannerWakeAt)}` : ''} mà phiên ngủ
-                  vẫn chưa được xác nhận.
+                <Text style={styles.questionTitle}>
+                  {t('home.wokeUpTitle')}
                 </Text>
                 <Text style={styles.cardText}>
-                  Bạn đã dậy rồi hay vẫn đang ngủ?
+                  {t('sleep.overdueDesc', {
+                    time: bannerWakeAt ? ` ${fmtHHMM(bannerWakeAt)}` : '',
+                  })}
+                </Text>
+                <Text style={styles.cardText}>
+                  {t('sleep.wokeOrSleeping')}
                 </Text>
                 <View style={styles.sleepActionRow}>
                   <TouchableOpacity
@@ -1266,7 +1328,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     onPress={snooze}
                   >
                     <Text style={styles.greyBtnText}>
-                      Chưa dậy, báo lại 10 phút
+                      {t('sleep.notYetSnooze')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1275,7 +1337,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     disabled={saving}
                   >
                     <Text style={styles.saveButtonText}>
-                      {saving ? 'Đang lưu...' : 'Đã dậy, lưu lại'}
+                      {saving ? t('sleep.saving') : t('sleep.wokeUpSave')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1283,22 +1345,28 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
             ) : session ? (
               <View style={styles.questionCard}>
                 <Text style={styles.questionTitle}>
-                  Bạn đang trong phiên ngủ
+                  {t('sleep.inSession')}
                 </Text>
                 <Text style={styles.cardText}>
-                  Bắt đầu lúc {fmtHHMM(new Date(session.startedAt))} ngày{' '}
-                  {keyToDisplay(toKey(new Date(session.startedAt)))}.
+                  {t('sleep.sessionStarted', {
+                    time: fmtHHMM(new Date(session.startedAt)),
+                    date: keyToDisplay(toKey(new Date(session.startedAt))),
+                  })}
                 </Text>
                 <Text style={styles.cardText}>
-                  Đã ngủ {fmtDur(elapsed)}
-                  {wakeAt ? `, dự kiến dậy ${fmtHHMM(wakeAt)}.` : '.'}
+                  {t('sleep.slept', { dur: fmtDur(elapsed) })}
+                  {wakeAt
+                    ? t('sleep.wakeExpectedSuffix', { time: fmtHHMM(wakeAt) })
+                    : '.'}
                 </Text>
                 <View style={styles.sleepActionRow}>
                   <TouchableOpacity
                     style={[styles.sleepActionBtn, styles.greyBtn]}
                     onPress={enterSleepScreen}
                   >
-                    <Text style={styles.greyBtnText}>Vào chế độ ngủ</Text>
+                    <Text style={styles.greyBtnText}>
+                      {t('sleep.enterSleepMode')}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.saveButton, styles.sleepActionBtn]}
@@ -1312,7 +1380,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     disabled={saving}
                   >
                     <Text style={styles.saveButtonText}>
-                      {saving ? 'Đang lưu...' : 'Đã dậy, lưu lại'}
+                      {saving ? t('sleep.saving') : t('sleep.wokeUpSave')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1321,13 +1389,15 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               <TouchableOpacity style={styles.bigButton} onPress={startSleep}>
                 <View style={styles.btnRow}>
                   <Ionicons name='moon-outline' size={18} color='#fff' />
-                  <Text style={styles.bigButtonText}>Bắt đầu chế độ ngủ</Text>
+                  <Text style={styles.bigButtonText}>
+                    {t('sleep.startSleepMode')}
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Báo thức</Text>
+              <Text style={styles.cardTitle}>{t('sleep.alarm')}</Text>
               {alarms.map((a, idx) => (
                 <View
                   key={a.id}
@@ -1372,16 +1442,16 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                 </View>
               ))}
               {alarms.length === 0 && (
-                <Text style={styles.note}>
-                  Chưa có báo thức nào. Bấm + để thêm.
-                </Text>
+                <Text style={styles.note}>{t('sleep.noAlarms')}</Text>
               )}
               {alarmFormVisible ? (
                 <>
                   <Text style={[styles.cardTitle, { marginTop: 12 }]}>
-                    {editingAlarmId ? 'Sửa báo thức' : 'Thêm báo thức'}
+                    {editingAlarmId
+                      ? t('sleep.editAlarm')
+                      : t('sleep.addAlarm')}
                   </Text>
-                  <Text style={styles.label}>Giờ báo thức</Text>
+                  <Text style={styles.label}>{t('sleep.alarmTime')}</Text>
                   <TextInput
                     style={styles.input}
                     value={alarmTimeInput}
@@ -1389,16 +1459,18 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     placeholder='07:30'
                     keyboardType='numbers-and-punctuation'
                   />
-                  <Text style={styles.label}>Nhãn</Text>
+                  <Text style={styles.label}>{t('sleep.label')}</Text>
                   <TextInput
                     style={styles.input}
                     value={alarmLabelInput}
                     onChangeText={setAlarmLabelInput}
-                    placeholder='Báo thức'
+                    placeholder={t('sleep.alarm')}
                   />
-                  <Text style={styles.label}>Lặp lại vào các thứ</Text>
+                  <Text style={styles.label}>
+                    {t('sleep.repeatWeekdays')}
+                  </Text>
                   <View style={styles.dayRow}>
-                    {DAY_SHORT.map((label, d) => (
+                    {dayShort.map((label, d) => (
                       <TouchableOpacity
                         key={label}
                         style={[
@@ -1423,9 +1495,11 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     ))}
                   </View>
                   <Text style={styles.note}>
-                    Không chọn thứ nào thì báo thức chỉ reo một lần rồi tự tắt.
+                    {t('sleep.repeatNote')}
                   </Text>
-                  <Text style={styles.label}>Thời lượng báo lại (phút)</Text>
+                  <Text style={styles.label}>
+                    {t('sleep.snoozeDuration')}
+                  </Text>
                   <TextInput
                     style={styles.input}
                     value={alarmSnoozeInput}
@@ -1438,7 +1512,9 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     onPress={saveAlarm}
                   >
                     <Text style={styles.saveButtonText}>
-                      {editingAlarmId ? 'Lưu thay đổi' : 'Lưu báo thức'}
+                      {editingAlarmId
+                        ? t('sleep.saveChanges')
+                        : t('sleep.saveAlarm')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1448,7 +1524,9 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                       setAlarmFormVisible(false);
                     }}
                   >
-                    <Text style={styles.secondaryButtonText}>Hủy</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      {t('common.cancel')}
+                    </Text>
                   </TouchableOpacity>
                 </>
               ) : (

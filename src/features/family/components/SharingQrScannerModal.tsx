@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CameraView } from 'expo-camera';
+import { useSettings } from '../../../context/SettingsContext';
 import { CODE_RE } from '../utils/sharingFormat';
 
 // Quet QR: camera toan man hinh, chi nhan ma 8 ky tu hop le (doi nguyen van tu SharingScreen).
@@ -13,6 +14,7 @@ export function SharingQrScannerModal({
   onClose: () => void;
   onCodeScanned: (code: string) => void;
 }) {
+  const { t } = useSettings();
   return (
     <Modal visible={visible} transparent animationType='slide'>
       <View style={styles.wrap}>
@@ -28,7 +30,7 @@ export function SharingQrScannerModal({
           }}
         />
         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeText}>Đóng</Text>
+          <Text style={styles.closeText}>{t('common.close')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>

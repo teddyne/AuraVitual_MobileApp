@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { ThemePalette } from '../../../context/SettingsContext';
+import { useSettings, type ThemePalette } from '../../../context/SettingsContext';
 import { displayNameOf, type FamilyMember } from '../../../lib/familyApi';
 
 // Hang thanh vien da ket noi trong SharingSettingsScreen (doi nguyen van).
@@ -13,6 +13,7 @@ export function SharingMemberRow({
   theme: ThemePalette;
   onRevoke: () => void;
 }) {
+  const { t } = useSettings();
   return (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
       <View style={styles.row}>
@@ -28,7 +29,7 @@ export function SharingMemberRow({
           )}
         </View>
         <TouchableOpacity onPress={onRevoke}>
-          <Text style={[styles.revoke, { color: '#C62828' }]}>Hủy kết nối</Text>
+          <Text style={[styles.revoke, { color: '#C62828' }]}>{t('family.revoke')}</Text>
         </TouchableOpacity>
       </View>
     </View>

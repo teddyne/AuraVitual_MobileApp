@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { localToday, type Metric } from './auravitalApi';
+import { displayLocale, translate } from '../i18n/locale';
 
 // =====================================================================
 // Chia sẻ gia đình — lớp API duy nhất cho tính năng này.
@@ -87,14 +88,14 @@ export function displayNameOf(m: {
 
 // "10 phút trước", "1 giờ trước", "Hôm qua", "dd/mm".
 export function timeAgo(iso: string | null | undefined): string {
-  if (!iso) return 'Chưa đồng bộ';
+  if (!iso) return translate('family.timeNever');
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return 'Chưa đồng bộ';
+  if (Number.isNaN(then)) return translate('family.timeNever');
   const diffMin = Math.max(0, Math.floor((Date.now() - then) / 60000));
-  if (diffMin < 1) return 'Vừa xong';
-  if (diffMin < 60) return `${diffMin} phút trước`;
+  if (diffMin < 1) return translate('family.timeJustNow');
+  if (diffMin < 60) return translate('family.timeMinAgo', { min: diffMin });
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour} giờ trước`;
+  if (diffHour < 24) return translate('family.timeHourAgo', { hour: diffHour });
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -274,7 +275,7 @@ export async function getMembers(): Promise<FamilyMember[]> {
     const p = profileById.get(ownerId);
     return {
       ownerId,
-      displayName: p?.display_name ?? 'Người dùng',
+      displayName: p?.display_name ?? translate('family.userFallback'),
       nickname: nickByOwner.get(ownerId) ?? null,
       stepGoal: p?.step_goal ?? 10000,
       waterGoalMl: p?.water_goal_ml ?? 2200,
@@ -390,9 +391,12 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
     events.push({
       id: 'steps-goal',
       icon: '🏃',
-      title: 'Mục tiêu đạt',
-      subtitle: `${name} hoàn thành ${m.stepGoal.toLocaleString('vi-VN')} bước đi bộ`,
-      body: `${name} đã vượt mục tiêu vận động hàng ngày.`,
+      title: translate('family.eventStepsTitle'),
+      subtitle: translate('family.eventStepsSub', {
+        name,
+        goal: m.stepGoal.toLocaleString(displayLocale()),
+      }),
+      body: translate('family.eventStepsBody', { name }),
     });
   }
   if (
@@ -404,9 +408,11 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
     events.push({
       id: 'sleep-goal',
       icon: '🌙',
-      title: 'Giấc ngủ chuẩn',
-      subtitle: 'Thức dậy tự nhiên & đủ giấc',
-      body: `Thời lượng ${metric.sleep_hours} giờ, đạt mục tiêu giấc ngủ.`,
+      title: translate('family.eventSleepTitle'),
+      subtitle: translate('family.eventSleepSub'),
+      body: translate('family.eventSleepBody', {
+        hours: metric.sleep_hours,
+      }),
     });
   }
   if (
@@ -418,9 +424,12 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
     events.push({
       id: 'water-goal',
       icon: '💧',
-      title: 'Uống đủ nước',
-      subtitle: `${name} đã uống đủ ${m.waterGoalMl.toLocaleString('vi-VN')}ml hôm nay`,
-      body: 'Đạt mục tiêu nước trong ngày.',
+      title: translate('family.eventWaterTitle'),
+      subtitle: translate('family.eventWaterSub', {
+        name,
+        ml: m.waterGoalMl.toLocaleString(displayLocale()),
+      }),
+      body: translate('family.eventWaterBody'),
     });
   }
   return events;
@@ -428,8 +437,8 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
 
 // Nhãn trạng thái sức khỏe từ điểm số (để hiển thị badge như Figma).
 export function healthBadge(score: number | null): string {
-  if (score == null) return 'Chưa có dữ liệu';
-  if (score >= 80) return 'Tốt';
-  if (score >= 60) return 'Ổn định';
-  return 'Cần chú ý';
+  if (score == null) return translate('family.noData');
+  if (score >= 80) return translate('family.badgeGood');
+  if (score >= 60) return translate('family.badgeStable');
+  return translate('family.badgeAttention');
 }

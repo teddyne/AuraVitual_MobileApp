@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { levelLabel, type Post } from '../../lib/workoutApi';
+import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 
 export function HomeArticles({
@@ -13,19 +14,18 @@ export function HomeArticles({
   onPressArticle: (post: Post) => void;
   onSeeAll: () => void;
 }) {
+  const { t } = useSettings();
   const [badImg, setBadImg] = useState<Record<string, boolean>>({});
   return (
     <View>
       <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Kiến thức dinh dưỡng</Text>
+        <Text style={styles.sectionTitle}>{t('home.knowledgeTitle')}</Text>
         <TouchableOpacity onPress={onSeeAll}>
-          <Text style={styles.seeAll}>Xem tất cả</Text>
+          <Text style={styles.seeAll}>{t('home.viewAll')}</Text>
         </TouchableOpacity>
       </View>
       {articles.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Chưa có bài viết trong database. Chạy seed v5/v6 rồi tải lại.
-        </Text>
+        <Text style={styles.emptyText}>{t('home.noArticlesSeed')}</Text>
       ) : (
         articles.map((a, index) => (
           <TouchableOpacity
@@ -64,8 +64,8 @@ export function HomeArticles({
               ) : null}
               <Text style={styles.articleMeta}>
                 {a.duration_min != null
-                  ? `${a.duration_min} phút đọc`
-                  : 'Bài viết'}{' '}
+                  ? t('home.readMinutes', { min: a.duration_min })
+                  : t('home.article')}{' '}
                 · {levelLabel(a.level)}
               </Text>
             </View>
