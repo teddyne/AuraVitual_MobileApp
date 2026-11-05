@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
-  StyleSheet,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,54 +10,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../../../context/SettingsContext';
 import {
   WATER_WINDOWS,
-  nextWaterWindow,
   syncReminderNotifications,
 } from '../../../lib/reminders';
-
-const NOTIF_KEY = '@auravital:notifications';
-const CYCLE_DAYS = [1, 2, 3, 5];
-const GREY_PILL = '#D9D9D9';
-
-type NotifSettings = {
-  enabled: boolean;
-  water: boolean;
-  waterIntervalHours: number;
-  sleep: boolean;
-  sleepTime: string;
-  cycle: boolean;
-  cycleDaysBefore: number;
-  meal: boolean;
-  mealBreakfast: string;
-  mealLunch: string;
-  mealDinner: string;
-  wake: boolean;
-  wakeTime: string;
-};
-
-const DEFAULT_NOTIF: NotifSettings = {
-  enabled: true,
-  water: true,
-  waterIntervalHours: 2,
-  sleep: true,
-  sleepTime: '22:00',
-  cycle: true,
-  cycleDaysBefore: 3,
-  meal: true,
-  mealBreakfast: '07:00',
-  mealLunch: '12:00',
-  mealDinner: '18:30',
-  wake: true,
-  wakeTime: '07:30',
-};
-
-const normalizeTime = (text: string): string | null => {
-  const m = text.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;
-  const hh = Number(m[1]);
-  const mm = Number(m[2]);
-  if (hh > 23 || mm > 59) return null;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-};
+import {
+  CYCLE_DAYS,
+  DEFAULT_NOTIF,
+  GREY_PILL,
+  NOTIF_KEY,
+  normalizeTime,
+  type NotifSettings,
+} from '../utils/reminderSettings';
+import { buildNextReminders } from '../utils/nextReminders';
+import { ReminderToggleCard } from '../components/ReminderToggleCard';
+import { ReminderTimeRow } from '../components/ReminderTimeRow';
+import { s } from './RemindersScreen.styles';
 
 export default function RemindersScreen({ navigation }: any) {
   const { theme, locale, t } = useSettings();
@@ -117,45 +80,7 @@ export default function RemindersScreen({ navigation }: any) {
   const goNotifications = () =>
     (navigation.getParent() ?? navigation).navigate('Notifications');
 
-  const nextReminders: string[] = [];
-  if (notif.enabled) {
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    if (notif.water) {
-      const { window, tomorrow } = nextWaterWindow(now);
-      nextReminders.push(
-        `💧 ${locale === 'vi' ? 'Uống nước lúc' : 'Drink water at'} ${window.time}${tomorrow ? (locale === 'vi' ? ' (ngày mai)' : ' (tomorrow)') : ''}`,
-      );
-    }
-    if (notif.meal) {
-      nextReminders.push(
-        `🍽 ${locale === 'vi' ? 'Bữa sáng' : 'Breakfast'} ${notif.mealBreakfast} • ${locale === 'vi' ? 'Bữa trưa' : 'Lunch'} ${notif.mealLunch} • ${locale === 'vi' ? 'Bữa tối' : 'Dinner'} ${notif.mealDinner}`,
-      );
-    }
-    if (notif.wake) {
-      nextReminders.push(
-        `⏰ ${locale === 'vi' ? 'Nhắc thức dậy lúc' : 'Wake reminder at'} ${notif.wakeTime}`,
-      );
-    }
-    if (notif.sleep) {
-      const [h, m] = notif.sleepTime.split(':').map(Number);
-      if (!Number.isNaN(h) && !Number.isNaN(m)) {
-        if (h * 60 + m > nowMin)
-          nextReminders.push(
-            `😴 ${locale === 'vi' ? 'Đi ngủ lúc' : 'Bedtime at'} ${notif.sleepTime}`,
-          );
-        else
-          nextReminders.push(
-            `😴 ${locale === 'vi' ? 'Đi ngủ lúc' : 'Bedtime at'} ${notif.sleepTime} (${locale === 'vi' ? 'ngày mai' : 'tomorrow'})`,
-          );
-      }
-    }
-    if (notif.cycle) {
-      nextReminders.push(
-        `🌸 ${locale === 'vi' ? `Nhắc chu kỳ trước ${notif.cycleDaysBefore} ngày` : `Cycle reminder ${notif.cycleDaysBefore} days before`}`,
-      );
-    }
-  }
+  const nextReminders = buildNextReminders(notif, locale);
 
   const pillStyle = (selected: boolean) => ({
     backgroundColor: selected ? theme.primaryDark : GREY_PILL,
@@ -179,53 +104,29 @@ export default function RemindersScreen({ navigation }: any) {
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
 
-          <View style={[s.card, { backgroundColor: theme.card }]}>
-            <View style={s.row}>
-              <Text style={s.icon}>🔔</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {t('settings.notificationsEnabled')}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {t('settings.notificationsEnabledDesc')}
-                </Text>
-              </View>
-              <Switch
-                value={notif.enabled}
-                onValueChange={(v) => updateNotif({ enabled: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
-              />
-            </View>
-          </View>
+          <ReminderToggleCard
+            icon='🔔'
+            title={t('settings.notificationsEnabled')}
+            desc={t('settings.notificationsEnabledDesc')}
+            value={notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ enabled: v })}
+          />
 
-          <View
-            style={[
-              s.card,
-              { backgroundColor: theme.card },
-              !notif.enabled && { opacity: 0.5 },
-            ]}
+          <ReminderToggleCard
+            icon='💧'
+            title={t('settings.waterReminder')}
+            desc={
+              locale === 'vi'
+                ? '8 khung giờ cố định, nhắc 1 lần vào đầu mỗi khung'
+                : '8 fixed windows, reminded once at each window start'
+            }
+            value={notif.water}
+            disabled={!notif.enabled}
+            dimmed={!notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ water: v })}
           >
-            <View style={s.row}>
-              <Text style={s.icon}>💧</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {t('settings.waterReminder')}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? '8 khung giờ cố định, nhắc 1 lần vào đầu mỗi khung'
-                    : '8 fixed windows, reminded once at each window start'}
-                </Text>
-              </View>
-              <Switch
-                disabled={!notif.enabled}
-                value={notif.water}
-                onValueChange={(v) => updateNotif({ water: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
-              />
-            </View>
             {notif.water && (
               <View style={{ marginTop: 4 }}>
                 {WATER_WINDOWS.map((w) => (
@@ -240,265 +141,163 @@ export default function RemindersScreen({ navigation }: any) {
                 </Text>
               </View>
             )}
-          </View>
+          </ReminderToggleCard>
 
-          <View
-            style={[
-              s.card,
-              { backgroundColor: theme.card },
-              !notif.enabled && { opacity: 0.5 },
-            ]}
+          <ReminderToggleCard
+            icon='🍽'
+            title={locale === 'vi' ? 'Nhắc bữa ăn' : 'Meal reminders'}
+            desc={
+              locale === 'vi'
+                ? `Sáng ${notif.mealBreakfast} • Trưa ${notif.mealLunch} • Tối ${notif.mealDinner}`
+                : `Breakfast ${notif.mealBreakfast} • Lunch ${notif.mealLunch} • Dinner ${notif.mealDinner}`
+            }
+            value={notif.meal}
+            disabled={!notif.enabled}
+            dimmed={!notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ meal: v })}
           >
-            <View style={s.row}>
-              <Text style={s.icon}>🍽</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {locale === 'vi' ? 'Nhắc bữa ăn' : 'Meal reminders'}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? `Sáng ${notif.mealBreakfast} • Trưa ${notif.mealLunch} • Tối ${notif.mealDinner}`
-                    : `Breakfast ${notif.mealBreakfast} • Lunch ${notif.mealLunch} • Dinner ${notif.mealDinner}`}
-                </Text>
-              </View>
-              <Switch
-                disabled={!notif.enabled}
-                value={notif.meal}
-                onValueChange={(v) => updateNotif({ meal: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
-              />
-            </View>
             {notif.meal && (
               <>
-                <View style={s.timeRow}>
-                  <Text style={[s.rowTitle, { color: theme.text }]}>
-                    {locale === 'vi' ? 'Bữa sáng' : 'Breakfast'}
-                  </Text>
-                  <TextInput
-                    value={breakfastDraft}
-                    onChangeText={setBreakfastDraft}
-                    onBlur={() =>
-                      saveDraftTime(
-                        breakfastDraft,
-                        setBreakfastDraft,
-                        notif.mealBreakfast,
-                        {
-                          mealBreakfast:
-                            normalizeTime(breakfastDraft) ??
-                            notif.mealBreakfast,
-                        },
-                      )
-                    }
-                    keyboardType='numbers-and-punctuation'
-                    placeholder='07:00'
-                    placeholderTextColor={theme.muted}
-                    maxLength={5}
-                    style={[
-                      s.timeInput,
-                      { backgroundColor: theme.cardAlt, color: theme.text },
-                    ]}
-                  />
-                </View>
-                <View style={s.timeRow}>
-                  <Text style={[s.rowTitle, { color: theme.text }]}>
-                    {locale === 'vi' ? 'Bữa trưa' : 'Lunch'}
-                  </Text>
-                  <TextInput
-                    value={lunchDraft}
-                    onChangeText={setLunchDraft}
-                    onBlur={() =>
-                      saveDraftTime(
-                        lunchDraft,
-                        setLunchDraft,
-                        notif.mealLunch,
-                        {
-                          mealLunch:
-                            normalizeTime(lunchDraft) ?? notif.mealLunch,
-                        },
-                      )
-                    }
-                    keyboardType='numbers-and-punctuation'
-                    placeholder='12:00'
-                    placeholderTextColor={theme.muted}
-                    maxLength={5}
-                    style={[
-                      s.timeInput,
-                      { backgroundColor: theme.cardAlt, color: theme.text },
-                    ]}
-                  />
-                </View>
-                <View style={s.timeRow}>
-                  <Text style={[s.rowTitle, { color: theme.text }]}>
-                    {locale === 'vi' ? 'Bữa tối' : 'Dinner'}
-                  </Text>
-                  <TextInput
-                    value={dinnerDraft}
-                    onChangeText={setDinnerDraft}
-                    onBlur={() =>
-                      saveDraftTime(
-                        dinnerDraft,
-                        setDinnerDraft,
-                        notif.mealDinner,
-                        {
-                          mealDinner:
-                            normalizeTime(dinnerDraft) ?? notif.mealDinner,
-                        },
-                      )
-                    }
-                    keyboardType='numbers-and-punctuation'
-                    placeholder='18:30'
-                    placeholderTextColor={theme.muted}
-                    maxLength={5}
-                    style={[
-                      s.timeInput,
-                      { backgroundColor: theme.cardAlt, color: theme.text },
-                    ]}
-                  />
-                </View>
-              </>
-            )}
-          </View>
-
-          <View
-            style={[
-              s.card,
-              { backgroundColor: theme.card },
-              !notif.enabled && { opacity: 0.5 },
-            ]}
-          >
-            <View style={s.row}>
-              <Text style={s.icon}>⏰</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {locale === 'vi' ? 'Nhắc thức dậy' : 'Wake reminder'}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? 'Chỉ là cài đặt nhắc, không phải báo thức trong màn hình giấc ngủ.'
-                    : 'Reminder setting only, not the alarm in the sleep screen.'}
-                </Text>
-              </View>
-              <Switch
-                disabled={!notif.enabled}
-                value={notif.wake}
-                onValueChange={(v) => updateNotif({ wake: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
-              />
-            </View>
-            {notif.wake && (
-              <View style={s.timeRow}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {locale === 'vi' ? 'Giờ thức dậy' : 'Wake time'}
-                </Text>
-                <TextInput
-                  value={wakeDraft}
-                  onChangeText={setWakeDraft}
-                  onBlur={() =>
-                    saveDraftTime(wakeDraft, setWakeDraft, notif.wakeTime, {
-                      wakeTime: normalizeTime(wakeDraft) ?? notif.wakeTime,
-                    })
-                  }
-                  keyboardType='numbers-and-punctuation'
-                  placeholder='07:30'
-                  placeholderTextColor={theme.muted}
-                  maxLength={5}
-                  style={[
-                    s.timeInput,
-                    { backgroundColor: theme.cardAlt, color: theme.text },
-                  ]}
-                />
-              </View>
-            )}
-          </View>
-
-          <View
-            style={[
-              s.card,
-              { backgroundColor: theme.card },
-              !notif.enabled && { opacity: 0.5 },
-            ]}
-          >
-            <View style={s.row}>
-              <Text style={s.icon}>😴</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {t('settings.sleepReminder')}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? `Lúc ${notif.sleepTime} mỗi ngày`
-                    : `Daily at ${notif.sleepTime}`}
-                </Text>
-              </View>
-              <Switch
-                disabled={!notif.enabled}
-                value={notif.sleep}
-                onValueChange={(v) => updateNotif({ sleep: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
-              />
-            </View>
-            {notif.sleep && (
-              <View style={s.timeRow}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {t('settings.sleepTimeLabel')}
-                </Text>
-                <TextInput
-                  value={sleepTimeDraft}
-                  onChangeText={setSleepTimeDraft}
+                <ReminderTimeRow
+                  label={locale === 'vi' ? 'Bữa sáng' : 'Breakfast'}
+                  value={breakfastDraft}
+                  placeholder='07:00'
+                  theme={theme}
+                  onChangeText={setBreakfastDraft}
                   onBlur={() =>
                     saveDraftTime(
-                      sleepTimeDraft,
-                      setSleepTimeDraft,
-                      notif.sleepTime,
+                      breakfastDraft,
+                      setBreakfastDraft,
+                      notif.mealBreakfast,
                       {
-                        sleepTime:
-                          normalizeTime(sleepTimeDraft) ?? notif.sleepTime,
+                        mealBreakfast:
+                          normalizeTime(breakfastDraft) ??
+                          notif.mealBreakfast,
                       },
                     )
                   }
-                  keyboardType='numbers-and-punctuation'
-                  placeholder='22:00'
-                  placeholderTextColor={theme.muted}
-                  maxLength={5}
-                  style={[
-                    s.timeInput,
-                    { backgroundColor: theme.cardAlt, color: theme.text },
-                  ]}
                 />
-              </View>
+                <ReminderTimeRow
+                  label={locale === 'vi' ? 'Bữa trưa' : 'Lunch'}
+                  value={lunchDraft}
+                  placeholder='12:00'
+                  theme={theme}
+                  onChangeText={setLunchDraft}
+                  onBlur={() =>
+                    saveDraftTime(
+                      lunchDraft,
+                      setLunchDraft,
+                      notif.mealLunch,
+                      {
+                        mealLunch:
+                          normalizeTime(lunchDraft) ?? notif.mealLunch,
+                      },
+                    )
+                  }
+                />
+                <ReminderTimeRow
+                  label={locale === 'vi' ? 'Bữa tối' : 'Dinner'}
+                  value={dinnerDraft}
+                  placeholder='18:30'
+                  theme={theme}
+                  onChangeText={setDinnerDraft}
+                  onBlur={() =>
+                    saveDraftTime(
+                      dinnerDraft,
+                      setDinnerDraft,
+                      notif.mealDinner,
+                      {
+                        mealDinner:
+                          normalizeTime(dinnerDraft) ?? notif.mealDinner,
+                      },
+                    )
+                  }
+                />
+              </>
             )}
-          </View>
+          </ReminderToggleCard>
 
-          <View
-            style={[
-              s.card,
-              { backgroundColor: theme.card },
-              !notif.enabled && { opacity: 0.5 },
-            ]}
+          <ReminderToggleCard
+            icon='⏰'
+            title={locale === 'vi' ? 'Nhắc thức dậy' : 'Wake reminder'}
+            desc={
+              locale === 'vi'
+                ? 'Chỉ là cài đặt nhắc, không phải báo thức trong màn hình giấc ngủ.'
+                : 'Reminder setting only, not the alarm in the sleep screen.'
+            }
+            value={notif.wake}
+            disabled={!notif.enabled}
+            dimmed={!notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ wake: v })}
           >
-            <View style={s.row}>
-              <Text style={s.icon}>🌸</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.rowTitle, { color: theme.text }]}>
-                  {t('settings.cycleReminder')}
-                </Text>
-                <Text style={[s.muted, { color: theme.muted }]}>
-                  {locale === 'vi'
-                    ? `Trước ${notif.cycleDaysBefore} ngày`
-                    : `${notif.cycleDaysBefore} days before`}
-                </Text>
-              </View>
-              <Switch
-                disabled={!notif.enabled}
-                value={notif.cycle}
-                onValueChange={(v) => updateNotif({ cycle: v })}
-                trackColor={{ false: '#CCCCCC', true: theme.primaryDark }}
-                thumbColor='#FFFFFF'
+            {notif.wake && (
+              <ReminderTimeRow
+                label={locale === 'vi' ? 'Giờ thức dậy' : 'Wake time'}
+                value={wakeDraft}
+                placeholder='07:30'
+                theme={theme}
+                onChangeText={setWakeDraft}
+                onBlur={() =>
+                  saveDraftTime(wakeDraft, setWakeDraft, notif.wakeTime, {
+                    wakeTime: normalizeTime(wakeDraft) ?? notif.wakeTime,
+                  })
+                }
               />
-            </View>
+            )}
+          </ReminderToggleCard>
+
+          <ReminderToggleCard
+            icon='😴'
+            title={t('settings.sleepReminder')}
+            desc={
+              locale === 'vi'
+                ? `Lúc ${notif.sleepTime} mỗi ngày`
+                : `Daily at ${notif.sleepTime}`
+            }
+            value={notif.sleep}
+            disabled={!notif.enabled}
+            dimmed={!notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ sleep: v })}
+          >
+            {notif.sleep && (
+              <ReminderTimeRow
+                label={t('settings.sleepTimeLabel')}
+                value={sleepTimeDraft}
+                placeholder='22:00'
+                theme={theme}
+                onChangeText={setSleepTimeDraft}
+                onBlur={() =>
+                  saveDraftTime(
+                    sleepTimeDraft,
+                    setSleepTimeDraft,
+                    notif.sleepTime,
+                    {
+                      sleepTime:
+                        normalizeTime(sleepTimeDraft) ?? notif.sleepTime,
+                    },
+                  )
+                }
+              />
+            )}
+          </ReminderToggleCard>
+
+          <ReminderToggleCard
+            icon='🌸'
+            title={t('settings.cycleReminder')}
+            desc={
+              locale === 'vi'
+                ? `Trước ${notif.cycleDaysBefore} ngày`
+                : `${notif.cycleDaysBefore} days before`
+            }
+            value={notif.cycle}
+            disabled={!notif.enabled}
+            dimmed={!notif.enabled}
+            theme={theme}
+            onValueChange={(v) => updateNotif({ cycle: v })}
+          >
             <View style={s.pillRow}>
               {CYCLE_DAYS.map((d) => (
                 <TouchableOpacity
@@ -518,7 +317,7 @@ export default function RemindersScreen({ navigation }: any) {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
+          </ReminderToggleCard>
 
           <TouchableOpacity
             style={[s.primaryBtn, { backgroundColor: theme.primaryDark }]}
@@ -535,45 +334,3 @@ export default function RemindersScreen({ navigation }: any) {
     </SafeAreaProvider>
   );
 }
-
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  headerRow: { marginBottom: 8 },
-  back: { fontSize: 30, fontWeight: '800' },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: 12 },
-  card: { borderRadius: 16, padding: 14, marginTop: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  icon: { fontSize: 22 },
-  rowTitle: { fontWeight: '800' },
-  muted: { lineHeight: 18, marginTop: 2 },
-  pillRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  pillBtn: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
-  pillText: { fontWeight: '700' },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  timeInput: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    width: 90,
-    textAlign: 'center',
-    fontWeight: '800',
-  },
-  previewCard: { borderRadius: 16, padding: 14, marginTop: 12 },
-  previewTitle: { fontWeight: '800', marginBottom: 6 },
-  previewLine: { lineHeight: 20, marginTop: 2 },
-  windowLine: { fontSize: 13, lineHeight: 20 },
-  windowNote: { fontSize: 12, fontStyle: 'italic', marginTop: 6, lineHeight: 17 },
-  note: { textAlign: 'center', fontSize: 12, marginTop: 12 },
-  primaryBtn: {
-    borderRadius: 999,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-});

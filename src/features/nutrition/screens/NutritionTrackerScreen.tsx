@@ -4,13 +4,11 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, G } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
@@ -21,86 +19,15 @@ import {
   type DayNutrition,
   type MealType,
 } from '../../../lib/nutritionApi';
-
-const MACRO_COLORS = { carbs: '#4E8A47', protein: '#A63D2F', fat: '#E8930C' };
-// ĐÃ BỎ MACRO_ICONS: chú thích biểu đồ không còn dùng emoji 🍞🥩🧈 nữa,
-// chỉ còn chấm màu + tên + %, màu giữ nguyên như cũ.
-const MEAL_ICONS: Record<MealType, string> = {
-  breakfast: '🍳',
-  lunch: '🍱',
-  dinner: '🍲',
-  snack: '🍩',
-};
-const DEFAULT_MEALS: MealType[] = ['breakfast', 'lunch', 'dinner'];
-const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-
-function RingChart({
-  totalKcal,
-  goal,
-  carb,
-  protein,
-  fat,
-}: {
-  totalKcal: number;
-  goal: number;
-  carb: number;
-  protein: number;
-  fat: number;
-}) {
-  const eatenKcal = totalKcal > 0 ? totalKcal : 1;
-  const shares = [
-    { r: 95, color: MACRO_COLORS.carbs, share: (carb * 4) / eatenKcal },
-    { r: 75, color: MACRO_COLORS.protein, share: (protein * 4) / eatenKcal },
-    { r: 55, color: MACRO_COLORS.fat, share: (fat * 9) / eatenKcal },
-  ];
-  const pct = goal > 0 ? Math.round((totalKcal / goal) * 100) : 0;
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Svg width={220} height={220} viewBox='0 0 220 220'>
-        <G rotation='-90' origin='110, 110'>
-          {shares.map((ring) => {
-            const c = 2 * Math.PI * ring.r;
-            const filled = c * Math.min(1, Math.max(0, ring.share));
-            return (
-              <React.Fragment key={ring.r}>
-                <Circle
-                  cx={110}
-                  cy={110}
-                  r={ring.r}
-                  stroke='#E9E9E9'
-                  strokeWidth={12}
-                  fill='none'
-                />
-                <Circle
-                  cx={110}
-                  cy={110}
-                  r={ring.r}
-                  stroke={ring.color}
-                  strokeWidth={12}
-                  fill='none'
-                  strokeDasharray={`${filled} ${c}`}
-                  strokeLinecap='round'
-                />
-              </React.Fragment>
-            );
-          })}
-        </G>
-      </Svg>
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ fontSize: 36, fontWeight: '800' }}>{pct}%</Text>
-        <Text style={{ fontSize: 14, color: '#666' }}>{totalKcal} kcal</Text>
-      </View>
-    </View>
-  );
-}
+import {
+  DEFAULT_MEALS,
+  MACRO_COLORS,
+  MEAL_ICONS,
+  MEAL_TYPES,
+} from '../constants';
+import { timeOf } from '../utils/nutritionFormat';
+import { RingChart } from '../components/RingChart';
+import { makeStyles } from './NutritionTrackerScreen.styles';
 
 export default function NutritionTrackerScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -169,10 +96,6 @@ export default function NutritionTrackerScreen({ navigation }: any) {
   const isOver = day ? day.calorieGoal > 0 && remaining < 0 : false;
   const macroPct = (macroKcal: number) =>
     eatenKcal > 0 ? Math.round((macroKcal / eatenKcal) * 100) : 0;
-  const timeOf = (iso: string) => {
-    const d = new Date(iso);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
   const loadFailedText = (() => {
     try {
       const v = (t as any)('nutrition.loadFailed');
@@ -362,137 +285,4 @@ export default function NutritionTrackerScreen({ navigation }: any) {
       </SafeAreaView>
     </SafeAreaProvider>
   );
-}
-
-function makeStyles(theme: any) {
-  return StyleSheet.create({
-    wrap: { flex: 1, backgroundColor: theme.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-    },
-    back: { fontSize: 30, color: theme.text, width: 32 },
-    title: { fontSize: 18, fontWeight: '700', color: theme.text },
-    hero: {
-      backgroundColor: theme.card,
-      margin: 16,
-      borderRadius: 20,
-      padding: 16,
-      alignItems: 'center',
-    },
-    heroSmall: {
-      fontSize: 12,
-      color: theme.muted,
-      marginVertical: 4,
-      textAlign: 'center',
-    },
-    // SỬA Ở ĐÂY: dòng còn lại khi âm sẽ hiện màu đỏ, đậm hơn để dễ thấy là đã vượt.
-    overRemaining: { color: '#C62828', fontWeight: '700' },
-    heroBig: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: theme.text,
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    legend: {
-      flexDirection: 'row',
-      gap: 16,
-      marginTop: 8,
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-    },
-    legendText: { fontSize: 12, fontWeight: '700' },
-    section: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-      marginHorizontal: 16,
-      marginTop: 8,
-      marginBottom: 8,
-    },
-    card: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.card,
-      marginHorizontal: 16,
-      marginBottom: 10,
-      borderRadius: 16,
-      padding: 14,
-      gap: 10,
-    },
-    colorBar: { width: 6, height: 32, borderRadius: 3 },
-    mealIcon: { fontSize: 24 },
-    cardTitle: { fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 },
-    cardValue: { fontSize: 15, fontWeight: '700', color: theme.text },
-    muted: { fontSize: 13, color: theme.muted, marginTop: 2 },
-    plusBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.cardAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    plusText: {
-      fontSize: 20,
-      color: theme.primaryDark,
-      fontWeight: '800',
-      lineHeight: 22,
-    },
-    primaryBtn: {
-      backgroundColor: theme.primaryDark,
-      borderRadius: 999,
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      marginTop: 12,
-    },
-    primaryBtnText: { color: '#fff', fontWeight: '700' },
-    fab: {
-      position: 'absolute',
-      right: 20,
-      bottom: 24,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: theme.primaryDark,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    fabText: { color: '#fff', fontSize: 28, lineHeight: 30 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      justifyContent: 'flex-end',
-    },
-    modalCard: {
-      backgroundColor: theme.card,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 18, fontWeight: '800', color: theme.text },
-    modalSub: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 4,
-      marginBottom: 12,
-    },
-    modalBtn: {
-      backgroundColor: theme.cardAlt,
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 8,
-    },
-    modalBtnText: { color: theme.primaryDark, fontWeight: '700', fontSize: 15 },
-    cancelText: {
-      color: theme.muted,
-      fontWeight: '700',
-      textAlign: 'center',
-      padding: 10,
-    },
-  });
 }

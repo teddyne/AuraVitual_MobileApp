@@ -1,3 +1,5 @@
+import type { Metric, Profile } from './auravitalApi';
+
 export type ActivityId =
   'sedentary' | 'light' | 'moderate' | 'high' | 'veryHigh';
 export type DurationUnit = 'day' | 'week' | 'month';
@@ -312,4 +314,50 @@ export function calcRecommendation(input: {
     cycleOvulationISO,
     cycleOvulationLabel: isoToLabel(cycleOvulationISO),
   };
+}
+
+// Chuyen nguyen van tu HomeScreen (src/features/home/screens/HomeScreen.tsx):
+// diem suc khoe tong hop tu buoc chan / giac ngu / nuoc / calo cua 1 ngay.
+// Khong doi cong thuc, khong doi ten.
+export function calcHealthScore(
+  metric: Metric | null,
+  profile: Profile,
+  kcal: number,
+): number | null {
+  const parts: { ratio: number; weight: number }[] = [];
+  if (metric?.steps != null && profile.step_goal) {
+    parts.push({
+      ratio: Math.min(1, Number(metric.steps) / Number(profile.step_goal)),
+      weight: 40,
+    });
+  }
+  if (metric?.sleep_hours != null && profile.sleep_goal_hours) {
+    parts.push({
+      ratio: Math.min(
+        1,
+        Number(metric.sleep_hours) / Number(profile.sleep_goal_hours),
+      ),
+      weight: 30,
+    });
+  }
+  if (metric?.water_ml != null && profile.water_goal_ml) {
+    parts.push({
+      ratio: Math.min(
+        1,
+        Number(metric.water_ml) / Number(profile.water_goal_ml),
+      ),
+      weight: 20,
+    });
+  }
+  if (kcal > 0 && profile.calorie_goal) {
+    const goal = Number(profile.calorie_goal);
+    parts.push({
+      ratio: 1 - Math.min(1, Math.abs(kcal - goal) / goal),
+      weight: 10,
+    });
+  }
+  if (parts.length < 2) return null;
+  const totalWeight = parts.reduce((s, pr) => s + pr.weight, 0);
+  const weighted = parts.reduce((s, pr) => s + pr.ratio * pr.weight, 0);
+  return Math.round((weighted / totalWeight) * 100);
 }

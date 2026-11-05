@@ -1,12 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Dimensions,
-  Image,
-  Modal,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -19,8 +15,6 @@ import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
 import { supabase } from '../../../lib/supabase';
 import {
-  formatNumber,
-  formatSleep,
   getDaysToNextPeriodOnDate,
   getMetricByDate,
   getPost,
@@ -51,76 +45,20 @@ import {
   type WeeklySummary,
 } from '../../../lib/workoutApi';
 import { computeWakeAt } from '../../../lib/sleepSession';
-
-const { width: screenWidth } = Dimensions.get('window');
-// Chiều rộng khả dụng của banner = màn hình trừ padding 16 mỗi bên của màn hình chính.
-const bannerWidth = screenWidth - 32;
+import { calcHealthScore } from '../../../lib/healthCalc';
+import { addDays, toKey } from '../../../utils/dates';
+import { resolveGreetingName } from '../utils/homeUtils';
+import { makeStyles } from './HomeScreen.styles';
+import { HomeBannerCarousel } from '../components/HomeBannerCarousel';
+import { HealthScoreHero } from '../components/HealthScoreHero';
+import { WaterCard } from '../components/WaterCard';
+import { DateNavigator } from '../components/DateNavigator';
+import { WakePromptCard } from '../components/WakePromptCard';
+import { CalendarModal } from '../components/CalendarModal';
 
 const SESSION_KEY = '@auravital:sleep_session';
 const MODE_KEY = '@auravital:sleep_mode';
 const READ_KEY = '@auravital:notifications_read';
-
-const pad = (n: number) => String(n).padStart(2, '0');
-const toKey = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const addDays = (d: Date, n: number) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-};
-
-function resolveGreetingName(profile: Profile, user: any): string {
-  const fromProfile = profile.display_name?.trim() ?? '';
-  if (fromProfile && !fromProfile.includes('@')) return fromProfile;
-  const fromAuth = user?.name?.trim() ?? '';
-  const emailPrefix = user?.email?.split('@')[0] ?? '';
-  if (fromAuth && !fromAuth.includes('@') && fromAuth !== emailPrefix)
-    return fromAuth;
-  return 'Bạn';
-}
-
-function calcHealthScore(
-  metric: Metric | null,
-  profile: Profile,
-  kcal: number,
-): number | null {
-  const parts: { ratio: number; weight: number }[] = [];
-  if (metric?.steps != null && profile.step_goal) {
-    parts.push({
-      ratio: Math.min(1, Number(metric.steps) / Number(profile.step_goal)),
-      weight: 40,
-    });
-  }
-  if (metric?.sleep_hours != null && profile.sleep_goal_hours) {
-    parts.push({
-      ratio: Math.min(
-        1,
-        Number(metric.sleep_hours) / Number(profile.sleep_goal_hours),
-      ),
-      weight: 30,
-    });
-  }
-  if (metric?.water_ml != null && profile.water_goal_ml) {
-    parts.push({
-      ratio: Math.min(
-        1,
-        Number(metric.water_ml) / Number(profile.water_goal_ml),
-      ),
-      weight: 20,
-    });
-  }
-  if (kcal > 0 && profile.calorie_goal) {
-    const goal = Number(profile.calorie_goal);
-    parts.push({
-      ratio: 1 - Math.min(1, Math.abs(kcal - goal) / goal),
-      weight: 10,
-    });
-  }
-  if (parts.length < 2) return null;
-  const totalWeight = parts.reduce((s, pr) => s + pr.weight, 0);
-  const weighted = parts.reduce((s, pr) => s + pr.ratio * pr.weight, 0);
-  return Math.round((weighted / totalWeight) * 100);
-}
 
 type DetailRoute =
   'StepsDetail' | 'SleepTracker' | 'CycleTracking' | 'Nutrition';
@@ -615,23 +553,6 @@ export default function HomeScreen({ navigation }: any) {
     sleepAvgHours: Math.round((week.sleep / 7) * 10) / 10,
   };
 
-  const calYear = calendarMonth.getFullYear();
-  const calMonth = calendarMonth.getMonth();
-  const calDays = new Date(calYear, calMonth + 1, 0).getDate();
-  const calOffset = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
-  const calCells: (number | null)[] = [
-    ...Array(calOffset).fill(null),
-    ...Array.from({ length: calDays }, (_, i) => i + 1),
-  ];
-  const weekdayLabels =
-    locale === 'en'
-      ? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
-      : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-  const monthLabel = calendarMonth.toLocaleDateString(dateLocale, {
-    month: 'long',
-    year: 'numeric',
-  });
-
   return (
     <SafeAreaProvider>
       <SafeAreaView style={s.safe}>
@@ -669,208 +590,94 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           {/* Banner lướt ngang */}
-          <View style={s.homeBannerWrap}>
-            <View style={s.homeBannerClip}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  setBannerIndex(
-                    Math.round(
-                      e.nativeEvent.contentOffset.x / bannerWidth,
-                    ),
-                  );
-                }}
-              >
-                {homeBanners.map((item) => (
-                  <View key={item.uri} style={s.homeBannerSlide}>
-                    <Image
-                      source={{ uri: item.uri }}
-                      style={s.homeBannerImg}
-                      resizeMode='cover'
-                    />
-                    <View style={s.homeBannerOverlay}>
-                      <Text style={s.homeBannerTitle}>{item.title}</Text>
-                      <Text style={s.homeBannerSub}>{item.sub}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={s.homeBannerDots}>
-              {homeBanners.map((item, i) => (
-                <View
-                  key={item.uri}
-                  style={[
-                    s.homeBannerDot,
-                    i === bannerIndex && s.homeBannerDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
+          <HomeBannerCarousel
+            banners={homeBanners}
+            bannerIndex={bannerIndex}
+            onIndexChange={setBannerIndex}
+            theme={theme}
+          />
 
-          <View
-            style={s.dateNav}
+          <DateNavigator
+            selectedLabel={selectedLabel}
+            isToday={isToday}
+            onPrev={() => changeDay(-1)}
+            onNext={() => changeDay(1)}
+            onOpenCalendar={openCalendar}
+            onBackToToday={() => selectDate(new Date())}
             onTouchStart={onDateTouchStart}
             onTouchEnd={onDateTouchEnd}
-          >
-            <TouchableOpacity
-              style={s.dateNavBtn}
-              onPress={() => changeDay(-1)}
-            >
-              <Text style={s.dateNavBtnText}>‹</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.dateNavCenter} onPress={openCalendar}>
-              <Text style={s.dateLabel}>{selectedLabel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.dateNavBtn}
-              onPress={() => changeDay(1)}
-              disabled={isToday}
-            >
-              <Text style={[s.dateNavBtnText, isToday && s.disabledText]}>
-                ›
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {!isToday && (
-            <>
-              <Text style={s.viewingPast}>
-                {tr(
-                  'home.viewingPast',
-                  'Đang xem lại ngày cũ',
-                  'Viewing a past date',
-                )}
-              </Text>
-              <TouchableOpacity
-                style={s.todayChip}
-                onPress={() => selectDate(new Date())}
-              >
-                <Text style={s.todayChipText}>
-                  {tr('home.backToToday', 'Về hôm nay', 'Back to today')}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+            viewingPastText={tr(
+              'home.viewingPast',
+              'Đang xem lại ngày cũ',
+              'Viewing a past date',
+            )}
+            backToTodayText={tr(
+              'home.backToToday',
+              'Về hôm nay',
+              'Back to today',
+            )}
+            s={s}
+          />
 
           {wakePrompt ? (
-            <View style={s.wakeCard}>
-              <Text style={s.cardTitle}>
-                {tr('home.wokeUpTitle', 'Bạn đã dậy chưa?', 'Are you awake?')}
-              </Text>
-              <Text style={s.muted}>
-                {tr(
-                  'home.wokeUpDesc',
-                  'Đã đến giờ thức dậy nhưng phiên ngủ chưa được xác nhận. Bấm Đã dậy để tắt chế độ ngủ và lưu giấc ngủ.',
-                  'It is past your wake-up time, but this sleep session is still unconfirmed. Tap Woke up to end sleep mode and save it.',
-                )}
-              </Text>
-              <TouchableOpacity style={s.primaryBtn} onPress={finishWakePrompt}>
-                <Text style={s.primaryBtnText}>
-                  {tr('home.wokeUp', 'Đã dậy', 'Woke up')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={s.ghostBtn}
-                onPress={() => setWakePrompt(null)}
-              >
-                <Text style={s.ghostBtnText}>
-                  {tr('home.stillSleeping', 'Vẫn đang ngủ', 'Still sleeping')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <WakePromptCard
+              title={tr('home.wokeUpTitle', 'Bạn đã dậy chưa?', 'Are you awake?')}
+              desc={tr(
+                'home.wokeUpDesc',
+                'Đã đến giờ thức dậy nhưng phiên ngủ chưa được xác nhận. Bấm Đã dậy để tắt chế độ ngủ và lưu giấc ngủ.',
+                'It is past your wake-up time, but this sleep session is still unconfirmed. Tap Woke up to end sleep mode and save it.',
+              )}
+              wokeUpText={tr('home.wokeUp', 'Đã dậy', 'Woke up')}
+              stillSleepingText={tr(
+                'home.stillSleeping',
+                'Vẫn đang ngủ',
+                'Still sleeping',
+              )}
+              onFinish={finishWakePrompt}
+              onDismiss={() => setWakePrompt(null)}
+              s={s}
+            />
           ) : null}
 
-          <View style={s.hero}>
-            <View style={s.scoreCircle}>
-              <Text style={s.score}>{score == null ? '--' : score}</Text>
-              <Text style={s.scoreLabel}>
-                {score == null
-                  ? tr('home.notEnough', 'CHƯA ĐỦ DỮ LIỆU', 'NOT ENOUGH DATA')
-                  : tr('home.healthScore', 'ĐIỂM SỨC KHỎE', 'HEALTH SCORE')}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.heroTitle}>
-                🌿 {tr('home.healthScore', 'Điểm số Sức khỏe', 'Health Score')}
-              </Text>
-              {score == null ? (
-                <Text style={s.heroText}>
-                  {tr(
+          <HealthScoreHero
+            score={score}
+            scoreLabel={
+              score == null
+                ? tr('home.notEnough', 'CHƯA ĐỦ DỮ LIỆU', 'NOT ENOUGH DATA')
+                : tr('home.healthScore', 'ĐIỂM SỨC KHỎE', 'HEALTH SCORE')
+            }
+            title={tr('home.healthScore', 'Điểm số Sức khỏe', 'Health Score')}
+            desc={
+              score == null
+                ? tr(
                     'home.notEnoughDesc',
                     'Chưa đủ dữ liệu ngày này để tính điểm. Cần có ít nhất 2 trong các chỉ số: bước chân, giấc ngủ, nước và năng lượng trong ngày đó.',
                     'Not enough data on this date to calculate a score. At least 2 of steps, sleep, water and energy are needed for that date.',
-                  )}
-                </Text>
-              ) : (
-                <Text style={s.heroText}>
-                  {tr(
+                  )
+                : `${tr(
                     'home.scoreDesc',
                     'Dựa trên phân tích nhịp sinh học tổng thể, điểm sức khỏe của bạn là',
                     'Based on your overall biorhythm analysis, your health score is',
-                  )}{' '}
-                  {score}.
-                </Text>
-              )}
-            </View>
-          </View>
+                  )} ${score}.`
+            }
+            s={s}
+          />
 
-          <View style={s.card}>
-            <View style={s.rowBetween}>
-              <Text style={s.cardTitle}>
-                {tr('home.waterTitle', 'Lượng nước đã uống', 'Water drunk')}
-              </Text>
-              <Text style={s.waterValue}>
-                {formatNumber(water)}
-                <Text style={s.muted}>
-                  {waterGoal > 0 ? `/${formatNumber(waterGoal)} ml` : ' ml'}
-                </Text>
-              </Text>
-            </View>
-            <View style={s.glasses}>
-              {Array.from({ length: cupCount }).map((_, i) => (
-                <TouchableOpacity
-                  key={i}
-                  disabled={!isToday}
-                  style={[
-                    s.glass,
-                    i < filled && s.glassFilled,
-                    i === filled && isToday && s.glassNext,
-                  ]}
-                  onPress={() => onGlassPress(i)}
-                >
-                  <Ionicons
-                    name={
-                      i < filled
-                        ? 'water'
-                        : i === filled && isToday
-                          ? 'add'
-                          : 'water-outline'
-                    }
-                    size={20}
-                    color={
-                      i < filled
-                        ? '#fff'
-                        : i === filled && isToday
-                          ? '#2196F3'
-                          : '#90CAF9'
-                    }
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-            {!isToday && (
-              <Text style={s.muted}>
-                {tr(
-                  'home.readOnly',
-                  'Chỉ xem lại, không sửa được nước của ngày cũ.',
-                  'Read-only. Water from a past date cannot be edited.',
-                )}
-              </Text>
+          <WaterCard
+            water={water}
+            waterGoal={waterGoal}
+            filled={filled}
+            cupCount={cupCount}
+            isToday={isToday}
+            onGlassPress={onGlassPress}
+            title={tr('home.waterTitle', 'Lượng nước đã uống', 'Water drunk')}
+            readOnlyText={tr(
+              'home.readOnly',
+              'Chỉ xem lại, không sửa được nước của ngày cũ.',
+              'Read-only. Water from a past date cannot be edited.',
             )}
-          </View>
+            s={s}
+          />
 
           {/* 1/4 — Chỉ số nổi bật */}
           <HighlightCards
@@ -919,367 +726,21 @@ export default function HomeScreen({ navigation }: any) {
           />
         </ScrollView>
 
-        <Modal
+        <CalendarModal
           visible={calendarVisible}
-          transparent
-          animationType='fade'
-          onRequestClose={() => setCalendarVisible(false)}
-        >
-          <View style={s.modalOverlay}>
-            <View style={s.modalCard}>
-              <View style={s.calHeader}>
-                <TouchableOpacity
-                  onPress={() =>
-                    setCalendarMonth(new Date(calYear, calMonth - 1, 1))
-                  }
-                >
-                  <Text style={s.calArrow}>‹</Text>
-                </TouchableOpacity>
-                <Text style={s.calMonthLabel}>{monthLabel}</Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    setCalendarMonth(new Date(calYear, calMonth + 1, 1))
-                  }
-                >
-                  <Text style={s.calArrow}>›</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={s.calHeader}>
-                <TouchableOpacity
-                  onPress={() =>
-                    setCalendarMonth(new Date(calYear - 1, calMonth, 1))
-                  }
-                >
-                  <Text style={s.calArrow}>‹</Text>
-                </TouchableOpacity>
-                <Text style={s.calMonthLabel}>
-                  {locale === 'en' ? `Year ${calYear}` : `Năm ${calYear}`}
-                </Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    setCalendarMonth(new Date(calYear + 1, calMonth, 1))
-                  }
-                >
-                  <Text style={s.calArrow}>›</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={s.calWeekRow}>
-                {weekdayLabels.map((w) => (
-                  <Text key={w} style={s.calWeekText}>
-                    {w}
-                  </Text>
-                ))}
-              </View>
-              <View style={s.calGrid}>
-                {calCells.map((day, idx) => {
-                  if (day === null)
-                    return <View key={`empty-${idx}`} style={s.calCell} />;
-                  const cellDate = new Date(calYear, calMonth, day);
-                  const isFuture = cellDate > todayMidnight;
-                  const isSelectedCell = toKey(cellDate) === selectedKey;
-                  const isTodayCell = toKey(cellDate) === todayKey;
-                  return (
-                    <TouchableOpacity
-                      key={day}
-                      disabled={isFuture}
-                      onPress={() => selectDate(cellDate)}
-                      style={[
-                        s.calCell,
-                        isSelectedCell && s.calCellSelected,
-                        isTodayCell && !isSelectedCell && s.calCellToday,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          s.calCellText,
-                          isSelectedCell && s.calCellTextSelected,
-                          isFuture && s.calCellTextDisabled,
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <TouchableOpacity
-                style={s.primaryBtn}
-                onPress={() => setCalendarVisible(false)}
-              >
-                <Text style={s.primaryBtnText}>
-                  {tr('common.close', 'Đóng', 'Close')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          month={calendarMonth}
+          onMonthChange={setCalendarMonth}
+          onClose={() => setCalendarVisible(false)}
+          onSelectDate={selectDate}
+          selectedKey={selectedKey}
+          todayKey={todayKey}
+          todayMidnight={todayMidnight}
+          locale={locale}
+          dateLocale={dateLocale}
+          closeText={tr('common.close', 'Đóng', 'Close')}
+          s={s}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
-}
-
-function makeStyles(theme: any, isDark: boolean) {
-  return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.background },
-    wrap: { flex: 1, backgroundColor: theme.background, padding: 16 },
-  homeBannerWrap: { marginTop: 16 },
-  homeBannerClip: { borderRadius: 16, overflow: 'hidden', height: 170, backgroundColor: '#E8F5E9' },
-  homeBannerSlide: { width: bannerWidth, height: 170 },
-  homeBannerImg: { width: '100%', height: 170 },
-  homeBannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.45)' },
-  homeBannerTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  homeBannerSub: { color: '#fff', fontSize: 13, marginTop: 4, opacity: 0.9 },
-  homeBannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
-  homeBannerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#C8D8CC' },
-  homeBannerDotActive: { backgroundColor: theme.primaryDark },
-    center: {
-      flex: 1,
-      backgroundColor: theme.background,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-    },
-    centerTitle: { fontSize: 18, fontWeight: '800', color: theme.text },
-    muted: { fontSize: 12, color: theme.muted, marginTop: 4, lineHeight: 17 },
-    primaryBtn: {
-      backgroundColor: theme.primaryDark,
-      borderRadius: 999,
-      padding: 14,
-      marginTop: 16,
-      alignItems: 'center',
-    },
-    primaryBtnText: { color: '#fff', fontWeight: '800' },
-    ghostBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
-    ghostBtnText: { color: theme.text, fontWeight: '700' },
-    topBar: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    refreshText: { color: theme.primaryDark, fontWeight: '700' },
-    bellBtn: { position: 'relative', padding: 6, marginLeft: 20 },
-    bellDot: {
-      position: 'absolute',
-      top: 4,
-      right: 4,
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: theme.primaryDark,
-    },
-    logo: { fontSize: 18, fontWeight: '800', color: theme.primaryDark },
-    hello: { fontSize: 20, fontWeight: '800', color: theme.text, marginTop: 2 },
-    dateNav: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.card,
-      borderRadius: 20,
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      marginTop: 16,
-    },
-    dateNavBtn: { paddingHorizontal: 12, paddingVertical: 6 },
-    dateNavBtnText: {
-      fontSize: 28,
-      color: theme.primaryDark,
-      fontWeight: '800',
-    },
-    dateNavCenter: { flex: 1, alignItems: 'center' },
-    dateLabel: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: theme.text,
-      textAlign: 'center',
-      textTransform: 'capitalize',
-    },
-    swipeHint: {
-      fontSize: 11,
-      color: theme.muted,
-      marginTop: 4,
-      textAlign: 'center',
-    },
-    disabledText: { color: theme.muted },
-    viewingPast: {
-      textAlign: 'center',
-      color: theme.muted,
-      fontSize: 12,
-      marginTop: 10,
-    },
-    todayChip: {
-      alignSelf: 'center',
-      backgroundColor: theme.cardAlt,
-      borderRadius: 999,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      marginTop: 8,
-    },
-    todayChipText: {
-      color: theme.primaryDark,
-      fontWeight: '800',
-      fontSize: 13,
-    },
-    wakeCard: {
-      backgroundColor: '#FFF8E1',
-      borderRadius: 20,
-      padding: 16,
-      marginTop: 16,
-      borderWidth: 1,
-      borderColor: '#F2C94C',
-    },
-    hero: {
-      flexDirection: 'row',
-      backgroundColor: theme.card,
-      borderRadius: 20,
-      padding: 16,
-      marginTop: 16,
-      gap: 14,
-    },
-    scoreCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      borderWidth: 4,
-      borderColor: '#A5D6A7',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    score: { fontSize: 24, fontWeight: '800', color: theme.primaryDark },
-    scoreLabel: {
-      fontSize: 9,
-      fontWeight: '700',
-      color: theme.muted,
-      textAlign: 'center',
-    },
-    heroTitle: { fontSize: 16, fontWeight: '800', color: theme.text },
-    heroText: { color: theme.muted, lineHeight: 20, marginTop: 6 },
-    card: {
-      backgroundColor: theme.card,
-      borderRadius: 20,
-      padding: 16,
-      marginTop: 16,
-    },
-    rowBetween: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: 20,
-    },
-    cardTitle: { fontSize: 14, fontWeight: '700', color: theme.text, flex: 1 },
-    waterValue: { fontSize: 18, fontWeight: '800', color: '#1976D2' },
-    glasses: { flexDirection: 'row', gap: 8, marginVertical: 12 },
-    glass: {
-      flex: 1,
-      height: 46,
-      borderRadius: 23,
-      backgroundColor: theme.cardAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    glassFilled: { backgroundColor: '#2196F3' },
-    glassNext: {
-      backgroundColor: '#E3F2FD',
-      borderWidth: 1.5,
-      borderColor: '#2196F3',
-      borderStyle: 'dashed',
-    },
-    sectionTitle: { fontSize: 16, fontWeight: '800', color: theme.text },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
-    miniCard: {
-      width: '47%',
-      backgroundColor: theme.card,
-      borderRadius: 18,
-      padding: 14,
-    },
-    miniIcon: { fontSize: 20 },
-    miniSub: { fontSize: 11, color: theme.muted, marginTop: 6 },
-    miniValue: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: theme.text,
-      marginTop: 6,
-    },
-    miniLabel: { fontSize: 13, color: theme.muted, marginTop: 2 },
-    banner: {
-      backgroundColor: '#2E7D32',
-      borderRadius: 20,
-      padding: 16,
-      marginTop: 12,
-    },
-    bannerTag: { color: '#C8E6C9', fontSize: 11, fontWeight: '800' },
-    bannerTitle: {
-      color: '#fff',
-      fontSize: 17,
-      fontWeight: '800',
-      marginTop: 8,
-    },
-    bannerSub: { color: '#E8F5E9', marginTop: 4 },
-    article: {
-      flexDirection: 'row',
-      backgroundColor: theme.card,
-      borderRadius: 18,
-      padding: 12,
-      marginTop: 12,
-      gap: 12,
-    },
-    articleThumb: { fontSize: 40 },
-    articleTag: { fontSize: 11, fontWeight: '800', color: theme.primaryDark },
-    articleTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.text,
-      marginVertical: 4,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 20,
-    },
-    modalCard: {
-      backgroundColor: theme.card,
-      borderRadius: 24,
-      padding: 16,
-      width: '100%',
-    },
-    calHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    calArrow: {
-      fontSize: 26,
-      color: theme.primaryDark,
-      fontWeight: '800',
-      paddingHorizontal: 10,
-    },
-    calMonthLabel: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: theme.text,
-      textTransform: 'capitalize',
-    },
-    calWeekRow: { flexDirection: 'row', marginTop: 6, marginBottom: 4 },
-    calWeekText: {
-      width: '14.28%',
-      textAlign: 'center',
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.muted,
-    },
-    calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-    calCell: {
-      width: '14.28%',
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 20,
-    },
-    calCellSelected: { backgroundColor: theme.primaryDark },
-    calCellToday: { borderWidth: 1, borderColor: theme.primaryDark },
-    calCellText: { color: theme.text, fontWeight: '600' },
-    calCellTextSelected: { color: '#fff', fontWeight: '800' },
-    calCellTextDisabled: { color: theme.muted },
-  });
 }

@@ -1,13 +1,11 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   type TextInputInstance,
@@ -24,63 +22,11 @@ import {
   getPendingDeepLink,
   clearPendingDeepLink,
 } from '../../../lib/pendingDeepLink';
-
-const BG = '#F9F9FF';
-const INPUT_BG = '#EEF1FF';
-const BUTTON_GREEN = '#4E8A47';
+import { AuthField } from '../components/AuthField';
+import { BG } from '../constants';
+import { styles } from './ResetPasswordScreen.styles';
 
 type Status = 'checking' | 'ready' | 'invalid';
-
-// Ô nhập đúng kiểu màn Login: label in hoa, ô nền xanh nhạt, không viền.
-function ResetField({
-  label,
-  icon,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  returnKeyType,
-  onSubmitEditing,
-  blurOnSubmit,
-  inputRef,
-  right,
-}: {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  returnKeyType?: 'done' | 'go' | 'next';
-  onSubmitEditing?: () => void;
-  blurOnSubmit?: boolean;
-  inputRef?: React.RefObject<TextInputInstance | null>;
-  right?: ReactNode;
-}) {
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputBox}>
-        <Ionicons name={icon} size={20} color="#7A8A7A" style={styles.icon} />
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.muted}
-          secureTextEntry={secureTextEntry}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-          blurOnSubmit={blurOnSubmit}
-        />
-        {right}
-      </View>
-    </View>
-  );
-}
 
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<any>();
@@ -267,13 +213,15 @@ export default function ResetPasswordScreen() {
                 <View style={styles.formCard}>
                   {error ? <Text style={styles.error}>{error}</Text> : null}
 
-                  <ResetField
+                  <AuthField
                     label="MẬT KHẨU MỚI"
                     icon="lock-closed-outline"
                     value={password}
                     onChangeText={setPassword}
                     placeholder="Nhập mật khẩu mới"
                     secureTextEntry={!showPass}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     returnKeyType="next"
                     onSubmitEditing={focusConfirm}
                     blurOnSubmit={false}
@@ -294,13 +242,15 @@ export default function ResetPasswordScreen() {
                     }
                   />
 
-                  <ResetField
+                  <AuthField
                     label="XÁC NHẬN MẬT KHẨU"
                     icon="shield-checkmark-outline"
                     value={confirm}
                     onChangeText={setConfirm}
                     placeholder="Nhập lại mật khẩu mới"
                     secureTextEntry={!showConfirm}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     returnKeyType="done"
                     onSubmitEditing={submit}
                     blurOnSubmit
@@ -365,97 +315,3 @@ export default function ResetPasswordScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 32,
-    backgroundColor: BG,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
-  headerSpacer: { width: 30 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.ink },
-  sub: {
-    fontSize: 15,
-    color: colors.muted,
-    lineHeight: 21,
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  formCard: {
-    backgroundColor: colors.white,
-    borderRadius: 28,
-    padding: 20,
-    shadowColor: '#1A1A1A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  fieldWrap: { marginBottom: 18 },
-  label: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.ink,
-    letterSpacing: 0.3,
-    marginBottom: 8,
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: INPUT_BG,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16, color: colors.ink, paddingVertical: 14 },
-  checkIcon: { marginRight: 10 },
-  error: {
-    color: colors.danger,
-    fontSize: 14,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  submitBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: BUTTON_GREEN,
-    borderRadius: 999,
-    paddingVertical: 16,
-    shadowColor: BUTTON_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: colors.white, fontSize: 17, fontWeight: '800' },
-  centerBox: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 8 },
-  centerText: { marginTop: 16, fontSize: 15, color: colors.muted },
-  invalidTitle: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.ink,
-    textAlign: 'center',
-  },
-  invalidText: {
-    marginTop: 10,
-    marginBottom: 24,
-    fontSize: 15,
-    color: colors.muted,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  textBtn: { marginTop: 20, paddingVertical: 8 },
-  textBtnText: { fontSize: 15, fontWeight: '700', color: colors.sageDark },
-});

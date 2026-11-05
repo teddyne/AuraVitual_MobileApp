@@ -1,13 +1,11 @@
-import React, { useRef, useState, type ReactNode } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   type TextInputInstance,
@@ -18,70 +16,10 @@ import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
 import { getProfile } from '../../../lib/auravitalApi';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const BG = '#F9F9FF';
-const INPUT_BG = '#EEF1FF';
-const BUTTON_GREEN = '#4E8A47';
-
-// Ô nhập đúng kiểu trong ảnh: label in hoa, ô nền xanh nhạt, không viền.
-type LoginFieldProps = {
-  label: string;
-  icon: ReactNode;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address';
-  right?: ReactNode;
-  returnKeyType?: 'default' | 'next' | 'go' | 'done' | 'search' | 'send';
-  onSubmitEditing?: () => void;
-  blurOnSubmit?: boolean;
-  inputRef?: React.RefObject<TextInputInstance | null>;
-};
-
-function focusInput(inputRef: React.RefObject<TextInputInstance | null>) {
-  setTimeout(() => inputRef.current?.focus(), 50);
-}
-
-function LoginField({
-  label,
-  icon,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  right,
-  returnKeyType,
-  onSubmitEditing,
-  blurOnSubmit,
-  inputRef,
-}: LoginFieldProps) {
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputBox}>
-        <View style={styles.iconWrap}>{icon}</View>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.muted}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize='none'
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-          blurOnSubmit={blurOnSubmit}
-        />
-        {right}
-      </View>
-    </View>
-  );
-}
+import { AuthField } from '../components/AuthField';
+import { focusInput } from '../utils/focusInput';
+import { BG, EMAIL_RE } from '../constants';
+import { styles } from './LoginScreen.styles';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -207,7 +145,7 @@ export default function LoginScreen() {
             <View style={styles.formCard}>
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              <LoginField
+              <AuthField
                 label='ĐỊA CHỈ EMAIL'
                 icon={
                   <Ionicons name='mail-outline' size={20} color='#7A8A7A' />
@@ -216,11 +154,12 @@ export default function LoginScreen() {
                 onChangeText={setEmail}
                 placeholder='name@gmail.com'
                 keyboardType='email-address'
+                autoCapitalize='none'
                 returnKeyType='next'
                 onSubmitEditing={() => focusInput(passwordRef)}
                 blurOnSubmit={false}
               />
-              <LoginField
+              <AuthField
                 label='MẬT KHẨU'
                 icon={
                   <Ionicons
@@ -233,6 +172,7 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 placeholder='Nhập mật khẩu'
                 secureTextEntry={!showPass}
+                autoCapitalize='none'
                 inputRef={passwordRef}
                 returnKeyType='go'
                 onSubmitEditing={submit}
@@ -332,148 +272,3 @@ export default function LoginScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 32,
-    backgroundColor: BG,
-  },
-  logo: {
-    width: 84,
-    height: 84,
-    borderRadius: 24,
-    backgroundColor: colors.white,
-    alignSelf: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  title: {
-    textAlign: 'center',
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.ink,
-    marginTop: 5,
-  },
-  sub: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: colors.muted,
-    lineHeight: 22,
-    marginTop: 10,
-    marginBottom: 28,
-  },
-  formCard: {
-    backgroundColor: colors.white,
-    borderRadius: 28,
-    padding: 20,
-    shadowColor: '#1A1A1A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  fieldWrap: { marginBottom: 18 },
-  label: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.ink,
-    letterSpacing: 0.3,
-    marginBottom: 8,
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: INPUT_BG,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  iconWrap: { marginRight: 10, justifyContent: 'center' },
-  input: { flex: 1, fontSize: 16, color: colors.ink, paddingVertical: 14 },
-  error: {
-    color: colors.danger,
-    fontSize: 14,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  forgot: { alignSelf: 'flex-end', marginTop: 2, marginBottom: 20 },
-  forgotText: { color: '#E53935', fontSize: 14, fontWeight: '600' },
-  loginBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: BUTTON_GREEN,
-    borderRadius: 999,
-    paddingVertical: 16,
-    shadowColor: BUTTON_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  loginBtnText: { color: colors.white, fontSize: 17, fontWeight: '800' },
-  faceIdBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
-    borderRadius: 999,
-    paddingVertical: 14,
-    marginTop: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  faceIdText: { fontSize: 15, fontWeight: '700', color: colors.sageDark },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 24,
-  },
-  line: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: 13, color: colors.muted, fontWeight: '700' },
-  socialRow: { flexDirection: 'row', gap: 12 },
-  socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
-    borderRadius: 999,
-    paddingVertical: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  googleG: { fontSize: 20, fontWeight: '900', color: '#4285F4' },
-  socialText: { fontSize: 16, fontWeight: '700', color: colors.ink },
-  proofRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginTop: 24,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DDE8D5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  proofText: { flex: 1, fontSize: 14, color: colors.muted, lineHeight: 20 },
-  footer: { alignItems: 'center', marginTop: 28 },
-  footerText: { fontSize: 15, color: colors.muted },
-});

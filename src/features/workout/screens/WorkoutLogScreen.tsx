@@ -12,7 +12,7 @@
 // =====================================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput,
+  ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -25,24 +25,17 @@ import {
   getWorkouts, saveWorkoutLog, updateWorkoutLogMinutes,
   type Post, type WorkoutLog,
 } from '../../../lib/workoutApi';
+import { toKey } from '../../../utils/dates';
+import { displayDate, fmtHM } from '../utils/workoutFormat';
+import { styles } from './WorkoutLogScreen.styles';
 
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+// CO TINH DE NGUYEN TAI CHO, khong thay bang addDays trong
+// src/utils/dates.ts: ham do nhan Date, ham nay nhan chuoi ISO
+// 'YYYY-MM-DD' (chu ky khac nhau).
 function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T12:00:00`);
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function displayDate(iso: string): string {
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
-function fmtHM(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60);
-  const m = Math.round(totalMinutes % 60);
-  return h > 0 ? `${h}h ${m}ph` : `${m}ph`;
 }
 
 export default function WorkoutLogScreen() {
@@ -52,7 +45,7 @@ export default function WorkoutLogScreen() {
   const [workouts, setWorkouts] = useState<Post[]>([]);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [weekMinutes, setWeekMinutes] = useState(0);
-  const [date, setDate] = useState<string>(todayStr());
+  const [date, setDate] = useState<string>(toKey(new Date()));
   const [selectedId, setSelectedId] = useState<string | null>(route.params?.postId ?? null);
   const [minutesText, setMinutesText] = useState<string>(
     route.params?.minutes != null ? String(route.params.minutes) : '',
@@ -162,7 +155,7 @@ export default function WorkoutLogScreen() {
 
   const changeDate = (delta: number) => {
     const next = addDays(date, delta);
-    if (next > todayStr()) {
+    if (next > toKey(new Date())) {
       Alert.alert('Ngày tương lai', 'Không ghi nhận cho ngày chưa tới.');
       return;
     }
@@ -204,7 +197,7 @@ export default function WorkoutLogScreen() {
         <TouchableOpacity style={styles.dateBtn} onPress={() => changeDate(-1)}>
           <Text style={styles.dateBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.dateText}>{displayDate(date)}{date === todayStr() ? ' (Hôm nay)' : ''}</Text>
+        <Text style={styles.dateText}>{displayDate(date)}{date === toKey(new Date()) ? ' (Hôm nay)' : ''}</Text>
         <TouchableOpacity style={styles.dateBtn} onPress={() => changeDate(1)}>
           <Text style={styles.dateBtnText}>›</Text>
         </TouchableOpacity>
@@ -292,51 +285,3 @@ export default function WorkoutLogScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#F9FBF9', paddingHorizontal: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
-  back: { fontSize: 15, color: '#2E7D32', fontWeight: '700' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E' },
-  error: { color: '#B23A3A', fontSize: 14, marginTop: 10 },
-  dateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 },
-  dateBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  dateBtnText: { fontSize: 20, color: '#2E7D32' },
-  dateText: { fontSize: 18, fontWeight: '800', color: '#1B2A1E' },
-  totalBox: { backgroundColor: '#EAF6EC', borderRadius: 20, padding: 16, marginTop: 14 },
-  totalLabel: { fontSize: 13, color: '#5B665E' },
-  totalBig: { fontSize: 28, fontWeight: '800', color: '#1B2A1E', marginTop: 4 },
-  totalSub: { fontSize: 14, color: '#3D4A41', marginTop: 4 },
-  h2: { fontSize: 17, fontWeight: '800', color: '#1B2A1E', marginTop: 22, marginBottom: 10 },
-  empty: { fontSize: 14, color: '#6B7A6E' },
-  workRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#EEE' },
-  workRowActive: { borderColor: '#2E7D32', backgroundColor: '#EAF6EC' },
-  workTitle: { fontSize: 15, fontWeight: '700', color: '#1B2A1E' },
-  workSub: { fontSize: 13, color: '#5B665E', marginTop: 3 },
-  check: { fontSize: 20, color: '#2E7D32', fontWeight: '800' },
-  input: { backgroundColor: '#fff', borderRadius: 14, padding: 14, fontSize: 18, color: '#1B2A1E' },
-  kcalLine: { fontSize: 14, color: '#5B665E', marginTop: 8 },
-  saveBtn: { backgroundColor: '#2E7D32', borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 14 },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  cancelBtn: { alignItems: 'center', marginTop: 10 },
-  cancelText: { color: '#6B7A6E', fontWeight: '700' },
-  logRow: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8 },
-  action: { fontSize: 14, fontWeight: '700', color: '#2E7D32' },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2E7D32',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-});

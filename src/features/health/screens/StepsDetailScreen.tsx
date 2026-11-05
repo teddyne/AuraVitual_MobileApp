@@ -2,98 +2,35 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
-  Dimensions,
   Platform,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { IconBadge } from '../../../components/ui/IconBadge';
 import { AppHeader } from '../../../components/ui/AppHeader';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
 import { supabase } from '../../../lib/supabase';
-
-const PRIMARY = '#4E8A47';
-const SAGE = '#8FBF9A';
-const WD = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-const ACC_KEY = '@auravital:steps_acc';
-const LAST_SYNC_KEY = '@auravital:steps_last_sync';
-const pad = (n: number) => String(n).padStart(2, '0');
-const toKey = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const fromKey = (k: string) => {
-  const [y, m, d] = k.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-const fmt = (n: number) =>
-  Math.round(n)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-const formatSyncTime = (iso: string) => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-};
+import { toKey } from '../../../utils/dates';
+import { PRIMARY } from '../constants';
+import { buildDaily, type Range } from '../utils/stepsFormat';
+import { LAST_SYNC_KEY, loadAcc, saveAcc } from '../utils/stepsAcc';
+import { StepsGauge } from '../components/StepsGauge';
+import { StepsChart } from '../components/StepsChart';
+import { StepsManualForm } from '../components/StepsManualForm';
+import { StepsSyncCard, type SensorStatus } from '../components/StepsSyncCard';
+import { styles } from './StepsDetailScreen.styles';
 
 type Metric = {
   log_date: string;
   steps: number | null;
   steps_source?: string | null;
 };
-type Range = 'today' | 'week' | 'month';
-type SensorStatus =
-  'checking' | 'available' | 'denied' | 'unsupported' | 'manual' | 'error';
-// Bộ tích lũy Android: cảm biến Android trả về tổng tích lũy từ lúc khởi
-// động lại máy, không phải tổng của hôm nay, nên phải tự cộng delta và chỉ
-// lưu cục bộ trên máy này (không đưa lên Supabase).
-type AccState = { date: string; total: number; lastSeen: number };
-
-async function loadAcc(): Promise<AccState | null> {
-  try {
-    const raw = await AsyncStorage.getItem(ACC_KEY);
-    return raw ? (JSON.parse(raw) as AccState) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function saveAcc(acc: AccState) {
-  try {
-    await AsyncStorage.setItem(ACC_KEY, JSON.stringify(acc));
-  } catch {
-    // Mất bộ tích lũy chỉ làm sai số Android trong ngày, không chặn màn hình.
-  }
-}
-
-function smoothPath(pts: { x: number; y: number }[]) {
-  if (pts.length === 0) return '';
-  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
-  let d = `M ${pts[0].x} ${pts[0].y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(i - 1, 0)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(i + 2, pts.length - 1)];
-    d += ` C ${p1.x + (p2.x - p0.x) / 6} ${p1.y + (p2.y - p0.y) / 6}, ${p2.x - (p3.x - p1.x) / 6} ${p2.y - (p3.y - p1.y) / 6}, ${p2.x} ${p2.y}`;
-  }
-  return d;
-}
-
 // Vòng tròn nhạt + icon xanh đậm, cùng kiểu ProfileSettings/ProfileSetup.
-function IconBadge({ name }: { name: any }) {
-  return (
-    <View style={styles.iconBadge}>
-      <Ionicons name={name} size={22} color='#2E7D32' />
-    </View>
-  );
-}
 
 export default function StepsDetailScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
@@ -613,42 +550,15 @@ export default function StepsDetailScreen({ navigation }: any) {
   const kcal = weightKg ? distanceKm * weightKg * 0.75 : todaySteps * 0.04;
   const activeMin = Math.round(todaySteps / 100);
 
-  const buildDaily = (days: number) => {
-    const out: { label: string; steps: number }[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      out.push({ label: WD[d.getDay()], steps: displayMap.get(toKey(d)) || 0 });
-    }
-    return out;
-  };
   const chartData =
     range === 'today'
       ? [{ label: 'Hôm nay', steps: todaySteps }]
       : range === 'week'
-        ? buildDaily(7)
-        : buildDaily(30);
+        ? buildDaily(displayMap, 7)
+        : buildDaily(displayMap, 30);
   const chartSum = chartData.reduce((s, x) => s + x.steps, 0);
   const chartAvg =
     range === 'today' ? todaySteps : Math.round(chartSum / chartData.length);
-
-  // Vòng gauge 3/4: cung 270 độ, hở 90 độ ở phía dưới.
-  const R = 82;
-  const C = 2 * Math.PI * R;
-  const arc = 0.75 * C;
-
-  // Biểu đồ đường trơn
-  const chartW = Dimensions.get('window').width - 64;
-  const chartH = 160;
-  const maxY = Math.max(...chartData.map((x) => x.steps), goal, 1000) * 1.15;
-  const pts = chartData.map((x, i) => ({
-    x:
-      chartData.length === 1
-        ? chartW / 2
-        : 10 + (i * (chartW - 20)) / (chartData.length - 1),
-    y: chartH - 20 - (x.steps / maxY) * (chartH - 40),
-  }));
-  const goalY = chartH - 20 - (goal / maxY) * (chartH - 40);
 
   const statusText =
     sensorStatus === 'checking'
@@ -713,123 +623,27 @@ export default function StepsDetailScreen({ navigation }: any) {
             </Text>
           </View>
 
-          <View style={styles.syncCard}>
-            <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
-            >
-              <IconBadge name='walk-outline' />
-              <Text style={[styles.syncTitle, { flex: 1 }]}>{statusText}</Text>
-            </View>
-            <Text style={styles.syncText}>
-              {lastSyncAt
-                ? `Đồng bộ lần cuối: ${formatSyncTime(lastSyncAt)}`
-                : 'Chưa đồng bộ lần nào từ cảm biến.'}
-            </Text>
-            {sensorNote ? (
-              <Text style={styles.syncText}>{sensorNote}</Text>
-            ) : null}
-            {sensorStatus === 'available' && platformNote ? (
-              <Text style={styles.syncText}>{platformNote}</Text>
-            ) : null}
-            <View style={styles.syncRow}>
-              <TouchableOpacity
-                style={[styles.syncBtn, syncing && styles.syncBtnDisabled]}
-                onPress={() => void syncSensor(false)}
-                disabled={syncing}
-              >
-                <Text style={styles.syncBtnText}>
-                  {syncing ? 'Đang đồng bộ…' : 'Đồng bộ lại'}
-                </Text>
-              </TouchableOpacity>
-              {sensorStatus === 'denied' ? (
-                <TouchableOpacity
-                  style={styles.syncBtn}
-                  onPress={() => void syncSensor(false)}
-                >
-                  <Text style={styles.syncBtnText}>Cấp quyền lại</Text>
-                </TouchableOpacity>
-              ) : null}
-              {manualToday ? (
-                <TouchableOpacity
-                  style={styles.syncBtn}
-                  onPress={() => void syncSensor(true)}
-                >
-                  <Text style={styles.syncBtnText}>Dùng lại đếm tự động</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
+          <StepsSyncCard
+            statusText={statusText}
+            lastSyncAt={lastSyncAt}
+            sensorNote={sensorNote}
+            platformNote={platformNote}
+            sensorStatus={sensorStatus}
+            syncing={syncing}
+            manualToday={manualToday}
+            onSync={(force) => void syncSensor(force)}
+          />
 
           {showManualForm ? (
-            <View style={styles.manualCard}>
-              <Text style={styles.cardTitle}>Nhập tay số bước hôm nay</Text>
-              <Text style={styles.cardText}>
-                Dùng khi điện thoại không có cảm biến, chưa cấp quyền, hoặc bạn
-                muốn sửa số hôm nay. Số nhập tay sẽ không bị đồng bộ tự động ghi
-                đè trong ngày hôm nay.
-              </Text>
-              <View style={styles.manualRow}>
-                <TextInput
-                  style={styles.manualInput}
-                  value={manualInput}
-                  onChangeText={setManualInput}
-                  keyboardType='number-pad'
-                  placeholder='Ví dụ: 6500'
-                  placeholderTextColor='#999'
-                />
-                <TouchableOpacity
-                  style={styles.manualBtn}
-                  onPress={saveManual}
-                  disabled={savingManual}
-                >
-                  <Text style={styles.manualBtnText}>
-                    {savingManual ? 'Đang lưu…' : 'Lưu'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <StepsManualForm
+              manualInput={manualInput}
+              onChangeText={setManualInput}
+              savingManual={savingManual}
+              onSave={saveManual}
+            />
           ) : null}
 
-          <View style={styles.card}>
-            <View style={{ alignItems: 'center' }}>
-              <Svg width={230} height={230} viewBox='0 0 200 200'>
-                <Circle
-                  cx={100}
-                  cy={100}
-                  r={R}
-                  stroke='#E3EBE6'
-                  strokeWidth={16}
-                  fill='none'
-                  strokeDasharray={`${arc} ${C - arc}`}
-                  transform='rotate(135 100 100)'
-                  strokeLinecap='round'
-                />
-                <Circle
-                  cx={100}
-                  cy={100}
-                  r={R}
-                  stroke={PRIMARY}
-                  strokeWidth={16}
-                  fill='none'
-                  strokeDasharray={`${percent * arc} ${C - percent * arc}`}
-                  transform='rotate(135 100 100)'
-                  strokeLinecap='round'
-                />
-              </Svg>
-              <View style={styles.gaugeCenter}>
-                <Text style={styles.gaugeNumber}>{fmt(todaySteps)}</Text>
-                <Text style={styles.gaugeSub}>Bước / mục tiêu {fmt(goal)}</Text>
-              </View>
-            </View>
-            <View style={styles.banner}>
-              <Ionicons name='trophy-outline' size={18} color={PRIMARY} />
-              <Text style={styles.bannerText}>
-                {percent >= 1
-                  ? 'Bạn đã đạt mục tiêu hôm nay!'
-                  : `Bạn đã đạt ${Math.round(percent * 100)}% mục tiêu hôm nay!`}
-              </Text>
-            </View>
-          </View>
+          <StepsGauge todaySteps={todaySteps} goal={goal} percent={percent} />
 
           <View style={styles.row3}>
             <View style={styles.mini}>
@@ -849,212 +663,17 @@ export default function StepsDetailScreen({ navigation }: any) {
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Xu hướng vận động</Text>
-            <Text style={styles.cardText}>
-              {range === 'today'
-                ? `Hôm nay: ${fmt(todaySteps)} bước`
-                : `Trung bình ${fmt(chartAvg)} bước/ngày (${chartData.length} ngày, ngày chưa ghi tính là 0)`}
-            </Text>
-            <View style={styles.switchRow}>
-              {(['today', 'week', 'month'] as Range[]).map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.switchBtn, range === r && styles.switchActive]}
-                  onPress={() => setRange(r)}
-                >
-                  <Text
-                    style={[
-                      styles.switchText,
-                      range === r && styles.switchTextActive,
-                    ]}
-                  >
-                    {r === 'today'
-                      ? 'Hôm nay'
-                      : r === 'week'
-                        ? 'Tuần'
-                        : 'Tháng'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Svg width={chartW} height={chartH}>
-              <Line
-                x1={0}
-                y1={goalY}
-                x2={chartW}
-                y2={goalY}
-                stroke={SAGE}
-                strokeWidth={1}
-                strokeDasharray='6 6'
-              />
-              <Path
-                d={smoothPath(pts)}
-                stroke={PRIMARY}
-                strokeWidth={2.5}
-                fill='none'
-              />
-              {pts.map((p, i) => (
-                <Circle
-                  key={i}
-                  cx={p.x}
-                  cy={p.y}
-                  r={4}
-                  fill={PRIMARY}
-                  stroke='#fff'
-                  strokeWidth={1.5}
-                />
-              ))}
-            </Svg>
-            <View style={styles.xLabels}>
-              {chartData.map((x, i) => (
-                <Text key={i} style={styles.xLabel}>
-                  {range === 'month'
-                    ? i % 5 === 0 || i === chartData.length - 1
-                      ? x.label
-                      : ''
-                    : x.label}
-                </Text>
-              ))}
-            </View>
-          </View>
+          <StepsChart
+            chartData={chartData}
+            range={range}
+            onRangeChange={setRange}
+            chartAvg={chartAvg}
+            todaySteps={todaySteps}
+            goal={goal}
+          />
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9F9FF' },
-  scroll: { padding: 16, paddingBottom: 32 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EAF0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  live: { color: PRIMARY, fontWeight: '700', fontSize: 12 },
-  liveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: PRIMARY,
-  },
-  syncCard: {
-    backgroundColor: '#EAF5EC',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
-  },
-  syncTitle: { fontSize: 14, fontWeight: '700', color: PRIMARY },
-  syncText: { fontSize: 12, color: '#444', marginTop: 4, lineHeight: 17 },
-  syncRow: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
-  syncBtn: {
-    backgroundColor: PRIMARY,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  syncBtnDisabled: { opacity: 0.6 },
-  syncBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  manualCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-  },
-  manualRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  manualInput: {
-    flex: 1,
-    backgroundColor: '#EEF1FF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#111',
-  },
-  manualBtn: {
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-  manualBtnText: { color: '#fff', fontWeight: '700' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-  },
-  gaugeCenter: { position: 'absolute', top: 88, alignItems: 'center' },
-  gaugeNumber: { fontSize: 30, fontWeight: '800', color: '#111' },
-  gaugeSub: { fontSize: 12, color: '#666', textAlign: 'center' },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#EAF5EC',
-    padding: 10,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  bannerText: { color: PRIMARY, fontWeight: '700' },
-  row3: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  mini: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-  },
-  miniNum: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111',
-    marginVertical: 4,
-  },
-  miniLabel: { fontSize: 11, color: '#666', textAlign: 'center' },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
-  cardText: { fontSize: 13, color: '#666', marginVertical: 6 },
-  switchRow: {
-    flexDirection: 'row',
-    backgroundColor: '#EEF1FF',
-    borderRadius: 999,
-    padding: 4,
-    marginBottom: 12,
-  },
-  switchBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
-    alignItems: 'center',
-  },
-  switchActive: { backgroundColor: PRIMARY },
-  switchText: { color: '#333', fontWeight: '600' },
-  switchTextActive: { color: '#fff' },
-  xLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  xLabel: { fontSize: 11, color: '#666', flex: 1, textAlign: 'center' },
-});
