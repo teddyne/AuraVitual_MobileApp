@@ -25,6 +25,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { useToast } from '../../../components/NotificationToast';
 import {
   aiToDraft,
   analyzeMealPhoto,
@@ -119,6 +120,7 @@ export default function AddMealScreen({ navigation, route }: any) {
   const [frequent, setFrequent] = useState<Food[]>([]);
   const [barcode, setBarcode] = useState('');
   const [barcodeLoading, setBarcodeLoading] = useState(false);
+  const { showToast } = useToast();
   const [scannedProduct, setScannedProduct] = useState<BarcodeProduct | null>(
     null,
   );
@@ -368,6 +370,11 @@ export default function AddMealScreen({ navigation, route }: any) {
       },
       mealType,
     );
+    showToast({
+      title: 'Đã thêm',
+      body: `${scannedProduct.name} đã vào danh sách bên dưới.`,
+    });
+    setScannedProduct(null);
   };
 
   const handleProcessImage = async (sourceType: 'camera' | 'library') => {

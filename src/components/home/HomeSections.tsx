@@ -258,8 +258,7 @@ export function WeeklySummaryCard({
     <View style={styles.weeklyWrap}>
       <View style={styles.sectionHead}>
         <View>
-          <Text style={styles.sectionTitle}>Tổng kết tuần</Text>
-          <Text style={styles.sectionSub}>Đồng bộ nhịp sinh học liên tục</Text>
+          <Text style={[styles.sectionTitle, { color: '#000' }]}>Tổng kết tuần</Text>
         </View>
         <View style={styles.sparkle}>
           <Ionicons name='sparkles' size={20} color='#2E7D32' />
@@ -267,7 +266,7 @@ export function WeeklySummaryCard({
       </View>
       <View style={styles.grid}>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>👣 TỔNG BƯỚC</Text>
+          <Text style={styles.miniLabel}>TỔNG BƯỚC</Text>
           <Text style={styles.miniBig}>
             {summary ? fmt(summary.stepsTotal) : '—'}
           </Text>
@@ -278,7 +277,7 @@ export function WeeklySummaryCard({
           </Text>
         </View>
         <TouchableOpacity style={styles.miniCard} onPress={onPressWorkout}>
-          <Text style={styles.miniLabel}>🏋️ LUYỆN TẬP</Text>
+          <Text style={styles.miniLabel}>LUYỆN TẬP</Text>
           <Text style={styles.miniBig}>
             {summary ? fmtHoursMinutes(summary.workoutMinutes) : '—'}
           </Text>
@@ -290,7 +289,7 @@ export function WeeklySummaryCard({
           <Text style={styles.miniLink}>Ghi nhận tập luyện →</Text>
         </TouchableOpacity>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>💧 NƯỚC UỐNG</Text>
+          <Text style={styles.miniLabel}>NƯỚC UỐNG</Text>
           <Text style={styles.miniBig}>
             {summary ? `${fmt(summary.waterTotalMl)} ml` : '—'}
           </Text>
@@ -301,7 +300,7 @@ export function WeeklySummaryCard({
           </Text>
         </View>
         <View style={styles.miniCard}>
-          <Text style={styles.miniLabel}>🌙 GIỜ NGỦ</Text>
+          <Text style={styles.miniLabel}>GIỜ NGỦ</Text>
           <Text style={styles.miniBig}>
             {summary ? fmtSleepHours(summary.sleepTotalHours) : '—'}
           </Text>
@@ -395,7 +394,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    marginTop: 24,
+    marginTop: 12,
   },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: '#1B2A1E' },
   sectionSub: { fontSize: 13, color: '#6B7A6E' },
@@ -461,9 +460,9 @@ const styles = StyleSheet.create({
   workoutTitle: { color: '#fff', fontSize: 21, fontWeight: '800' },
   workoutSummary: { color: '#EDEDED', fontSize: 14, marginTop: 4 },
   weeklyWrap: {
-    backgroundColor: '#EEF3FF',
+    backgroundColor: '#eff4ff',
     borderRadius: 24,
-    padding: 16,
+    padding: 12,
     paddingTop: 0,
     marginTop: 30,
     marginBottom: 8,
@@ -472,7 +471,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E3EBFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -484,10 +482,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     minHeight: 110,
   },
-  miniLabel: { fontSize: 12, fontWeight: '700', color: '#5B665E' },
-  miniBig: { fontSize: 20, fontWeight: '800', color: '#1B2A1E', marginTop: 6 },
-  miniSub: { fontSize: 13, color: '#2E7D32', marginTop: 4 },
-  miniLink: { fontSize: 13, fontWeight: '700', color: '#2E7D32', marginTop: 6 },
+  miniLabel: { fontSize: 12, fontWeight: '700', color: '#2E7D32' },
+  miniBig: { fontSize: 20, fontWeight: '800', color: '#000', marginTop: 6 },
+  miniSub: { fontSize: 13, color: '#000', marginTop: 4 },
+  miniLink: { fontSize: 13, fontWeight: '700', color: '#000', marginTop: 6 },
   articleRow: {
     flexDirection: 'row',
     gap: 12,

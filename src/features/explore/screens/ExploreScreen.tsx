@@ -129,6 +129,12 @@ export default function ExploreScreen() {
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FBF9' }}>
         <View style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: 16 }}>
+            <View style={styles.header}>
+              <Text style={styles.logo}>🌿 AuraVital</Text>
+              <Text style={styles.headerTitle}>Khám phá</Text>
+            </View>
+          </View>
           <ScrollView
             style={styles.wrap}
             contentContainerStyle={{ paddingBottom: 32 }}
@@ -136,10 +142,6 @@ export default function ExploreScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
           >
-            <View style={styles.header}>
-              <Text style={styles.logo}>🌿 AuraVital</Text>
-              <Text style={styles.headerTitle}>Khám phá</Text>
-            </View>
 
             <View style={styles.segment}>
               <TouchableOpacity
@@ -353,6 +355,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
+    marginBottom: 12,
   },
   logo: { fontSize: 18, fontWeight: '800', color: '#2E7D32' },
   headerTitle: { fontSize: 16, fontWeight: '700', color: '#1B2A1E' },

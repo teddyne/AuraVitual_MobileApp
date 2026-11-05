@@ -13,6 +13,28 @@ export const NOISE_KEY = '@auravital:white_noise';
 export const NOTIF_KEY = '@auravital:sleep_notif_ids';
 export const ALARMS_KEY = '@auravital:alarms';
 export const TRIGGERED_KEY = '@auravital:alarms_triggered';
+export const WAKE_HANDLED_KEY = '@auravital:wake_handled_date';
+
+// Đánh dấu "sáng nay đã dậy": chặn cả nhánh reo lại của AlarmWatcher
+// (qua trig schedule_wake) lẫn thông báo lịch tới muộn.
+export async function markWakeHandled() {
+  try {
+    const today = toKey(new Date());
+    await AsyncStorage.setItem(WAKE_HANDLED_KEY, today);
+    const raw = await AsyncStorage.getItem(TRIGGERED_KEY);
+    const trig = raw ? JSON.parse(raw) : {};
+    trig['schedule_wake'] = today;
+    await AsyncStorage.setItem(TRIGGERED_KEY, JSON.stringify(trig));
+  } catch {}
+}
+
+export async function isWakeHandledToday() {
+  try {
+    return (await AsyncStorage.getItem(WAKE_HANDLED_KEY)) === toKey(new Date());
+  } catch {
+    return false;
+  }
+}
 export const SNOOZE_KEY = '@auravital:alarm_snooze';
 export const WAKE_NAV_KEY = '@auravital:wake_nav';
 export const SNOOZE_NOTIF_KEY = '@auravital:snooze_notif_id';
@@ -108,39 +130,70 @@ export async function startSession(): Promise<SleepSession> {
   return s;
 }
 
+// Chống ghi đúp
+let finishingStartedAt: string | null = null;
+
 export async function finishSession(
   supabase: any,
   userId: string,
   session: SleepSession,
   source: 'alarm' | 'next_day' | 'manual',
 ) {
-  const ended = new Date();
-  const minutes = Math.round(
-    (ended.getTime() - new Date(session.startedAt).getTime()) / 60000,
-  );
-  if (minutes <= 0 || minutes > 1440) return null;
-  const wakeKey = toKey(ended);
-  const hours = Math.round((minutes / 60) * 100) / 100;
-  const { error } = await supabase
-    .from('health_metrics')
-    .upsert(
-      { user_id: userId, log_date: wakeKey, sleep_hours: hours },
-      { onConflict: 'user_id,log_date' },
+  if (finishingStartedAt === session.startedAt) return null;
+  finishingStartedAt = session.startedAt;
+  try {
+    const currentRaw = await AsyncStorage.getItem(SESSION_KEY);
+    if (!currentRaw) return null;
+    try {
+      const current = JSON.parse(currentRaw) as SleepSession;
+      if (current.startedAt !== session.startedAt) return null;
+    } catch {
+      return null;
+    }
+    await AsyncStorage.removeItem(SESSION_KEY);
+    await AsyncStorage.setItem(MODE_KEY, '0');
+    const ended = new Date();
+    const minutes = Math.round(
+      (ended.getTime() - new Date(session.startedAt).getTime()) / 60000,
     );
-  if (error) throw new Error(error.message);
-  const { error: sessionError } = await supabase.from('sleep_sessions').insert({
-    user_id: userId,
-    started_at: session.startedAt,
-    ended_at: ended.toISOString(),
-    duration_minutes: minutes,
-    snooze_count: session.snoozeCount,
-    source,
-  });
-  if (sessionError)
-    console.warn('sleep_sessions insert failed', sessionError.message);
-  await AsyncStorage.removeItem(SESSION_KEY);
-  await AsyncStorage.setItem(MODE_KEY, '0');
-  return { minutes, wakeKey, hours };
+    if (minutes <= 0 || minutes > 1440) return null;
+    const wakeKey = toKey(ended);
+    const hours = Math.round((minutes / 60) * 100) / 100;
+    // Cộng dồn với số giờ đã ghi trong ngày thay vì ghi đè.
+    const { data: prev } = await supabase
+      .from('health_metrics')
+      .select('sleep_hours')
+      .eq('user_id', userId)
+      .eq('log_date', wakeKey)
+      .maybeSingle();
+    const totalHours = Math.round(((prev?.sleep_hours ?? 0) + hours) * 100) / 100;
+    try {
+      const { error } = await supabase
+        .from('health_metrics')
+        .upsert(
+          { user_id: userId, log_date: wakeKey, sleep_hours: totalHours },
+          { onConflict: 'user_id,log_date' },
+        );
+      if (error) throw new Error(error.message);
+      const { error: sessionError } = await supabase.from('sleep_sessions').insert({
+        user_id: userId,
+        started_at: session.startedAt,
+        ended_at: ended.toISOString(),
+        duration_minutes: minutes,
+        snooze_count: session.snoozeCount,
+        source,
+      });
+      if (sessionError)
+        console.warn('sleep_sessions insert failed', sessionError.message);
+    } catch (e) {
+      await saveSession(session);
+      await AsyncStorage.setItem(MODE_KEY, '1');
+      throw e;
+    }
+    return { minutes, wakeKey, hours };
+  } finally {
+    finishingStartedAt = null;
+  }
 }
 
 export async function setupNotificationChannels() {

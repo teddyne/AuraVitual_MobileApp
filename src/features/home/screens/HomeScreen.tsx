@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
+  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -49,6 +51,10 @@ import {
   type WeeklySummary,
 } from '../../../lib/workoutApi';
 import { computeWakeAt } from '../../../lib/sleepSession';
+
+const { width: screenWidth } = Dimensions.get('window');
+// Chiều rộng khả dụng của banner = màn hình trừ padding 16 mỗi bên của màn hình chính.
+const bannerWidth = screenWidth - 32;
 
 const SESSION_KEY = '@auravital:sleep_session';
 const MODE_KEY = '@auravital:sleep_mode';
@@ -132,6 +138,7 @@ export default function HomeScreen({ navigation }: any) {
   const [article, setArticle] = useState<any>(null);
   const [featuredWorkout, setFeaturedWorkout] = useState<Post | null>(null);
   const [homeArticles, setHomeArticles] = useState<Post[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(
     null,
   );
@@ -160,6 +167,25 @@ export default function HomeScreen({ navigation }: any) {
     } catch {}
     return locale === 'en' ? en : vi;
   };
+
+  // 3 ảnh banner Trang chủ (lướt ngang).
+  const homeBanners = [
+    {
+      uri: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
+      title: tr('home.bannerTitle', 'Sống khỏe mỗi ngày cùng AuraVital', 'Live healthy every day with AuraVital'),
+      sub: tr('home.bannerSub', 'Ăn đủ chất, ngủ đủ giấc, vận động đều đặn.', 'Eat well, sleep well, move every day.'),
+    },
+    {
+      uri: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=1200&q=80',
+      title: tr('home.bannerTitle2', 'Bữa sáng đủ chất, ngày mới năng lượng', 'A nutritious breakfast, an energetic day'),
+      sub: tr('home.bannerSub2', 'Bắt đầu ngày mới bằng một bữa ăn cân bằng.', 'Start your day with a balanced meal.'),
+    },
+    {
+      uri: 'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=1200&q=80',
+      title: tr('home.bannerTitle3', 'Vận động nhẹ nhàng, cơ thể dẻo dai', 'Gentle movement for a flexible body'),
+      sub: tr('home.bannerSub3', 'Dành vài phút mỗi ngày để giãn cơ và thở sâu.', 'Take a few minutes each day to stretch and breathe deeply.'),
+    },
+  ];
 
   const userId = user?.id;
   const todayKey = toKey(new Date());
@@ -524,12 +550,18 @@ export default function HomeScreen({ navigation }: any) {
   }
 
   const hour = new Date().getHours();
-  const greetingWord =
-    hour < 11
-      ? tr('home.morning', 'Chào buổi sáng', 'Good morning')
-      : hour < 18
-        ? tr('home.afternoon', 'Chào buổi chiều', 'Good afternoon')
-        : tr('home.evening', 'Chào buổi tối', 'Good evening');
+
+  let greetingWord = '';
+  if (hour < 11) {
+    greetingWord = tr('home.morning', 'Chào buổi sáng', 'Good morning');
+  } else if (hour < 13) {
+    greetingWord = tr('home.noon', 'Chào buổi trưa', 'Good afternoon'); 
+  } else if (hour < 18) {
+    greetingWord = tr('home.afternoon', 'Chào buổi chiều', 'Good afternoon');
+  } else {
+    greetingWord = tr('home.evening', 'Chào buổi tối', 'Good evening');
+  }
+
   const greetingName = resolveGreetingName(profile, user);
   const score = calcHealthScore(metric, profile, kcal);
   const water = metric?.water_ml ?? 0;
@@ -634,6 +666,49 @@ export default function HomeScreen({ navigation }: any) {
               />
               {bellDot && <View style={s.bellDot} />}
             </TouchableOpacity>
+          </View>
+
+          {/* Banner lướt ngang */}
+          <View style={s.homeBannerWrap}>
+            <View style={s.homeBannerClip}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  setBannerIndex(
+                    Math.round(
+                      e.nativeEvent.contentOffset.x / bannerWidth,
+                    ),
+                  );
+                }}
+              >
+                {homeBanners.map((item) => (
+                  <View key={item.uri} style={s.homeBannerSlide}>
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={s.homeBannerImg}
+                      resizeMode='cover'
+                    />
+                    <View style={s.homeBannerOverlay}>
+                      <Text style={s.homeBannerTitle}>{item.title}</Text>
+                      <Text style={s.homeBannerSub}>{item.sub}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+            <View style={s.homeBannerDots}>
+              {homeBanners.map((item, i) => (
+                <View
+                  key={item.uri}
+                  style={[
+                    s.homeBannerDot,
+                    i === bannerIndex && s.homeBannerDotActive,
+                  ]}
+                />
+              ))}
+            </View>
           </View>
 
           <View
@@ -947,6 +1022,16 @@ function makeStyles(theme: any, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
     wrap: { flex: 1, backgroundColor: theme.background, padding: 16 },
+  homeBannerWrap: { marginTop: 16 },
+  homeBannerClip: { borderRadius: 16, overflow: 'hidden', height: 170, backgroundColor: '#E8F5E9' },
+  homeBannerSlide: { width: bannerWidth, height: 170 },
+  homeBannerImg: { width: '100%', height: 170 },
+  homeBannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.45)' },
+  homeBannerTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  homeBannerSub: { color: '#fff', fontSize: 13, marginTop: 4, opacity: 0.9 },
+  homeBannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
+  homeBannerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#C8D8CC' },
+  homeBannerDotActive: { backgroundColor: theme.primaryDark },
     center: {
       flex: 1,
       backgroundColor: theme.background,
@@ -972,7 +1057,7 @@ function makeStyles(theme: any, isDark: boolean) {
       alignItems: 'flex-start',
     },
     refreshText: { color: theme.primaryDark, fontWeight: '700' },
-    bellBtn: { position: 'relative', padding: 6 },
+    bellBtn: { position: 'relative', padding: 6, marginLeft: 20 },
     bellDot: {
       position: 'absolute',
       top: 4,

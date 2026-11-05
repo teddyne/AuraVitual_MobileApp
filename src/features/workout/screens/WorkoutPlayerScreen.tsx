@@ -141,20 +141,19 @@ export default function WorkoutPlayerScreen() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-    <ScrollView
-      style={styles.wrap}
-      contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
+    <View style={{ paddingHorizontal: 16 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color="#1B2A1E" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Trình phát bài tập</Text>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={20} color="#2E7D32" />
-        </View>
       </View>
+    </View>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={{ paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
 
       {post.video_url ? (
         <View style={styles.videoWrap}>
@@ -265,7 +264,7 @@ export default function WorkoutPlayerScreen() {
         );
       })}
 
-      <Text style={styles.keepAwake}>👁 Màn hình luôn sáng tự động (Keep Screen On)</Text>
+      {/* <Text style={styles.keepAwake}>Màn hình luôn sáng tự động (Keep Screen On)</Text> */}
       <TouchableOpacity
         style={styles.startBtn}
         onPress={() => {
@@ -285,7 +284,7 @@ export default function WorkoutPlayerScreen() {
           style={styles.logLink}
           onPress={() => navigation.navigate('WorkoutLog', { postId: post.id, minutes: post.duration_min ?? finishMinutes })}
         >
-          <Text style={styles.logLinkText}>Ghi nhận ngay mà không cần tập hết →</Text>
+          <Text style={styles.logLinkText}>Hoặc ghi nhận ngay mà không cần tập hết →</Text>
         </TouchableOpacity>
       )}
     </ScrollView>
@@ -299,7 +298,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   error: { color: '#B23A3A', fontSize: 15, textAlign: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E', marginRight: 150 },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EAF6EC', justifyContent: 'center', alignItems: 'center' },
   videoWrap: { borderRadius: 20, overflow: 'hidden', backgroundColor: '#000' },
   video: { width: '100%', height: 220 },

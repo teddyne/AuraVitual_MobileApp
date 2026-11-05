@@ -691,13 +691,15 @@ export default function StepsDetailScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <AppHeader title='Theo dõi bước chân chi tiết' withTopInset={false} />
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <AppHeader title='Theo dõi bước chân chi tiết' withTopInset={false} />
 
           <View style={styles.liveRow}>
             <View

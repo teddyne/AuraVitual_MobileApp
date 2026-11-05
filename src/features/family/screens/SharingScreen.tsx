@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -241,6 +242,13 @@ export default function SharingScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          {/* Header: logo + tiêu đề tab + avatar sang Tài khoản */}
+          <View style={s.headerRow}>
+            <Text style={[s.logo, { color: theme.primaryDark }]}>🌿 AuraVital</Text>
+            <Text style={[s.headerTitle, { color: theme.text }]}>Chia sẻ</Text>
+          </View>
+        </View>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -248,33 +256,23 @@ export default function SharingScreen({ navigation }: any) {
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadAll(); }} />
           }
         >
-          {/* Header: logo + tiêu đề tab + avatar sang Tài khoản */}
-          <View style={s.headerRow}>
-            <Text style={[s.logo, { color: theme.primaryDark }]}>🌿 AuraVital</Text>
-            <Text style={[s.headerTitle, { color: theme.text }]}>Chia sẻ</Text>
-          </View>
 
-          {/* Minh họa mạng lưới gia đình (vẽ bằng View, không cần ảnh) */}
-          <View style={[s.hero, { backgroundColor: theme.cardAlt }]}>
-            <View style={s.heroCircles}>
-              <View style={[s.heroCircle, { backgroundColor: '#C8E6C9' }]}>
-                <Text style={s.heroEmoji}>👨</Text>
-              </View>
-              <View style={[s.heroCenter, { backgroundColor: '#FFFFFF' }]}>
-                <Ionicons name='pulse' size={40} color={theme.primaryDark} />
-              </View>
-              <View style={[s.heroCircle, { backgroundColor: '#FFE0B2' }]}>
-                <Text style={s.heroEmoji}>👩</Text>
-              </View>
+          {/* Banner mạng lưới gia đình */}
+          <View style={s.bannerWrap}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1200&q=80' }}
+              style={s.bannerImg}
+              resizeMode='cover'
+            />
+            <View style={s.bannerOverlay}>
+              <Ionicons name='shield-checkmark' size={20} color='#fff' />
+              <Text style={s.bannerText}>Mạng lưới gia đình được bảo vệ 24/7</Text>
             </View>
-            <Text style={[s.heroText, { color: theme.text }]}>
-              ● Mạng lưới gia đình được bảo vệ 24/7
-            </Text>
           </View>
 
           {/* Thành viên kết nối */}
           <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>👥 Thành viên kết nối</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>Thành viên kết nối</Text>
             <Text style={[s.sectionRight, { color: theme.primaryDark }]}>
               {members.length === 0
                 ? 'Chưa có thành viên'
@@ -427,7 +425,7 @@ export default function SharingScreen({ navigation }: any) {
               pairY.current = e.nativeEvent.layout.y;
             }}
           >
-            <Text style={[s.sectionTitle, { color: theme.text }]}>🔗 Ghép nối tức thì</Text>
+            <Text style={[s.sectionTitle, { color: theme.text }]}>Ghép nối tức thì</Text>
           </View>
           
           <View style={[s.pairCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -520,13 +518,13 @@ export default function SharingScreen({ navigation }: any) {
             }}
             style={[s.cta, { backgroundColor: theme.primaryDark }]}
           >
-            <Text style={s.ctaText}>👥 Bắt đầu chia sẻ với gia đình</Text>
+            <Text style={s.ctaText}>Bắt đầu chia sẻ với gia đình</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={goSettings}
             style={[s.ctaOutline, { borderColor: theme.border, backgroundColor: theme.card }]}
           >
-            <Text style={[s.ctaOutlineText, { color: theme.text }]}>⚙️ Cài đặt & Phân quyền chia sẻ</Text>
+            <Text style={[s.ctaOutlineText, { color: theme.text }]}>Cài đặt & Phân quyền chia sẻ</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -557,7 +555,7 @@ export default function SharingScreen({ navigation }: any) {
 
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,},
   logo: { fontSize: 18, fontWeight: '800', color: '#2E7D32' },
   headerTitle: { fontSize: 17, fontWeight: '700' },
   avatarBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
@@ -565,14 +563,12 @@ const s = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '800' },
   title: { fontSize: 26, fontWeight: '800', marginTop: 10, lineHeight: 32 },
   subtitle: { fontSize: 14, marginTop: 6, lineHeight: 20 },
-  hero: { borderRadius: 16, padding: 16, marginTop: 16, alignItems: 'center' },
-  heroCircles: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  heroCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  heroCenter: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
-  heroEmoji: { fontSize: 28 },
-  heroText: { fontSize: 13, fontWeight: '700', marginTop: 12 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, marginBottom: 8 },
-  sectionTitle: { fontSize: 17, fontWeight: '800' },
+  bannerWrap: { borderRadius: 16, overflow: 'hidden', marginBottom: 10, height: 180, backgroundColor: '#E8F5E9' },
+  bannerImg: { width: '100%', height: 180 },
+  bannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.45)' },
+  bannerText: { color: '#fff', fontSize: 14, fontWeight: '800', flex: 1 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 6},
   sectionRight: { fontSize: 13, fontWeight: '700' },
   empty: { fontSize: 14, lineHeight: 20 },
   memberCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8 },

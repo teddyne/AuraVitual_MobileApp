@@ -265,12 +265,7 @@ export default function NotificationsScreen({ navigation }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
-        <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           <View style={s.headerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 4 }}>
               <Ionicons name="chevron-back" size={28}/>
@@ -279,6 +274,13 @@ export default function NotificationsScreen({ navigation }: any) {
               {vi ? 'Thông báo & Nhắc nhở' : 'Notifications & Reminders'}
             </Text>
           </View>
+        </View>
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
 
           <View style={s.summaryRow}>
             <Text style={[s.summary, { color: theme.text }]}>
