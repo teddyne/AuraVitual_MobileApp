@@ -4,7 +4,6 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -16,7 +15,6 @@ import {
   acceptRequest,
   declineRequest,
   getReceivedRequests,
-  timeAgo,
 } from '../../../lib/familyApi';
 import {
   deleteHistoryEntry,
@@ -27,62 +25,31 @@ import {
   reconcilePresentedNotifications,
   type HistoryEntry,
   type HistoryGroup,
-  type HistoryKind,
 } from '../../../lib/notificationHistory';
 import { Ionicons } from '@expo/vector-icons';
+import { PRIMARY } from '../constants';
+import {
+  GROUP_ORDER,
+  groupLabel,
+  type DisplayItem,
+  type NotificationFilter,
+} from '../utils/notificationDisplay';
+import { NotificationCard } from '../components/NotificationCard';
+import { NotificationFilterTabs } from '../components/NotificationFilterTabs';
+import { s } from './NotificationsScreen.styles';
 
-const PRIMARY = '#4E8A47';
 const READ_KEY = '@auravital:notifications_read';
-const GREY_PILL = '#D9D9D9';
-
-type DisplayItem = {
-  id: string;
-  kind: HistoryKind;
-  category: string;
-  time: number;
-  title: string;
-  body: string;
-  icon: string;
-  iconBg: string;
-  read: boolean;
-  memberId?: string | null;
-  invite?: {
-    requestId: string;
-    fromUserId: string;
-    fromName: string;
-  } | null;
-};
-
-const GROUP_ORDER: HistoryGroup[] = ['today', 'yesterday', 'week', 'older'];
 
 export default function NotificationsScreen({ navigation }: any) {
   const { theme, locale } = useSettings();
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<
-    'all' | 'reminder' | 'family' | 'milestone'
-  >('all');
+  const [filter, setFilter] = useState<NotificationFilter>('all');
   const [readIds, setReadIds] = useState<string[]>([]);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
 
   const vi = locale === 'vi';
-  const groupLabel = (g: HistoryGroup) =>
-    g === 'today'
-      ? vi
-        ? 'Hôm nay'
-        : 'Today'
-      : g === 'yesterday'
-        ? vi
-          ? 'Hôm qua'
-          : 'Yesterday'
-        : g === 'week'
-          ? vi
-            ? 'Tuần này'
-            : 'This week'
-          : vi
-            ? 'Cũ hơn'
-            : 'Older';
 
   const loadAll = useCallback(async () => {
     // Đối chiếu khay hệ thống trước: thông báo đổ chuông lúc app đóng
@@ -177,7 +144,7 @@ export default function NotificationsScreen({ navigation }: any) {
       rows: visible.filter((i) => groupOf(i.time) === group),
     })).filter((g) => g.rows.length > 0);
 
-  const tabs: { id: typeof filter; label: string }[] = [
+  const tabs: { id: NotificationFilter; label: string }[] = [
     { id: 'all', label: vi ? 'Tất cả' : 'All' },
     { id: 'reminder', label: vi ? 'Nhắc nhở' : 'Reminders' },
     { id: 'family', label: vi ? 'Chia sẻ' : 'Family' },
@@ -294,30 +261,13 @@ export default function NotificationsScreen({ navigation }: any) {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={s.tabRow}>
-              {tabs.map((t) => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={[
-                    s.tabPill,
-                    {
-                      backgroundColor: filter === t.id ? PRIMARY : GREY_PILL,
-                    },
-                  ]}
-                  onPress={() => setFilter(t.id)}
-                >
-                  <Text
-                    style={[
-                      s.tabText,
-                      { color: filter === t.id ? '#fff' : theme.text },
-                    ]}
-                  >
-                    {t.label}
-                    {t.id === 'all' ? ` ${unreadCount}` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <NotificationFilterTabs
+              tabs={tabs}
+              filter={filter}
+              unreadCount={unreadCount}
+              theme={theme}
+              onSelect={setFilter}
+            />
           </ScrollView>
 
           <Text style={[s.hint, { color: theme.muted }]}>
@@ -341,7 +291,7 @@ export default function NotificationsScreen({ navigation }: any) {
               <View key={group}>
                 <View style={s.sectionRow}>
                   <Text style={[s.sectionTitle, { color: theme.text }]}>
-                    {groupLabel(group)}
+                    {groupLabel(group, vi)}
                   </Text>
                   <Text
                     style={[s.sectionRight, { color: theme.primaryDark }]}
@@ -350,64 +300,18 @@ export default function NotificationsScreen({ navigation }: any) {
                     {vi ? 'tin mới' : 'new'}
                   </Text>
                 </View>
-                {rows.map((item) => {
-                  const unread = !item.read;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[s.card, { backgroundColor: theme.card }]}
-                      onPress={() => onCardPress(item)}
-                    >
-                      <View
-                        style={[s.iconCircle, { backgroundColor: item.iconBg }]}
-                      >
-                        <Text style={s.iconText}>{item.icon}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={s.cardTop}>
-                          <Text style={[s.category, { color: PRIMARY }]}>
-                            {item.category}
-                          </Text>
-                          <Text style={[s.timeLabel, { color: theme.muted }]}>
-                            {timeAgo(new Date(item.time).toISOString())}
-                          </Text>
-                          {unread && <Text style={{ color: PRIMARY }}>●</Text>}
-                        </View>
-                        <Text style={[s.cardTitle, { color: theme.text }]}>
-                          {item.title}
-                        </Text>
-                        <Text style={[s.cardBody, { color: theme.text }]}>
-                          {item.body}
-                        </Text>
-                        {item.invite && (
-                          <View style={s.inviteRow}>
-                            <TouchableOpacity
-                              style={s.inviteAccept}
-                              onPress={() => onInviteAccept(item)}
-                            >
-                              <Text style={s.inviteAcceptText}>
-                                {vi ? 'Đồng ý' : 'Accept'}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={s.inviteDecline}
-                              onPress={() => onInviteDecline(item)}
-                            >
-                              <Text style={s.inviteDeclineText}>
-                                {vi ? 'Từ chối' : 'Decline'}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
-                      <TouchableOpacity onPress={() => onHidePress(item)}>
-                        <Text style={{ color: theme.muted, fontSize: 16 }}>
-                          ✕
-                        </Text>
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  );
-                })}
+                {rows.map((item) => (
+                  <NotificationCard
+                    key={item.id}
+                    item={item}
+                    theme={theme}
+                    vi={vi}
+                    onPress={() => onCardPress(item)}
+                    onHide={() => onHidePress(item)}
+                    onInviteAccept={() => onInviteAccept(item)}
+                    onInviteDecline={() => onInviteDecline(item)}
+                  />
+                ))}
               </View>
             ))
           )}
@@ -416,85 +320,3 @@ export default function NotificationsScreen({ navigation }: any) {
     </SafeAreaProvider>
   );
 }
-
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  headerTitle: { flex: 1, fontSize: 20, fontWeight: '800' },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  summary: { fontWeight: '700' },
-  readAll: { fontWeight: '800' },
-  tabRow: { flexDirection: 'row', gap: 8 },
-  tabPill: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
-  tabText: { fontWeight: '700' },
-  hint: { fontSize: 11, marginTop: 14, marginBottom: 8 },
-  sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: '800' },
-  sectionRight: { fontWeight: '700' },
-  empty: { lineHeight: 20, marginTop: 12 },
-  card: {
-    flexDirection: 'row',
-    gap: 12,
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 10,
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: { fontSize: 20 },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  category: { fontSize: 11, fontWeight: '800' },
-  timeLabel: { fontSize: 12 },
-  cardTitle: { fontSize: 15, fontWeight: '800', marginTop: 2 },
-  cardBody: { lineHeight: 20, marginTop: 4 },
-  inviteRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  inviteAccept: {
-    backgroundColor: PRIMARY,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  inviteAcceptText: { fontWeight: '800', color: '#fff' },
-  inviteDecline: {
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  inviteDeclineText: { fontWeight: '800', color: '#111' },
-});

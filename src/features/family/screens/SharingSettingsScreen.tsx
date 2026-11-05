@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
@@ -23,19 +22,9 @@ import {
   type FamilyMember,
   type SharingSettings,
 } from '../../../lib/familyApi';
-
-const CONTENT_ROWS: {
-  key: keyof Omit<SharingSettings, 'share_enabled'>;
-  title: string;
-  desc: string;
-}[] = [
-  { key: 'share_steps', title: 'Bước chân', desc: 'Số bước, quãng đường, kcal ước lượng' },
-  { key: 'share_sleep', title: 'Giấc ngủ', desc: 'Thời lượng ngủ và mục tiêu giấc ngủ' },
-  { key: 'share_heart_rate', title: 'Nhịp tim', desc: 'Nhịp tim lúc nghỉ' },
-  { key: 'share_spo2', title: 'SpO2', desc: 'Độ bão hòa oxy trong máu' },
-  { key: 'share_water', title: 'Nước', desc: 'Lượng nước đã uống trong ngày' },
-  { key: 'share_weight', title: 'Cân nặng', desc: 'Cân nặng ghi nhận hôm nay' },
-];
+import { CONTENT_ROWS } from '../constants';
+import { SharingMemberRow } from '../components/SharingMemberRow';
+import { s } from './SharingSettingsScreen.styles';
 
 export default function SharingSettingsScreen({ navigation }: any) {
   const { theme } = useSettings();
@@ -166,24 +155,12 @@ export default function SharingSettingsScreen({ navigation }: any) {
             </Text>
           ) : (
             members.map((m) => (
-              <View key={m.ownerId} style={[s.card, { backgroundColor: theme.card }]}>
-                <View style={s.row}>
-                  <View style={[s.initialCircle, { backgroundColor: theme.cardAlt }]}>
-                    <Text style={[s.initial, { color: theme.primaryDark }]}>
-                      {displayNameOf(m).charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.rowTitle, { color: theme.text }]}>{displayNameOf(m)}</Text>
-                    {m.nickname && m.nickname !== m.displayName && (
-                      <Text style={[s.muted, { color: theme.muted }]}>{m.displayName}</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity onPress={() => onRevoke(m)}>
-                    <Text style={[s.revoke, { color: '#C62828' }]}>Hủy kết nối</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <SharingMemberRow
+                key={m.ownerId}
+                member={m}
+                theme={theme}
+                onRevoke={() => onRevoke(m)}
+              />
             ))
           )}
         </ScrollView>
@@ -191,37 +168,3 @@ export default function SharingSettingsScreen({ navigation }: any) {
     </SafeAreaProvider>
   );
 }
-
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  // Căn giữa theo chiều dọc và tạo khoảng cách hợp lý
-  headerRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  backBtn: {
-    paddingRight: 2,
-    paddingVertical: 4,
-  },
-  back: { 
-    fontSize: 28, 
-    fontWeight: '300',
-    lineHeight: 32,
-  },
-  headerTitle: { 
-    fontSize: 16, 
-    fontWeight: '800', 
-    flex: 1
-  },
-  card: { borderRadius: 14, padding: 12, marginBottom: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  icon: { fontSize: 36 },
-  rowTitle: { fontSize: 15, fontWeight: '700' },
-  muted: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', marginTop: 16, marginBottom: 10 },
-  initialCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  initial: { fontSize: 18, fontWeight: '800' },
-  revoke: { fontWeight: '700' },
-});

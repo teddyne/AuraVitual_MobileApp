@@ -4,10 +4,13 @@ import {
   Text,
   TouchableOpacity,
   View,
-  StyleSheet,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { s } from './RecommendationScreen.styles';
+import { CardTitle } from '../components/CardTitle';
+import { GOAL_LABEL } from '../constants';
+import { fmtHours } from '../utils/profileFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
@@ -17,40 +20,6 @@ import {
   syncRecommendationToProfile,
 } from '../../../lib/auravitalApi';
 import { isoToLabel } from '../../../lib/healthCalc';
-
-const GOAL_LABEL: Record<string, string> = {
-  maintain: 'Duy trì vóc dáng',
-  lose: 'Giảm cân',
-  gain: 'Tăng cân',
-  sleep: 'Cải thiện giấc ngủ sâu',
-  cycle: 'Chu kỳ & Nội tiết tố',
-};
-function fmtHours(h: number) {
-  const hh = Math.floor(h),
-    mm = Math.round((h - hh) * 60);
-  return `${hh} giờ ${mm} phút`;
-}
-
-// Vòng tròn nhạt + icon xanh đậm, cùng kiểu ProfileSettings/ProfileSetup.
-function IconBadge({ name }: { name: any }) {
-  return (
-    <View style={s.iconBadge}>
-      <Ionicons name={name} size={22} color='#2E7D32' />
-    </View>
-  );
-}
-
-// Tiêu đề thẻ có icon, thay cho tiêu đề gắn emoji ở đầu.
-function CardTitle({ icon, children, theme }: any) {
-  return (
-    <View style={s.cardTitleRow}>
-      <IconBadge name={icon} />
-      <Text style={[s.cardTitle, { color: theme.text, marginBottom: 0 }]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
 
 export default function RecommendationScreen({ route, navigation }: any) {
   const { theme } = useSettings();
@@ -480,91 +449,3 @@ export default function RecommendationScreen({ route, navigation }: any) {
     </SafeAreaProvider>
   );
 }
-const s = StyleSheet.create({
-  wrap: { flex: 1 },
-  title: { fontSize: 18, fontWeight: '800', padding: 16 },
-  hero: { borderRadius: 24, padding: 20, marginBottom: 14 },
-  eyebrow: { color: '#fff', opacity: 0.8, fontWeight: '700' },
-  heroName: { color: '#fff', fontSize: 26, fontWeight: '800', marginTop: 6 },
-  heroSub: { color: '#fff', opacity: 0.85, marginTop: 4 },
-  pill: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-    marginTop: 10,
-  },
-  pillText: { color: '#fff', fontWeight: '700' },
-  card: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardTitle: { fontSize: 17, fontWeight: '800', marginBottom: 10 },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EAF0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  big: { fontSize: 24, fontWeight: '800' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  badge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontWeight: '800', color: '#4E8A47' },
-  badgeSub: { fontSize: 11, color: '#4E8A47' },
-  statRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  stat: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 12, padding: 10 },
-  advice: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 10,
-  },
-  adviceTitle: { color: '#E65100', fontWeight: '800' },
-  adviceTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  scale: { marginTop: 12 },
-  dotRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  dot: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5E7EB' },
-  barRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-  },
-  bar: { width: 56, borderRadius: 12 },
-  primaryBtn: {
-    borderRadius: 999,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  secondaryBtn: {
-    borderRadius: 999,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 10,
-    borderWidth: 1,
-  },
-  secondaryText: { fontWeight: '800' },
-  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-});

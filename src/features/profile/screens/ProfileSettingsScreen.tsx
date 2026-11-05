@@ -4,7 +4,6 @@ import {
   Image,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -15,6 +14,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { s } from './ProfileSettingsScreen.styles';
+import { Row } from '../components/SettingsRow';
 import { supabase } from '../../../lib/supabase';
 import {
   formatNumber,
@@ -22,39 +23,6 @@ import {
   type Profile,
   updateAvatarUrl,
 } from '../../../lib/auravitalApi';
-
-// Icon kiểu ảnh bạn gửi: vòng tròn nhạt + icon xanh đậm.
-// solid = true thì vòng xanh đặc + icon trắng (dùng cho hàng Chat).
-function Row({ icon, solid, title, sub, right, onPress, theme, dark }: any) {
-  const iconBg = solid ? '#2E7D32' : dark ? theme.cardAlt : '#EAF0FF';
-  const iconColor = solid ? '#fff' : '#2E7D32';
-  return (
-    <TouchableOpacity
-      style={[s.row, { backgroundColor: theme.card }]}
-      onPress={
-        onPress ||
-        (() =>
-          Alert.alert(
-            'Chưa làm',
-            'Mục này chưa nối dữ liệu thật, chỉ là hàng giao diện.',
-          ))
-      }
-    >
-      <View style={[s.iconBadge, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.rowTitle, { color: theme.text }]}>{title}</Text>
-        {sub && <Text style={[s.muted, { color: theme.muted }]}>{sub}</Text>}
-      </View>
-      {right ? (
-        <Text style={[s.rowRight, { color: theme.primaryDark }]}>{right}</Text>
-      ) : (
-        <Ionicons name='chevron-forward' size={20} color={theme.muted} />
-      )}
-    </TouchableOpacity>
-  );
-}
 
 export default function ProfileSettingsScreen({ navigation }: any) {
   const { user, logout } = useAuth();
@@ -595,101 +563,3 @@ export default function ProfileSettingsScreen({ navigation }: any) {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  wrap: { flex: 1 },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: { alignItems: 'center', borderRadius: 24, padding: 20 },
-  avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 24 },
-  name: { fontSize: 20, fontWeight: '800', marginTop: 10 },
-  muted: { lineHeight: 18, marginTop: 2 },
-  goldPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 10,
-  },
-  gold: { fontWeight: '800' },
-  section: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  sectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  updateLink: { fontWeight: '800', fontSize: 13 },
-  row: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    padding: 12,
-    marginTop: 8,
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTitle: { fontWeight: '800', fontSize: 15 },
-  rowRight: { fontWeight: '700' },
-  themeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 12,
-    marginTop: 8,
-  },
-  themeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  themeBtns: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  themeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  themeText: { fontWeight: '700' },
-  logout: {
-    borderRadius: 999,
-    padding: 14,
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  logoutContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoutText: { fontWeight: '800' },
-  footer: { textAlign: 'center', fontSize: 12, marginTop: 12, lineHeight: 17 },
-});

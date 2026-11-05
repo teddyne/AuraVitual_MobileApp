@@ -5,28 +5,17 @@
 // =====================================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, RefreshControl, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { VideoView, useVideoPlayer } from 'expo-video';
 import { useKeepAwake } from 'expo-keep-awake';
 import { getPostById, getWorkoutSteps, levelLabel, type Post, type WorkoutStep } from '../../../lib/workoutApi';
-
-function VideoPlayer({ uri }: { uri: string }) {
-  const player = useVideoPlayer(uri, (p) => {
-    p.loop = false;
-  });
-  return <VideoView player={player} style={styles.video} nativeControls />;
-}
-
-function fmtClock(totalSec: number): string {
-  const m = Math.floor(totalSec / 60);
-  const s = Math.floor(totalSec % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+import { VideoPlayer } from '../components/VideoPlayer';
+import { fmtClock } from '../utils/workoutFormat';
+import { styles } from './WorkoutPlayerScreen.styles';
 
 export default function WorkoutPlayerScreen() {
   useKeepAwake();
@@ -292,48 +281,3 @@ export default function WorkoutPlayerScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  error: { color: '#B23A3A', fontSize: 15, textAlign: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E', marginRight: 150 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EAF6EC', justifyContent: 'center', alignItems: 'center' },
-  videoWrap: { borderRadius: 20, overflow: 'hidden', backgroundColor: '#000' },
-  video: { width: '100%', height: 220 },
-  videoNote: { color: '#FFD', fontSize: 12, padding: 8, backgroundColor: '#222' },
-  cover: { width: '100%', height: 220, borderRadius: 20 },
-  playerBar: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28, marginTop: 20 },
-  seekBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#EEF1EE', justifyContent: 'center', alignItems: 'center' },
-  seekText: { fontSize: 14, fontWeight: '700', color: '#1B2A1E' },
-  bigPlay: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center' },
-  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 3 },
-  timeText: { fontSize: 13, color: '#5B665E' },
-  barTrack: { height: 6, borderRadius: 3, backgroundColor: '#E5E5E5', overflow: 'hidden', marginTop: 6 },
-  barFill: { height: '100%', backgroundColor: '#2E7D32' },
-  nowPlaying: { fontSize: 14, fontWeight: '700', color: '#2E7D32', marginTop: 10, textAlign: 'center' },
-  kicker: { fontSize: 12, fontWeight: '700', color: '#2E7D32', marginTop: 22 },
-  title: { fontSize: 22, fontWeight: '800', color: '#1B2A1E', marginTop: 25 },
-  summary: { fontSize: 15, color: '#5B665E', marginTop: 8, lineHeight: 21 },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16 },
-  infoBox: { width: '48%', backgroundColor: '#F6F8F6', borderRadius: 14, padding: 12, marginBottom: 10 },
-  infoLabel: { fontSize: 11, fontWeight: '700', color: '#8A968E' },
-  infoValue: { fontSize: 16, fontWeight: '700', color: '#1B2A1E', marginTop: 3 },
-  stepsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10 },
-  h2: { fontSize: 18, fontWeight: '800', color: '#1B2A1E' },
-  stepsTotal: { fontSize: 13, color: '#2E7D32' },
-  empty: { fontSize: 14, color: '#6B7A6E', marginBottom: 12 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F6F8F6', borderRadius: 14, padding: 12, marginBottom: 8 },
-  stepCurrent: { backgroundColor: '#EAF6EC' },
-  stepPlay: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E5E5', justifyContent: 'center', alignItems: 'center' },
-  stepPlayActive: { backgroundColor: '#2E7D32' },
-  stepTitle: { fontSize: 15, fontWeight: '700', color: '#1B2A1E' },
-  stepSub: { fontSize: 13, color: '#5B665E', marginTop: 2 },
-  stepNum: { fontSize: 13, color: '#8A968E' },
-  keepAwake: { fontSize: 13, color: '#6B7A6E', textAlign: 'center', marginTop: 14 },
-  startBtn: { backgroundColor: '#2E7D32', borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 12 },
-  startText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  logLink: { alignItems: 'center', marginTop: 12 },
-  logLinkText: { color: '#2E7D32', fontWeight: '700', fontSize: 14 },
-});

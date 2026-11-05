@@ -3,54 +3,42 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'react-native-qrcode-svg';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { useSettings } from '../../../context/SettingsContext';
-import { healthScore, localToday } from '../../../lib/auravitalApi';
+import { localToday } from '../../../lib/auravitalApi';
 import {
   acceptRequest,
   declineRequest,
   dismissRequest,
-  displayNameOf,
   getMembers,
   getMyInviteCode,
   getReceivedRequests,
   getSentRequests,
-  healthBadge,
   rotateInviteCode,
   sendInvite,
   setNickname,
-  timeAgo,
   type FamilyMember,
   type FamilyRequest,
 } from '../../../lib/familyApi';
-
-const CODE_RE = /^[A-HJKMNP-Z2-9]{8}$/;
-
-function fmtExpiry(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ngày ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function badgeBg(label: string): string {
-  if (label === 'Tốt') return '#E8F5E9';
-  if (label === 'Ổn định') return '#FFF8E1';
-  if (label === 'Cần chú ý') return '#FFEBEE';
-  return '#F1F1F1';
-}
+import { CODE_RE } from '../utils/sharingFormat';
+import { SharingMemberCard } from '../components/SharingMemberCard';
+import {
+  ReceivedRequestCard,
+  SentRequestCard,
+} from '../components/SharingRequestCards';
+import { SharingNicknameBox } from '../components/SharingNicknameBox';
+import { SharingPairCard } from '../components/SharingPairCard';
+import { SharingQrScannerModal } from '../components/SharingQrScannerModal';
+import { s } from './SharingScreen.styles';
 
 export default function SharingScreen({ navigation }: any) {
   const { theme } = useSettings();
@@ -286,49 +274,14 @@ export default function SharingScreen({ navigation }: any) {
               Chưa có thành viên. Tạo mã mời bên dưới và gửi cho người thân để bắt đầu.
             </Text>
           ) : (
-            members.map((m) => {
-              const score = healthScore(m.latest, {
-                step_goal: m.stepGoal,
-                water_goal_ml: m.waterGoalMl,
-                sleep_goal_hours: m.sleepGoalHours,
-              } as any);
-              const badge = healthBadge(score);
-              const showHr =
-                (m.settings ?? { share_enabled: true, share_heart_rate: true } as any)
-                  .share_enabled !== false &&
-                (m.settings?.share_heart_rate ?? true) &&
-                m.latest?.heart_rate != null;
-              return (
-                <TouchableOpacity
-                  key={m.ownerId}
-                  onPress={() => goDetail(m.ownerId)}
-                  style={[s.memberCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                >
-                  <View style={[s.initialCircle, { backgroundColor: theme.cardAlt }]}>
-                    <Text style={[s.initial, { color: theme.primaryDark }]}>
-                      {displayNameOf(m).charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={s.nameRow}>
-                      <Text style={[s.memberName, { color: theme.text }]} numberOfLines={1}>
-                        {displayNameOf(m)}
-                      </Text>
-                      <View style={[s.miniBadge, { backgroundColor: badgeBg(badge) }]}>
-                        <Text style={[s.miniBadgeText, { color: theme.text }]}>{badge}</Text>
-                      </View>
-                    </View>
-                    <Text style={[s.memberSub, { color: theme.muted }]}>
-                      {m.latest ? `Đã đồng bộ ${timeAgo(m.latest.updated_at)}` : 'Chưa có dữ liệu'}
-                    </Text>
-                  </View>
-                  {showHr ? (
-                    <Text style={[s.bpm, { color: theme.text }]}>♡ {m.latest!.heart_rate} BPM</Text>
-                  ) : null}
-                  <Text style={[s.chev, { color: theme.muted }]}>›</Text>
-                </TouchableOpacity>
-              );
-            })
+            members.map((m) => (
+              <SharingMemberCard
+                key={m.ownerId}
+                member={m}
+                theme={theme}
+                onPress={() => goDetail(m.ownerId)}
+              />
+            ))
           )}
 
           {/* Lời mời mình nhận */}
@@ -338,55 +291,27 @@ export default function SharingScreen({ navigation }: any) {
                 <Text style={[s.sectionTitle, { color: theme.text }]}>✉️ Lời mời kết nối</Text>
               </View>
               {received.map((r) => (
-                <View key={r.id} style={[s.reqCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <Text style={[s.reqText, { color: theme.text }]}>
-                    <Text style={{ fontWeight: '800' }}>{r.fromName}</Text> muốn kết nối gia đình với bạn.
-                  </Text>
-                  <View style={s.reqBtns}>
-                    <TouchableOpacity
-                      onPress={() => onAccept(r)}
-                      style={[s.acceptBtn, { backgroundColor: theme.primaryDark }]}
-                    >
-                      <Text style={s.acceptText}>Đồng ý</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => onDecline(r)}
-                      style={[s.declineBtn, { borderColor: theme.border }]}
-                    >
-                      <Text style={[s.declineText, { color: theme.text }]}>Từ chối</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <ReceivedRequestCard
+                  key={r.id}
+                  request={r}
+                  theme={theme}
+                  onAccept={() => onAccept(r)}
+                  onDecline={() => onDecline(r)}
+                />
               ))}
             </>
           )}
 
           {/* Đặt biệt danh ngay sau khi Đồng ý */}
           {nicknamePrompt && (
-            <View style={[s.nickBox, { backgroundColor: '#E8F5E9', borderColor: theme.primaryDark }]}>
-              <Text style={[s.nickTitle, { color: theme.text }]}>
-                Đã kết nối với {nicknamePrompt.name}! Đặt biệt danh cho người này:
-              </Text>
-              <TextInput
-                value={nicknameDraft}
-                onChangeText={setNicknameDraft}
-                placeholder='Ví dụ: Bố, Mẹ...'
-                placeholderTextColor={theme.muted}
-                maxLength={30}
-                style={[s.nickInput, { backgroundColor: '#FFFFFF', color: theme.text }]}
-              />
-              <View style={s.reqBtns}>
-                <TouchableOpacity
-                  onPress={onSaveNickname}
-                  style={[s.acceptBtn, { backgroundColor: theme.primaryDark }]}
-                >
-                  <Text style={s.acceptText}>Lưu biệt danh</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setNicknamePrompt(null)}>
-                  <Text style={[s.declineText, { color: theme.muted }]}>Để sau</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <SharingNicknameBox
+              name={nicknamePrompt.name}
+              value={nicknameDraft}
+              theme={theme}
+              onChangeText={setNicknameDraft}
+              onSave={onSaveNickname}
+              onDismiss={() => setNicknamePrompt(null)}
+            />
           )}
 
           {/* Lời mời mình đã gửi */}
@@ -396,24 +321,12 @@ export default function SharingScreen({ navigation }: any) {
                 <Text style={[s.sectionTitle, { color: theme.text }]}>📤 Lời mời đã gửi</Text>
               </View>
               {sent.map((r) => (
-                <View key={r.id} style={[s.reqCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <Text style={[s.reqText, { color: theme.text }]}>
-                    {r.status === 'declined' ? (
-                      <>
-                        <Text style={{ fontWeight: '800' }}>{r.toName ?? 'Người nhận'}</Text> đã từ chối lời mời.
-                      </>
-                    ) : (
-                      <>
-                        Đang chờ <Text style={{ fontWeight: '800' }}>{r.toName ?? 'người nhận'}</Text> chấp nhận.
-                      </>
-                    )}
-                  </Text>
-                  {r.status === 'declined' && (
-                    <TouchableOpacity onPress={() => onDismissSent(r)}>
-                      <Text style={[s.dismiss, { color: theme.primaryDark }]}>Ẩn</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                <SentRequestCard
+                  key={r.id}
+                  request={r}
+                  theme={theme}
+                  onDismiss={() => onDismissSent(r)}
+                />
               ))}
             </>
           )}
@@ -427,70 +340,19 @@ export default function SharingScreen({ navigation }: any) {
           >
             <Text style={[s.sectionTitle, { color: theme.text }]}>Ghép nối tức thì</Text>
           </View>
-          
-          <View style={[s.pairCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {myCode ? (
-              <>
-                <Text style={[s.codeLabel, { color: theme.muted }]}>MÃ MỜI CỦA BẠN</Text>
-                <Text style={[s.code, { color: theme.text }]}>{myCode.code}</Text>
-                <Text style={[s.codeExp, { color: theme.muted }]}>
-                  Hiệu lực đến {fmtExpiry(myCode.expiresAt)}
-                </Text>
-                <View style={s.qrWrap}>
-                  <QRCode value={myCode.code} size={180} color='#1F2937' backgroundColor='#FFFFFF' />
-                </View>
-                <TouchableOpacity
-                  onPress={onRotateCode}
-                  disabled={rotating}
-                  style={[
-                    s.reloadBtn,
-                    { borderColor: theme.border, opacity: rotating ? 0.5 : 1 },
-                  ]}
-                >
-                  <Text style={[s.reloadText, { color: theme.primaryDark }]}>
-                    {rotating ? 'Đang tạo…' : '↻ Tạo mã mới'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <Text style={[s.empty, { color: theme.muted }]}>
-                Chưa tạo được mã mời, kéo xuống để thử lại hoặc kiểm tra mạng.
-              </Text>
-            )}
 
-            <View style={s.divider}>
-              <Text style={[s.dividerText, { color: theme.muted, paddingTop: 15 }]}>- nhập mã chia sẻ của người khác -</Text>
-            </View>
-            <TextInput
-              value={codeInput}
-              onChangeText={(t) => setCodeInput(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-              placeholder='Nhập mã 8 ký tự'
-              placeholderTextColor={theme.muted}
-              autoCapitalize='characters'
-              maxLength={8}
-              style={[s.codeInput, { backgroundColor: theme.cardAlt, color: theme.text }]}
-            />
-            <View style={s.reqBtns}>
-              <TouchableOpacity
-                onPress={onScanPress}
-                style={[s.scanBtn, { borderColor: theme.border }]}
-              >
-                <Text style={[s.scanText, { color: theme.text }]}>📷 Quét QR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={onSend}
-                disabled={sending}
-                style={[s.sendBtn, { backgroundColor: theme.primaryDark, opacity: sending ? 0.6 : 1 }]}
-              >
-                <Text style={s.sendText}>{sending ? 'Đang gửi...' : 'Gửi lời mời'}</Text>
-              </TouchableOpacity>
-            </View>
-            {sendMsg && (
-              <Text style={[s.sendMsg, { color: sendMsg.ok ? theme.primaryDark : '#C62828' }]}>
-                {sendMsg.text}
-              </Text>
-            )}
-          </View>
+          <SharingPairCard
+            myCode={myCode}
+            codeInput={codeInput}
+            sending={sending}
+            sendMsg={sendMsg}
+            rotating={rotating}
+            theme={theme}
+            onCodeInputChange={setCodeInput}
+            onRotateCode={onRotateCode}
+            onScanPress={onScanPress}
+            onSend={onSend}
+          />
 
           {/* Giá trị cốt lõi */}
           <Text style={[s.sectionTitle, { color: theme.text, marginTop: 30 }]}> Giá trị cốt lõi</Text>
@@ -529,107 +391,15 @@ export default function SharingScreen({ navigation }: any) {
         </ScrollView>
 
         {/* Quét QR: camera toàn màn hình, chỉ nhận mã 8 ký tự hợp lệ */}
-        <Modal visible={scanning} transparent animationType='slide'>
-          <View style={stylesScanner.wrap}>
-            <CameraView
-              style={stylesScanner.camera}
-              facing='back'
-              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => {
-                const code = data.trim().toUpperCase();
-                if (CODE_RE.test(code)) {
-                  setCodeInput(code);
-                  setScanning(false);
-                }
-              }}
-            />
-            <TouchableOpacity onPress={() => setScanning(false)} style={stylesScanner.closeBtn}>
-              <Text style={stylesScanner.closeText}>Đóng</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
+        <SharingQrScannerModal
+          visible={scanning}
+          onClose={() => setScanning(false)}
+          onCodeScanned={(code) => {
+            setCodeInput(code);
+            setScanning(false);
+          }}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
-
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,},
-  logo: { fontSize: 18, fontWeight: '800', color: '#2E7D32' },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
-  avatarBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10, marginTop: 16 },
-  badgeText: { fontSize: 11, fontWeight: '800' },
-  title: { fontSize: 26, fontWeight: '800', marginTop: 10, lineHeight: 32 },
-  subtitle: { fontSize: 14, marginTop: 6, lineHeight: 20 },
-  bannerWrap: { borderRadius: 16, overflow: 'hidden', marginBottom: 10, height: 180, backgroundColor: '#E8F5E9' },
-  bannerImg: { width: '100%', height: 180 },
-  bannerOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.45)' },
-  bannerText: { color: '#fff', fontSize: 14, fontWeight: '800', flex: 1 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 6},
-  sectionRight: { fontSize: 13, fontWeight: '700' },
-  empty: { fontSize: 14, lineHeight: 20 },
-  memberCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8 },
-  initialCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  initial: { fontSize: 20, fontWeight: '800' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  memberName: { fontSize: 15, fontWeight: '800' },
-  miniBadge: { borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8 },
-  miniBadgeText: { fontSize: 11, fontWeight: '700' },
-  memberSub: { fontSize: 13, marginTop: 2 },
-  bpm: { fontSize: 14, fontWeight: '700', marginLeft: 8 },
-  chev: { fontSize: 22, marginLeft: 6 },
-  reqCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8 },
-  reqText: { fontSize: 14, lineHeight: 20 },
-  reqBtns: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  acceptBtn: { borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18 },
-  acceptText: { color: '#FFFFFF', fontWeight: '800' },
-  declineBtn: { borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18 },
-  declineText: { fontWeight: '700' },
-  dismiss: { fontWeight: '700', marginTop: 8 },
-  nickBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8 },
-  nickTitle: { fontSize: 14, fontWeight: '700', lineHeight: 20 },
-  nickInput: { borderRadius: 10, padding: 10, marginTop: 10, fontSize: 15 },
-  pairDesc: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
-  pairCard: { borderWidth: 1, borderRadius: 16, padding: 16, alignItems: 'center' },
-  codeLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  code: { fontSize: 30, fontWeight: '900', letterSpacing: 4, marginTop: 4 },
-  codeExp: { fontSize: 13, marginTop: 2 },
-  qrWrap: { marginTop: 14, padding: 12, backgroundColor: '#FFFFFF', borderRadius: 12 },
-  reloadBtn: { borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, marginTop: 12 },
-  reloadText: { fontWeight: '700' },
-  divider: { marginVertical: 16 },
-  dividerText: { fontSize: 13, },
-  codeInput: { width: '100%', borderRadius: 10, padding: 12, fontSize: 16, letterSpacing: 3, textAlign: 'center' },
-  scanBtn: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  scanText: { fontWeight: '700' },
-  sendBtn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  sendText: { color: '#FFFFFF', fontWeight: '800' },
-  sendMsg: { fontSize: 13, marginTop: 10, textAlign: 'center', lineHeight: 18 },
-  valueCard: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 10, gap: 10 },
-  valueIcon: { fontSize: 26 },
-  valueTitle: { fontSize: 15, fontWeight: '800' },
-  valueBody: { fontSize: 13, lineHeight: 19, marginTop: 4 },
-  chipRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  chip: { borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
-  chipText: { fontSize: 12, fontWeight: '700' },
-  cta: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
-  ctaText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
-  ctaOutline: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
-  ctaOutlineText: { fontWeight: '700', fontSize: 15 },
-});
-
-const stylesScanner = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#000', justifyContent: 'flex-end' },
-  camera: { ...StyleSheet.absoluteFill },
-  closeBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 12,
-    margin: 20,
-    alignItems: 'center',
-  },
-  closeText: { fontWeight: '800', fontSize: 15 },
-});

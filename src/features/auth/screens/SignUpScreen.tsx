@@ -1,12 +1,10 @@
-import React, { useRef, useState, type ReactNode } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   type TextInputInstance,
@@ -22,79 +20,11 @@ import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
 import { getProfile } from '../../../lib/auravitalApi';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const INPUT_BG = '#EEF1FF';
-const ICON_MUTED = '#7A8A7A';
-
-function passwordScore(pw: string) {
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (/[A-Z]/.test(pw)) s++;
-  if (/[0-9]/.test(pw)) s++;
-  if (/[^A-Za-z0-9]/.test(pw)) s++;
-  return s;
-}
-
-type AuthFieldProps = {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  right?: ReactNode;
-  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
-  onSubmitEditing?: () => void;
-  blurOnSubmit?: boolean;
-  inputRef?: React.RefObject<TextInputInstance | null>;
-};
-
-function focusInput(inputRef: React.RefObject<TextInputInstance | null>) {
-  setTimeout(() => inputRef.current?.focus(), 50);
-}
-
-function AuthField({
-  label,
-  icon,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  autoCapitalize,
-  right,
-  returnKeyType,
-  onSubmitEditing,
-  blurOnSubmit,
-  inputRef,
-}: AuthFieldProps) {
-  return (
-    <View style={styles.fieldWrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.inputBox}>
-        <Ionicons name={icon} size={20} color={ICON_MUTED} style={styles.icon} />
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.muted}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-          blurOnSubmit={blurOnSubmit}
-        />
-        {right}
-      </View>
-    </View>
-  );
-}
+import { AuthField } from '../components/AuthField';
+import { focusInput } from '../utils/focusInput';
+import { passwordScore } from '../utils/passwordScore';
+import { EMAIL_RE, ICON_MUTED } from '../constants';
+import { styles } from './SignUpScreen.styles';
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
@@ -341,103 +271,3 @@ export default function SignUpScreen() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { padding: 24 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.mint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  badgeText: { fontSize: 11, fontWeight: '700', color: colors.sageDark },
-  title: { fontSize: 26, fontWeight: '800', color: colors.ink },
-  sub: {
-    fontSize: 15,
-    color: colors.muted,
-    lineHeight: 21,
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 14,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  fieldWrap: { marginBottom: 18 },
-  label: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.ink,
-    letterSpacing: 0.3,
-    marginBottom: 8,
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: INPUT_BG,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16, color: colors.ink, paddingVertical: 14 },
-  passLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  passLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.ink,
-    letterSpacing: 0.5,
-  },
-  passHint: { fontSize: 12, color: colors.sageDark, fontWeight: '600' },
-  terms: { fontSize: 14, color: colors.muted, lineHeight: 20 },
-  termsLink: { color: colors.sageDark, fontWeight: '700' },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 24,
-  },
-  line: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: 12, color: colors.muted, fontWeight: '700' },
-  socialRow: { flexDirection: 'row', gap: 12 },
-  socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
-    borderRadius: 999,
-    paddingVertical: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  googleG: { fontSize: 20, fontWeight: '900', color: '#4285F4' },
-  socialText: { fontSize: 16, fontWeight: '700', color: colors.ink },
-  footer: { alignItems: 'center', marginTop: 20 },
-  footerText: { fontSize: 14, color: colors.muted },
-});

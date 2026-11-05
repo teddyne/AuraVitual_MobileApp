@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
-  PanResponder,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Switch,
   Text,
   TextInput,
@@ -14,6 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { IconBadge } from '../../../components/ui/IconBadge';
+import { s } from './ProfileSetupScreen.styles';
+import { CardTitle } from '../components/CardTitle';
+import { FieldLabel } from '../components/FieldLabel';
+import { DragRuler } from '../components/DragRuler';
+import { GENDERS, GOALS, ACTIVITY_ICONS } from '../constants';
+import {
+  parseDate,
+  isoToText,
+  ageFromIso,
+  fmtSleepHours,
+  toDbTime,
+  toTimeInput,
+} from '../utils/profileFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
@@ -31,193 +43,7 @@ import {
 } from '../../../lib/healthCalc';
 import type { ActivityId, DurationUnit } from '../../../lib/healthCalc';
 
-function parseDate(text: string) {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
-  if (!m) return null;
-  const d = parseInt(m[1], 10),
-    mo = parseInt(m[2], 10),
-    y = parseInt(m[3], 10);
-  const date = new Date(y, mo - 1, d);
-  if (
-    date.getFullYear() !== y ||
-    date.getMonth() !== mo - 1 ||
-    date.getDate() !== d
-  )
-    return null;
-  if (y < 1900 || date > new Date()) return null;
-  return {
-    iso: `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-    date,
-  };
-}
-function isoToText(iso: string) {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-function ageFromIso(iso: string | null) {
-  if (!iso) return null;
-  const b = new Date(iso + 'T00:00:00'),
-    t = new Date();
-  let age = t.getFullYear() - b.getFullYear();
-  if (
-    t.getMonth() < b.getMonth() ||
-    (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())
-  )
-    age -= 1;
-  return age;
-}
-function fmtSleepHours(h: number) {
-  const hh = Math.floor(h),
-    mm = Math.round((h - hh) * 60);
-  return mm === 60 ? `${hh + 1} giờ` : `${hh} giờ ${mm} phút`;
-}
-const toDbTime = (v: string) => {
-  const t = v.trim();
-  return t.length === 5 ? `${t}:00` : t;
-};
-const toTimeInput = (t: string | null) => (t ? t.slice(0, 5) : '');
-
 // Vòng tròn nhạt + icon xanh đậm, đúng kiểu ảnh bạn gửi.
-function IconBadge({ name, solid }: { name: any; solid?: boolean }) {
-  return (
-    <View style={[s.iconBadge, solid && { backgroundColor: '#2E7D32' }]}>
-      <Ionicons name={name} size={22} color={solid ? '#fff' : '#2E7D32'} />
-    </View>
-  );
-}
-
-// Tiêu đề thẻ có icon, thay cho tiêu đề gắn emoji ở đầu.
-function CardTitle({ icon, children, theme }: any) {
-  return (
-    <View style={s.cardTitleRow}>
-      <IconBadge name={icon} />
-      <Text style={[s.cardTitle, { color: theme.text, marginBottom: 0 }]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-// Nhãn trường có icon nhỏ, thay cho nhãn gắn emoji.
-function FieldLabel({ icon, children, theme }: any) {
-  return (
-    <View style={s.labelRow}>
-      <Ionicons name={icon} size={18} color="#2E7D32" />
-      <Text style={[s.label, { color: theme.text, marginTop: 0, marginBottom: 0 }]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-function DragRuler({
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  onDragStart,
-  onDragEnd,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
-}) {
-  const [w, setW] = useState(0);
-  const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > Math.abs(g.dy),
-      onPanResponderGrant: (e) => {
-        if (!w) return;
-        onDragStart?.();
-        const r = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
-        onChange(
-          Math.max(
-            min,
-            Math.min(max, Math.round((min + r * (max - min)) / step) * step),
-          ),
-        );
-      },
-      onPanResponderMove: (e) => {
-        if (!w) return;
-        const r = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
-        onChange(
-          Math.max(
-            min,
-            Math.min(max, Math.round((min + r * (max - min)) / step) * step),
-          ),
-        );
-      },
-      onPanResponderRelease: () => {
-        onDragEnd?.();
-      },
-      onPanResponderTerminate: () => {
-        onDragEnd?.();
-      },
-    }),
-  ).current;
-  const pct = ((value - min) / (max - min)) * 100;
-  return (
-    <View
-      onLayout={(e) => setW(e.nativeEvent.layout.width)}
-      {...pan.panHandlers}
-      style={s.rulerTrack}
-    >
-      <View style={[s.rulerFill, { width: `${pct}%` }]} />
-      <View style={[s.rulerThumb, { left: `${pct}%` }]} />
-    </View>
-  );
-}
-
-const GENDERS = [
-  { id: 'Nam', icon: 'male-outline' },
-  { id: 'Nữ', icon: 'female-outline' },
-  { id: 'Khác', icon: 'leaf-outline' },
-];
-const GOALS = [
-  {
-    id: 'maintain',
-    icon: 'fitness-outline',
-    title: 'Duy trì vóc dáng & Vận động',
-    desc: 'Tăng cường sức bền, duy trì chỉ số vàng',
-  },
-  {
-    id: 'lose',
-    icon: 'leaf-outline',
-    title: 'Giảm cân & Dinh dưỡng sạch',
-    desc: 'Thâm hụt calo lành mạnh, ăn nguyên bản',
-  },
-  {
-    id: 'gain',
-    icon: 'barbell-outline',
-    title: 'Tăng cân lành mạnh',
-    desc: 'Thặng dư calo lành mạnh, tăng cơ, không tăng mỡ',
-  },
-  {
-    id: 'sleep',
-    icon: 'moon-outline',
-    title: 'Cải thiện giấc ngủ sâu',
-    desc: 'Phục hồi thần kinh, giải tỏa căng thẳng',
-  },
-  {
-    id: 'cycle',
-    icon: 'flower-outline',
-    title: 'Chu kỳ & Nội tiết tố',
-    desc: 'Theo dõi nhịp sinh lý nữ & tuần hoàn năng lượng',
-  },
-];
-const ACTIVITY_ICONS: Record<string, string> = {
-  sedentary: 'tv-outline',
-  light: 'walk-outline',
-  moderate: 'bicycle-outline',
-  high: 'barbell-outline',
-  veryHigh: 'flame-outline',
-};
 
 export default function ProfileSetupScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -1291,158 +1117,3 @@ export default function ProfileSetupScreen({ navigation }: any) {
     </SafeAreaProvider>
   );
 }
-const s = StyleSheet.create({
-  wrap: { flex: 1 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 10 },
-  steps: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  stepDone: { color: '#4E8A47', fontWeight: '800' },
-  stepDefault: { color: '#9CA3AF', fontWeight: '700' },
-  stepLine: { color: '#D1D5DB', marginHorizontal: 6 },
-  heading: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  big: { fontSize: 26, fontWeight: '800', marginBottom: 6 },
-  muted: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
-  card: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardTitle: { fontSize: 17, fontWeight: '800', marginBottom: 10 },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EAF0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: { fontWeight: '700', marginTop: 10, marginBottom: 6 },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-  },
-  row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  optBtn: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  genderBtn: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  goalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  goalActive: { backgroundColor: '#C8E6C9', borderColor: '#4E8A47' },
-  calBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EAF0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  adjustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    justifyContent: 'center',
-    marginVertical: 8,
-  },
-  adjust: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  adjustText: { fontSize: 22, fontWeight: '700' },
-  numInput: {
-    fontSize: 26,
-    fontWeight: '800',
-    textAlign: 'center',
-    minWidth: 70,
-  },
-  rulerTrack: {
-    height: 28,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 14,
-    marginVertical: 8,
-    justifyContent: 'center',
-  },
-  rulerFill: { height: 28, backgroundColor: '#C8E6C9', borderRadius: 14 },
-  rulerThumb: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#4E8A47',
-    marginLeft: -14,
-  },
-  primaryBtn: {
-    borderRadius: 999,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  modalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalBox: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    maxHeight: '70%',
-  },
-  calGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
-  calCell: { width: '14.28%', paddingVertical: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center' },
-  yearRow: { paddingVertical: 10, alignItems: 'center' },
-  closeBtn: { alignItems: 'center', padding: 14, marginTop: 12, borderRadius: 12, backgroundColor: '#2E7D32' },
-});
