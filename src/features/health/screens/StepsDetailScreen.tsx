@@ -15,15 +15,15 @@ import { AppHeader } from '../../../components/ui/AppHeader';
 import { useSettings } from '../../../context/SettingsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../api/supabase';
 import { toKey } from '../../../utils/dates';
 import { PRIMARY } from '../constants';
-import { buildDaily, type Range } from '../utils/stepsFormat';
-import { LAST_SYNC_KEY, loadAcc, saveAcc } from '../utils/stepsAcc';
-import { StepsGauge } from '../components/StepsGauge';
-import { StepsChart } from '../components/StepsChart';
-import { StepsManualForm } from '../components/StepsManualForm';
-import { StepsSyncCard, type SensorStatus } from '../components/StepsSyncCard';
+import { buildDaily, type Range } from '../../../utils/health/stepsFormat';
+import { LAST_SYNC_KEY, loadAcc, saveAcc } from '../../../utils/health/stepsAcc';
+import { StepsGauge } from '../../../components/health/StepsGauge';
+import { StepsChart } from '../../../components/health/StepsChart';
+import { StepsManualForm } from '../../../components/health/StepsManualForm';
+import { StepsSyncCard, type SensorStatus } from '../../../components/health/StepsSyncCard';
 import { styles } from './StepsDetailScreen.styles';
 
 type Metric = {

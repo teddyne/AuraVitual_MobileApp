@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
 
 // Tach nguyen van tu HomeScreen.tsx: toan bo makeStyles tru nhom
-// homeBanner* (da doi sang components/HomeBannerCarousel.tsx vi chi
-// carousel dung, va phu thuoc bannerWidth tinh tu Dimensions o ben do).
+// homeBanner* (nhom nay da theo carousel bi xoa khoi Trang chu
+// 07/11/2026, chi con lai cac style banner* chet ben duoi).
 // Giu ca cac style hien khong dung toi (refreshText, swipeHint,
 // sectionTitle, grid, miniCard*, banner*, article*) — code chet co san,
 // khong xoa trong dot tach nay.

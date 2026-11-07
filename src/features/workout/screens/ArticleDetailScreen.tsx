@@ -3,7 +3,8 @@
 // Đặt tại: src/features/workout/screens/ArticleDetailScreen.tsx
 // Route params: { postId: string }.
 // Nội dung body lấy nguyên từ posts.body trong DB, không viết thêm,
-// không tóm tắt lại. Bài liên quan cũng lấy từ DB (cùng kind=article).
+// không tóm tắt lại. Bài liên quan cũng lấy từ DB (cùng topic với bài
+// đang xem, thay vì cùng kind như trước — cột posts.kind đã xóa).
 // =====================================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -13,7 +14,8 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getArticles, getPostById, levelLabel, type Post } from '../../../lib/workoutApi';
+import { getArticles, getPostById, levelLabel, type Post } from '../../../api/workoutApi';
+import { getPostsByTopic, type PostTopic } from '../../../api/auravitalApi';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ArticleDetailScreen.styles';
 
@@ -32,9 +34,18 @@ export default function ArticleDetailScreen() {
   const load = useCallback(async () => {
     try {
       if (!postId) throw new Error(t('workout.player.missingPostId'));
-      const [p, all] = await Promise.all([getPostById(postId), getArticles(10)]);
+      const p = await getPostById(postId);
       if (!p) throw new Error(t('workout.article.notFound'));
       setPost(p);
+      // Nhóm A (v3): bài liên quan = cùng topic với bài đang xem.
+      // Bài chưa có topic (topic null, seed cũ chưa chạy migration)
+      // hoặc topic='workout' thì dự phòng bằng getArticles(10)
+      // (mọi bài topic != 'workout') để vẫn có bài liên quan.
+      const topic = p.topic as PostTopic | null;
+      const all =
+        topic && topic !== 'workout'
+          ? await getPostsByTopic(topic, 10)
+          : await getArticles(10);
       setRelated(all.filter((a) => a.id !== p.id).slice(0, 3));
     } catch (e: any) {
       setError(e?.message ?? t('workout.article.loadFailed'));

@@ -24,9 +24,9 @@ import {
   calcKcal, deleteWorkoutLog, getWeeklySummary, getWorkoutLogsForDate,
   getWorkouts, saveWorkoutLog, updateWorkoutLogMinutes,
   type Post, type WorkoutLog,
-} from '../../../lib/workoutApi';
+} from '../../../api/workoutApi';
 import { toKey } from '../../../utils/dates';
-import { displayDate, fmtHM } from '../utils/workoutFormat';
+import { displayDate, fmtHM } from '../../../utils/workout/workoutFormat';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './WorkoutLogScreen.styles';
 

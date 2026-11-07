@@ -1,223 +1,137 @@
-# AuraVital
+# AuraVital — Dời kiến trúc + Thanh seek kéo được ở trang video
 
-AuraVital là ứng dụng di động theo dõi sức khỏe và lối sống. Ứng dụng được xây dựng bằng Expo, React Native và TypeScript; dữ liệu tài khoản, sức khỏe, dinh dưỡng, chu kỳ và nội dung được kết nối với Supabase.
+Bản này dời lại toàn bộ `src/` theo đúng 3 ý bạn nêu, cộng với phần
+chính trong bản nhận xét bạn gửi kèm (Phần 1). File AI Camera / AI
+Chat / Gold ở lần giao trước (07/11) đã gộp sẵn trong bản này, không
+mất gì.
 
-> **Tình trạng:** dự án đang trong quá trình phát triển. Một số màn hình và tích hợp yêu cầu cấu hình backend trước khi dùng đầy đủ. Các lỗi kiểm tra đang có được ghi ở mục [Hạn chế và lỗi hiện tại](#hạn-chế-và-lỗi-hiện-tại).
+## 1. Cấu trúc mới
 
-## Mục lục
-
-- [Tính năng](#tính-năng)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
-- [Kỹ thuật và cách tổ chức](#kỹ-thuật-và-cách-tổ-chức)
-- [Khởi tạo và chạy dự án](#khởi-tạo-và-chạy-dự-án)
-- [Cấu hình Supabase](#cấu-hình-supabase)
-- [Các lệnh thường dùng](#các-lệnh-thường-dùng)
-- [Hạn chế và lỗi hiện tại](#hạn-chế-và-lỗi-hiện-tại)
-
-## Tính năng
-
-- Đăng ký, đăng nhập, đăng xuất, quên/đặt lại mật khẩu và đăng nhập OAuth qua Supabase Auth.
-- Thiết lập hồ sơ và xem đề xuất sức khỏe, mục tiêu hoạt động, dinh dưỡng và giấc ngủ.
-- Theo dõi bước chân qua cảm biến thiết bị khi được hỗ trợ; có luồng nhập số bước thủ công.
-- Ghi nhận giấc ngủ, thiết lập báo thức và nhắc giờ bằng thông báo cục bộ.
-- Theo dõi chu kỳ và nhật ký chu kỳ.
-- Ghi nhận lượng nước và dinh dưỡng; thêm món thủ công, tra cứu mã vạch qua Open Food Facts và phân tích ảnh món ăn bằng Gemini.
-- Khám phá bài viết/bài tập, xem nội dung tập luyện và lưu nhật ký tập.
-- Tùy chỉnh giao diện sáng/tối và ngôn ngữ Việt/Anh.
-
-Một số tính năng cần thiết lập Supabase, nhà cung cấp OAuth, quyền thiết bị hoặc khóa dịch vụ bên ngoài mới hoạt động đầy đủ.
-
-## Cấu trúc thư mục
-
-```text
-Auravital/
-├── App.tsx                         # Khởi tạo provider, deep link và navigation
-├── index.ts                        # Điểm vào ứng dụng Expo
-├── app.json                        # Cấu hình Expo và plugin native
-├── package.json                    # Thư viện và scripts
-├── assets/
-│   ├── audio/                      # Âm thanh báo thức/tiếng mưa
-│   └── images/                     # Logo, ảnh onboarding và ảnh món ăn
-├── src/
-│   ├── components/
-│   │   ├── AlarmWatcher.tsx        # Xử lý tương tác với thông báo báo thức
-│   │   ├── home/                   # Các khối giao diện trang chủ
-│   │   └── ui/                     # Thành phần giao diện dùng chung
-│   ├── context/
-│   │   └── SettingsContext.tsx     # Ngôn ngữ, giao diện và cài đặt người dùng
-│   ├── features/                   # Mã được nhóm theo chức năng
-│   │   ├── auth/
-│   │   │   ├── AuthContext.tsx
-│   │   │   └── screens/            # Onboarding, Login, SignUp,
-│   │   │                            # ForgotPassword, ResetPassword
-│   │   ├── cycle/screens/          # CycleTrackingScreen
-│   │   ├── explore/screens/        # ExploreScreen
-│   │   ├── family/                 # Thư mục hiện chưa có màn hình
-│   │   ├── health/screens/         # StepsDetailScreen, SleepTrackerScreen
-│   │   ├── home/screens/           # HomeScreen
-│   │   ├── notifications/screens/  # NotificationsScreen
-│   │   ├── nutrition/screens/      # NutritionTracker, AddMeal, AddFood
-│   │   ├── profile/screens/        # ProfileSettings, ProfileSetup,
-│   │   │                            # Recommendation
-│   │   ├── reminders/screens/      # RemindersScreen
-│   │   └── workout/screens/        # WorkoutPlayer, ArticleDetail,
-│   │                               # WorkoutLog, AddWorkout
-│   ├── i18n/
-│   │   └── translations.ts         # Bản dịch tiếng Việt và tiếng Anh
-│   ├── lib/
-│   │   ├── auravitalApi.ts         # Truy vấn hồ sơ và chỉ số sức khỏe
-│   │   ├── healthCalc.ts           # Các phép tính/đề xuất sức khỏe
-│   │   ├── navigationRef.ts        # Tham chiếu navigation dùng ngoài màn hình
-│   │   ├── nutritionApi.ts         # Truy vấn món ăn, bữa ăn, mã vạch và phân tích ảnh
-│   │   ├── pendingDeepLink.ts      # Lưu deep link đang chờ xử lý
-│   │   ├── sleepSession.ts         # Lưu phiên ngủ và đồng bộ báo thức
-│   │   ├── supabase.ts             # Khởi tạo Supabase client
-│   │   └── workoutApi.ts           # Truy vấn bài tập và nhật ký tập
-│   ├── navigation/
-│   │   ├── MainTabNavigator.tsx    # Thanh tab chính
-│   │   └── RootNavigator.tsx       # Stack màn hình cấp ứng dụng
-│   └── theme/
-│       └── colors.ts               # Màu sắc giao diện
-├── supabase/
-│   ├── config.toml                 # Cấu hình Supabase Local Development
-│   ├── functions/
-│   │   └── analyze-meal/           # Edge Function gọi Gemini phân tích ảnh
-│   └── migrations/                 # Schema, hàm và chính sách cơ sở dữ liệu
-└── __tests__/                      # Hiện chưa có bộ kiểm thử
+```
+src/
+  api/                  # client + API dữ liệu dùng chung
+    supabase.ts         # (từ lib/supabase.ts)
+    aiClient.ts         # Gemini, từ lib/aiClient.ts
+    auravitalApi.ts, nutritionApi.ts, workoutApi.ts, familyApi.ts
+  components/           # DUY NHẤT 1 folder components
+    ui/                 # kit dùng chung: AppHeader, AppIcon, Field,
+                        # PillButton, CheckBox, StrengthMeter, IconBadge, Ui
+    ai/ auth/ cycle/ explore/ family/ health/ home/
+    notifications/ nutrition/ profile/ reminders/
+    subscription/ workout/
+    AlarmWatcher.tsx, FamilyWatcher.tsx, NotificationToast.tsx
+  context/              # SettingsContext, SubscriptionContext
+  features/             # mỗi phân hệ chỉ còn: screens, api (nếu riêng),
+                        # constants, types, service riêng (aiChatService…)
+    ai/ auth/ cycle/ explore/ family/ health/ home/
+    notifications/ nutrition/ profile/ reminders/
+    subscription/ workout/
+  i18n/                 # vi / en (không đổi)
+  lib/                  # CHỈ CÒN 12 file shim re-export (mục 3)
+  navigation/           # RootNavigator, MainTabNavigator,
+                        # navigationRef, pendingDeepLink (từ lib/)
+  theme/                # colors (không đổi)
+  types/
+    navigation.ts       # RootStackParamList tách khỏi RootNavigator
+  utils/                # DUY NHẤT 1 folder utils
+    dates.ts
+    auth/ cycle/ family/ health/ home/ notifications/
+    nutrition/ profile/ reminders/ workout/
 ```
 
-Mỗi thư mục trong `src/features/` chứa các màn hình của một phân hệ. Mã dùng chung như truy cập API, tính toán, điều hướng và giao diện được đặt ngoài `features/` để các màn hình có thể tái sử dụng.
+Quy tắc đặt chỗ từ nay về sau:
 
-## Công nghệ sử dụng
+- Component chỉ dùng ở 1 phân hệ → `src/components/<tên phân hệ>/`.
+  Component dùng ở ≥2 phân hệ → `src/components/ui/`.
+- Hàm thuần túy của 1 phân hệ → `src/utils/<tên phân hệ>/`.
+  Hàm dùng chung → `src/utils/dates.ts` hoặc `src/utils/<miền>/`.
+- Màn hình và logic riêng của phân hệ ở lại `src/features/<tên>/`.
 
-| Nhóm             | Công nghệ                                                                                    | Vai trò                                                           |
-| ---------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Ứng dụng di động | Expo SDK 58, React Native 0.88, React 19, TypeScript 6                                       | Phát triển ứng dụng iOS/Android; cấu hình web cũng có trong dự án |
-| Điều hướng       | React Navigation 7 (Native Stack, Bottom Tabs)                                               | Luồng màn hình và thanh tab                                       |
-| Backend          | Supabase Auth, PostgreSQL, Row Level Security, Storage, Edge Functions                       | Tài khoản, dữ liệu ứng dụng, ảnh và xử lý phía server             |
-| Thiết bị         | Expo Sensors, Notifications, Audio, Camera, Image Picker, Secure Store, Local Authentication | Bước chân, báo thức, âm thanh, ảnh và sinh trắc học               |
-| Giao diện        | React Native SVG, Gifted Charts, Expo Image, Expo Linear Gradient, Expo Vector Icons         | Biểu đồ, hình ảnh, hiệu ứng và biểu tượng                         |
-| Lưu trữ cục bộ   | AsyncStorage                                                                                 | Phiên Supabase, ngôn ngữ, giao diện và một số trạng thái cục bộ   |
-| Dịch vụ ngoài    | Gemini API, Open Food Facts                                                                  | Phân tích ảnh món ăn và tra cứu thông tin sản phẩm theo mã vạch   |
-| Chất lượng mã    | ESLint, Jest, jest-expo, React Native Testing Library                                        | Kiểm tra mã và kiểm thử (bộ test hiện chưa được viết)             |
+Lưu ý về tên gọi: AuraVital không có phân hệ “admin” (admin là của
+Luminous), nên `components/` có đúng 14 phân hệ hiện có của app, cộng
+thêm `ui/`. Đầy đủ 69 file đã dời xem ở `MIGRATION_MAP.md`.
 
-`@tanstack/react-query`, `react-hook-form`, `zod` và `date-fns` cũng có trong `package.json`; hiện chưa thấy các thư viện này được sử dụng trong mã nguồn `src/`.
+## 2. Vì sao API không chia về từng feature
 
-## Kỹ thuật và cách tổ chức
+Bản nhận xét đề xuất `features/<tên>/api/`, nhưng kiểm tra thực tế
+thì cả 4 file API đều được dùng chéo nhiều phân hệ nên chia về 1
+feature sẽ tạo import vòng:
 
-- **Tổ chức theo tính năng:** màn hình và logic được phân nhóm theo nghiệp vụ như `auth`, `health`, `nutrition` và `workout`.
-- **Điều hướng dạng stack kết hợp bottom tab:** màn hình khởi tạo được khai báo tại `src/navigation/RootNavigator.tsx`; các tab chính ở `src/navigation/MainTabNavigator.tsx`.
-- **React Context:** `AuthProvider` chia sẻ phiên đăng nhập; `SettingsProvider` cung cấp ngôn ngữ và chủ đề giao diện.
-- **Tách lớp truy cập dữ liệu:** các hàm truy vấn Supabase và xử lý dữ liệu nằm trong `src/lib/`, thay vì lặp lại truy vấn ở mọi màn hình.
-- **Bảo vệ dữ liệu phía cơ sở dữ liệu:** migration thiết lập các bảng, hàm PostgreSQL và chính sách Row Level Security (RLS). Vẫn cần triển khai migration lên đúng dự án Supabase để các truy vấn chạy được.
-- **Tích hợp thiết bị có phương án dự phòng:** theo dõi bước chân có thể dùng cảm biến hoặc nhập thủ công; báo thức dùng thông báo và âm thanh cục bộ.
-- **Hỗ trợ đa ngôn ngữ/giao diện:** bản dịch Việt/Anh và chế độ sáng/tối được lưu trong AsyncStorage.
-- **Expo Continuous Native Generation:** cấu hình native nằm trong `app.json` và các plugin Expo; thư mục `ios/` và `android/` được Git bỏ qua, không chỉnh sửa thủ công.
+- `auravitalApi`: 16 chỗ dùng (profile, home, health, family, auth…)
+- `workoutApi`: workout + explore + home
+- `familyApi`: family + notifications + home
+- `nutritionApi`: nutrition + home
 
-## Khởi tạo và chạy dự án
+Vì vậy cả 4 về `src/api/` cùng với `supabase.ts` và `aiClient.ts`.
+Luật: API chỉ 1 feature dùng thì mới đặt trong feature đó.
 
-### Yêu cầu
+## 3. Cách chép vào project — đọc kỹ
 
-- Node.js phiên bản LTS và npm.
-- Tài khoản/dự án Supabase nếu cần đăng nhập hoặc dùng dữ liệu backend.
-- Expo Go hoặc simulator/emulator cho nền tảng cần chạy. Một số module native có thể cần development build tùy thiết bị và tính năng.
-- Supabase CLI nếu cần chạy backend local, migration hoặc Edge Function.
+Zip này chứa **toàn bộ `src/` mới (179 file)**. Không chép đè kiểu
+cũ, vì các file ở vị trí cũ sẽ còn sót lại thành code chết:
 
-### Cài đặt ứng dụng
+1. Sao lưu project.
+2. **Xóa hẳn thư mục `src/` cũ**, rồi chép thư mục `src/` trong zip
+   vào. (Các file ngoài `src/` như `App.tsx`, `assets/`, `supabase/`
+   không nằm trong zip nên không bị động tới.)
+3. Trong `App.tsx` vẫn bọc `<SubscriptionProvider>` như lần trước
+   đã dặn (Settings → Auth → Subscription), và `.env` giữ key
+   Gemini như cũ.
+4. Chạy `npx tsc --noEmit`, rồi `npx expo start`.
 
-```bash
-git clone <repository-url>
-cd Auravital
-npm ci
-```
+`src/lib/` còn 12 file shim chỉ có 1 dòng `export * from ...`
+để code ngoài `src/` (vd `App.tsx`) còn import đường cũ không vỡ.
+Khi đã đổi hết import sang đường mới thì xóa cả thư mục `src/lib/`.
 
-Tạo file `.env` ở thư mục gốc và khai báo cấu hình Supabase:
+## 4. Thanh seek kéo được ở trang video
 
-```dotenv
-EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<supabase-anon-key>
-```
+Trang Trình phát có **2 thanh khác nhau**, nay cả 2 đều kéo được:
 
-Thay các giá trị mẫu bằng URL và anon/publishable key của dự án Supabase. Ứng dụng sẽ báo lỗi khi thiếu hai biến này. `.env` là cấu hình riêng của máy phát triển; không commit file này, không ghi khóa bí mật hoặc `service_role` key vào ứng dụng.
+**a) Thanh của video — `src/components/workout/VideoPlayer.tsx`
+(viết lại).** Trước đây chỉ có `nativeControls` của hệ điều hành.
+Nay tắt `nativeControls`, vẽ thanh của app: nút play/pause, thanh
+tiến trình có núm tròn, giờ `mm:ss / mm:ss`. Bấm hoặc kéo ngang
+trên thanh đều tua được. Cách tua dùng đúng API `expo-video`
+(SDK 58, đã đối chiếu docs): gán `player.currentTime = giây`
+để seek chính xác; chỉ seek thật khi thả tay để video không giật
+khi kéo nhanh; lúc đang kéo hiện giờ xem trước. Vì `expo-video`
+không đẩy state về React nên app đọc `currentTime`/`duration`
+định kỳ 500ms. Không cần cài thêm thư viện (không dùng slider
+ngoài, chỉ dùng `PanResponder` có sẵn của React Native).
+Lưu ý: tắt `nativeControls` thì mất nút fullscreen của hệ điều
+hành; cần thì mở lại bằng `nativeControls` trong file này.
 
-Khởi động Expo:
+**b) Thanh tiến trình bước tập — `WorkoutPlayerScreen.tsx`.**
+Thanh này trước đây chỉ hiển thị, nay bấm/kéo để nhảy tới mốc
+giờ đó. Nó vẫn tôn trọng khóa bước như cũ: kéo tới bước chưa mở
+thì báo “Chưa mở” như khi bấm vào bước đó, không nhảy qua.
+(Khác với thanh video: thanh này theo `workout_steps` trong DB,
+không đồng bộ từng giây với video mẫu — vẫn như trước.)
 
-```bash
-npm run start
-```
+## 5. Đã kiểm chứng (trên máy này, không chạy được app thật)
 
-Quét QR bằng Expo Go hoặc chọn lệnh theo nền tảng:
+- Mọi import trong 179 file đều trỏ đúng file tồn tại: **0 import
+  hỏng** (kiểm bằng script quét toàn bộ cây, trừ `assets/` vốn
+  nằm ngoài `src/` và các package npm).
+- Cú pháp TypeScript transpile đúng: **179/179 file**.
+- Mọi hàm/type export của 69 file đã dời đều còn nguyên, không
+  mất, không đổi tên.
+- Chưa chạy được `npx tsc --noEmit` đầy đủ và chưa chạy thử trên
+  máy thật (máy này không có `node_modules` của project) — bạn
+  chạy 2 bước ở mục 3 rồi báo mình kết quả.
 
-```bash
-npm run android
-npm run ios
-npm run web
-```
+## 6. Chưa làm trong đợt này (theo bản nhận xét, để đợt sau)
 
-Các lệnh `start`, `android` và `ios` sử dụng Expo Go. Nếu điện thoại không kết nối được máy phát triển qua cùng mạng Wi-Fi, thử tạo tunnel:
-
-```bash
-npx expo start --go --tunnel
-```
-
-Chỉ dùng `npx expo start --dev-client` khi đã cài development build của ứng dụng trên thiết bị.
-
-## Cấu hình Supabase
-
-### Chạy Supabase local (tùy chọn)
-
-Sau khi cài Supabase CLI và Docker, chạy từ thư mục gốc:
-
-```bash
-supabase start
-supabase db reset
-```
-
-`supabase db reset` tạo lại database local và chạy các migration trong `supabase/migrations/`. Lấy URL và anon key của local Supabase từ kết quả `supabase status`, sau đó cập nhật `.env`. Cấu hình hiện tại tắt seed data; database local không tự có món ăn, bài viết hoặc bài tập mẫu.
-
-Để chạy Edge Function phân tích ảnh local, tạo `supabase/functions/.env` chứa `GEMINI_API_KEY` (không commit file này), rồi chạy:
-
-```bash
-supabase functions serve analyze-meal --env-file supabase/functions/.env
-```
-
-Với Supabase cloud, cần liên kết project, đẩy migration và triển khai function bằng Supabase CLI. Cấu hình `GEMINI_API_KEY` ở Supabase Edge Function Secrets; không đưa khóa này vào client mobile. Mã ứng dụng có nhánh gọi Gemini trực tiếp khi khai báo `EXPO_PUBLIC_GEMINI_API_KEY`, nhưng biến `EXPO_PUBLIC_*` được nhúng vào client — không dùng cách đó với khóa bí mật trong bản phát hành.
-
-## Các lệnh thường dùng
-
-| Lệnh                      | Mô tả                                      |
-| ------------------------- | ------------------------------------------ |
-| `npm run start`           | Chạy Expo development server               |
-| `npm run android`         | Mở ứng dụng trên Android                   |
-| `npm run ios`             | Mở ứng dụng trên iOS                       |
-| `npm run web`             | Chạy bản web                               |
-| `npm run lint`            | Chạy ESLint qua Expo                       |
-| `npm run typecheck`       | Kiểm tra TypeScript, không tạo file đầu ra |
-| `npm test -- --runInBand` | Chạy Jest tuần tự                          |
-
-Tham khảo tài liệu Expo đúng phiên bản SDK của dự án: [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/).
-
-## Hạn chế và lỗi hiện tại
-
-Các kết quả dưới đây được ghi nhận khi chạy lệnh trong repository vào ngày **29/10/2026**; chúng phản ánh trạng thái mã tại thời điểm kiểm tra, không phải cam kết rằng các lỗi này là toàn bộ vấn đề của ứng dụng.
-
-### Kết quả kiểm tra
-
-- **Lint chưa đạt:** `npm run lint` kết thúc với lỗi, ghi nhận **34 lỗi và 19 cảnh báo**. Các lỗi bao gồm quy tắc React Hooks (ví dụ cập nhật state đồng bộ trong effect/truy cập ref trong lúc render) và một đường dẫn import không resolve được.
-- **Typecheck chưa đạt:** `npm run typecheck` báo lỗi kiểu ref của `TextInput`/phương thức `focus()` trong `LoginScreen.tsx` và `SignUpScreen.tsx`; `src/navigation/AuthContext.tsx` import sai vị trí `supabase` và phát sinh lỗi kiểu implicit `any`.
-- **Chưa có test:** `npm test -- --runInBand` trả về “No tests found”. Jest đã được cấu hình nhưng chưa có test case để bảo vệ các luồng ứng dụng.
-
-### Phần chưa hoàn thiện hoặc phụ thuộc cấu hình
-
-- Tab **Chia sẻ** đang hiển thị màn hình giữ chỗ; thư mục `src/features/family/` chưa có giao diện, dù migration có một số bảng liên quan đến liên kết gia đình.
-- Supabase local đang tắt seed và chưa có file seed. Nếu chưa thêm dữ liệu mẫu, các danh sách món ăn, bài viết hoặc bài tập có thể trống.
-- Đăng nhập Google/Apple, gửi email đặt lại mật khẩu, phân tích ảnh Gemini và các thao tác lưu dữ liệu cần cấu hình project, provider, Edge Function secrets và redirect URL tương ứng.
-- Chức năng sensor, camera, thông báo, sinh trắc học và âm thanh phụ thuộc quyền hệ điều hành, phần cứng và nền tảng. Chưa có bộ kiểm thử xác nhận tương thích đầy đủ iOS/Android/Web.
-- Các phép tính/đề xuất về BMI, calo, chu kỳ và dinh dưỡng mang tính tham khảo, không thay thế tư vấn y tế; kết quả nhận diện món ăn bằng AI cũng là ước tính.
-
-## Tài liệu tham khảo
-
-- [Tài liệu Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/)
-- [Tài liệu Supabase](https://supabase.com/docs)
-- [Open Food Facts API](https://world.openfoodfacts.org/data)
+- **React Query:** `package.json` đã có sẵn nhưng code vẫn fetch
+  bằng `useEffect` + `useState`. Đổi sang `useQuery`/`useMutation`
+  là việc lớn, chạm tới mọi màn hình, không nên gộp chung với
+  đợt dời thư mục (khó biết lỗi do dời file hay do đổi fetch).
+- **Tách hook khỏi màn hình béo** (`SleepTrackerScreen` ~1.547
+  dòng, `ProfileSetupScreen` ~1.160 dòng): nên tách
+  `useSleepSession` / `useProfileForm` riêng, cũng để đợt sau
+  vì đổi hành vi chạy, cần test trên máy thật.
+- **`src/types/database.ts`:** cần gen bằng Supabase CLI từ DB
+  thật (`supabase gen types`), không nên viết tay vì dễ lệch
+  với schema v5/v6.
+- **Test:** chưa có file test nào trong `__tests__/`; nên bổ
+  sung unit test cho `healthCalc`, `cycleCalc`, `dates` trước.

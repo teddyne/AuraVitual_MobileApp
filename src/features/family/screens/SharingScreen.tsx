@@ -14,7 +14,8 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCameraPermissions } from 'expo-camera';
 import { useSettings } from '../../../context/SettingsContext';
-import { localToday } from '../../../lib/auravitalApi';
+import { useSubscription } from '../../../context/SubscriptionContext';
+import { localToday } from '../../../api/auravitalApi';
 import {
   acceptRequest,
   declineRequest,
@@ -28,20 +29,22 @@ import {
   setNickname,
   type FamilyMember,
   type FamilyRequest,
-} from '../../../lib/familyApi';
-import { CODE_RE } from '../utils/sharingFormat';
-import { SharingMemberCard } from '../components/SharingMemberCard';
+} from '../../../api/familyApi';
+import { CODE_RE } from '../../../utils/family/sharingFormat';
+import { SharingMemberCard } from '../../../components/family/SharingMemberCard';
 import {
   ReceivedRequestCard,
   SentRequestCard,
-} from '../components/SharingRequestCards';
-import { SharingNicknameBox } from '../components/SharingNicknameBox';
-import { SharingPairCard } from '../components/SharingPairCard';
-import { SharingQrScannerModal } from '../components/SharingQrScannerModal';
+} from '../../../components/family/SharingRequestCards';
+import { SharingNicknameBox } from '../../../components/family/SharingNicknameBox';
+import { SharingPairCard } from '../../../components/family/SharingPairCard';
+import { SharingQrScannerModal } from '../../../components/family/SharingQrScannerModal';
 import { s } from './SharingScreen.styles';
 
 export default function SharingScreen({ navigation }: any) {
   const { theme, t } = useSettings();
+  // Chia sẻ gia đình chỉ mở với gói Family; Free/Pro thấy màn khóa.
+  const { canShare } = useSubscription();
   const route = useRoute<any>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -222,6 +225,34 @@ export default function SharingScreen({ navigation }: any) {
       <SafeAreaProvider>
         <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
           <ActivityIndicator size='large' color={theme.primaryDark} style={{ marginTop: 80 }} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Chưa phải gói Family: chỉ hiện màn khóa, giữ nguyên mọi hàm chia sẻ
+  // bên dưới (loadAll, onSend, onAccept, onDecline, onRotateCode...).
+  if (!canShare) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
+          <View style={[s.lockWrap, { padding: 16 }]}>
+            <View style={[s.lockCard, { backgroundColor: theme.card }]}>
+              <Ionicons name='lock-closed' size={48} color={theme.primaryDark} />
+              <Text style={[s.lockTitle, { color: theme.text }]}>
+                {t('family.shareLockedTitle')}
+              </Text>
+              <Text style={[s.lockBody, { color: theme.muted }]}>
+                {t('family.shareLockedBody')}
+              </Text>
+              <TouchableOpacity
+                style={[s.cta, { backgroundColor: theme.primaryDark, alignSelf: 'stretch' }]}
+                onPress={() => navigation.navigate('Plans')}
+              >
+                <Text style={s.ctaText}>{t('subscription.viewPlans')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </SafeAreaView>
       </SafeAreaProvider>
     );

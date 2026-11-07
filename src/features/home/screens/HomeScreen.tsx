@@ -13,24 +13,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
-import { supabase } from '../../../lib/supabase';
+import { useSubscription } from '../../../context/SubscriptionContext';
+import { supabase } from '../../../api/supabase';
 import {
   getDaysToNextPeriodOnDate,
+  getFeaturedPostByTopic,
   getMetricByDate,
-  getPost,
+  getPostsByTopic,
   getProfile,
   getWeekMetricsEndingOn,
   saveWater,
   type Metric,
   type Profile,
-} from '../../../lib/auravitalApi';
-import { getNutritionDay } from '../../../lib/nutritionApi';
-import { getReceivedRequests } from '../../../lib/familyApi';
-import { syncReminderNotifications } from '../../../lib/reminders';
+} from '../../../api/auravitalApi';
+import { getNutritionDay } from '../../../api/nutritionApi';
+import { getReceivedRequests } from '../../../api/familyApi';
+import { syncReminderNotifications } from '../../../utils/reminders/reminders';
 import {
   appendHistory,
   countUnreadHistory,
-} from '../../../lib/notificationHistory';
+} from '../../../utils/notifications/notificationHistory';
 import {
   HighlightCards,
   HomeArticles,
@@ -38,34 +40,37 @@ import {
   WeeklySummaryCard,
 } from '../../../components/home/HomeSections';
 import {
-  getArticles,
   getWeeklySummary,
   getWorkouts,
   type Post,
   type WeeklySummary,
-} from '../../../lib/workoutApi';
-import { computeWakeAt } from '../../../lib/sleepSession';
-import { calcHealthScore } from '../../../lib/healthCalc';
+} from '../../../api/workoutApi';
+import {
+  computeWakeAt,
+  loadSession,
+} from '../../../utils/health/sleepSession';
+import { calcHealthScore } from '../../../utils/health/healthCalc';
 import { addDays, toKey } from '../../../utils/dates';
-import { resolveGreetingName } from '../utils/homeUtils';
+import { resolveGreetingName } from '../../../utils/home/homeUtils';
 import { makeStyles } from './HomeScreen.styles';
-import { HomeBannerCarousel } from '../components/HomeBannerCarousel';
-import { HealthScoreHero } from '../components/HealthScoreHero';
-import { WaterCard } from '../components/WaterCard';
-import { DateNavigator } from '../components/DateNavigator';
-import { WakePromptCard } from '../components/WakePromptCard';
-import { CalendarModal } from '../components/CalendarModal';
+import { HealthScoreHero } from '../../../components/home/HealthScoreHero';
+import { WaterCard } from '../../../components/home/WaterCard';
+import { DateNavigator } from '../../../components/home/DateNavigator';
+import { WakePromptCard } from '../../../components/home/WakePromptCard';
+import { CalendarModal } from '../../../components/home/CalendarModal';
 
 const SESSION_KEY = '@auravital:sleep_session';
 const MODE_KEY = '@auravital:sleep_mode';
 const READ_KEY = '@auravital:notifications_read';
 
 type DetailRoute =
-  'StepsDetail' | 'SleepTracker' | 'CycleTracking' | 'Nutrition';
+  'StepsDetail' | 'SleepTracker' | 'CycleTracking' | 'Nutrition' | 'HealthData';
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { theme, isDark, t, locale } = useSettings();
+  // Nhóm C (item 8): gói Free ẩn "Đề xuất bài tập hôm nay".
+  const { planId } = useSubscription();
   const s = makeStyles(theme, isDark);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [metric, setMetric] = useState<Metric | null>(null);
@@ -76,7 +81,6 @@ export default function HomeScreen({ navigation }: any) {
   const [article, setArticle] = useState<any>(null);
   const [featuredWorkout, setFeaturedWorkout] = useState<Post | null>(null);
   const [homeArticles, setHomeArticles] = useState<Post[]>([]);
-  const [bannerIndex, setBannerIndex] = useState(0);
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(
     null,
   );
@@ -105,25 +109,6 @@ export default function HomeScreen({ navigation }: any) {
     } catch {}
     return locale === 'en' ? en : vi;
   };
-
-  // 3 ảnh banner Trang chủ (lướt ngang).
-  const homeBanners = [
-    {
-      uri: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
-      title: tr('home.bannerTitle', 'Sống khỏe mỗi ngày cùng AuraVital', 'Live healthy every day with AuraVital'),
-      sub: tr('home.bannerSub', 'Ăn đủ chất, ngủ đủ giấc, vận động đều đặn.', 'Eat well, sleep well, move every day.'),
-    },
-    {
-      uri: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=1200&q=80',
-      title: tr('home.bannerTitle2', 'Bữa sáng đủ chất, ngày mới năng lượng', 'A nutritious breakfast, an energetic day'),
-      sub: tr('home.bannerSub2', 'Bắt đầu ngày mới bằng một bữa ăn cân bằng.', 'Start your day with a balanced meal.'),
-    },
-    {
-      uri: 'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=1200&q=80',
-      title: tr('home.bannerTitle3', 'Vận động nhẹ nhàng, cơ thể dẻo dai', 'Gentle movement for a flexible body'),
-      sub: tr('home.bannerSub3', 'Dành vài phút mỗi ngày để giãn cơ và thở sâu.', 'Take a few minutes each day to stretch and breathe deeply.'),
-    },
-  ];
 
   const userId = user?.id;
   const todayKey = toKey(new Date());
@@ -160,8 +145,13 @@ export default function HomeScreen({ navigation }: any) {
           };
         })(),
         getDaysToNextPeriodOnDate(userId, dateKey),
-        getPost('workout'),
-        getPost('article'),
+        // Nhóm A (v3): cột posts.kind đã xóa — bài tập nổi bật lấy theo
+        // topic='workout' (1 bài mới nhất, đủ trường Post gồm id).
+        getFeaturedPostByTopic('workout'),
+        // Nhóm C (item 11b): "Kiến thức dinh dưỡng" chỉ lấy bài
+        // topic='nutrition', tối đa 3 bài như trước (getArticles(3)
+        // cũ lấy mọi article).
+        getPostsByTopic('nutrition', 3),
       ]);
       results.forEach((r, i) => {
         if (r.status === 'rejected')
@@ -181,9 +171,11 @@ export default function HomeScreen({ navigation }: any) {
       setArticle(value(6, null));
       if (dateKey === toKey(new Date())) {
         try {
-          const raw = await AsyncStorage.getItem(SESSION_KEY);
-          if (raw) {
-            const session = JSON.parse(raw);
+          // Nhóm B (v6) — đọc phiên qua loadSession(userId) để chỉ nhận
+          // phiên của đúng tài khoản hiện tại; phiên sót của tài khoản
+          // trước trên cùng máy không được hiện hộp "Bạn đã dậy chưa?".
+          const session = await loadSession(userId ?? undefined);
+          if (session) {
             const wakeAt = session.snoozeUntil
               ? new Date(session.snoozeUntil)
               : computeWakeAt(
@@ -280,7 +272,8 @@ export default function HomeScreen({ navigation }: any) {
     (async () => {
       const results = await Promise.allSettled([
         getWorkouts(),
-        getArticles(3),
+        // Nhóm C (item 11b): như trên, chỉ bài topic='nutrition'.
+        getPostsByTopic('nutrition', 3),
         getWeeklySummary(userId, selectedKey, profile.water_goal_ml ?? null),
       ]);
       if (results[0].status === 'fulfilled') {
@@ -435,6 +428,8 @@ export default function HomeScreen({ navigation }: any) {
       started_at: wakePrompt.startedAt,
       ended_at: ended.toISOString(),
       duration_minutes: minutes,
+      // v3: KHÔNG ghi deep_sleep_minutes ước tính nữa — app chưa có cảm biến
+      // giai đoạn ngủ nên cột này để null; thẻ Ngủ sâu hiện "Chưa có dữ liệu".
       snooze_count: wakePrompt.snoozeCount ?? 0,
       source: 'next_day',
     });
@@ -449,11 +444,7 @@ export default function HomeScreen({ navigation }: any) {
       <SafeAreaProvider>
         <SafeAreaView style={s.center}>
           <Text style={{ color: theme.text }}>
-            {tr(
-              'home.loading',
-              'Đang tải dữ liệu từ database...',
-              'Loading data from the database...',
-            )}
+            {tr('home.loading', 'Đang tải...', 'Loading...')}
           </Text>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -480,8 +471,8 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={s.muted}>
             {tr(
               'home.noProfileDesc',
-              'Tài khoản này chưa có dòng trong bảng profiles.',
-              'This account has no row in the profiles table.',
+              'Tài khoản này chưa có hồ sơ.',
+              'This account has no profile yet.',
             )}
           </Text>
           <TouchableOpacity style={s.primaryBtn} onPress={goProfileSetup}>
@@ -549,7 +540,15 @@ export default function HomeScreen({ navigation }: any) {
   const featuredPost: Post | null =
     featuredWorkout ?? (workout ? (workout as Post) : null);
   const articlesForHome: Post[] =
-    homeArticles.length > 0 ? homeArticles : article ? [article as Post] : [];
+    homeArticles.length > 0
+      ? homeArticles
+      : // Nhóm C: giá trị dự phòng ở load() nay là mảng (getPostsByTopic),
+        // không còn là 1 bài đơn như hàm cũ trả về.
+        Array.isArray(article)
+        ? (article as Post[])
+        : article
+          ? [article as Post]
+          : [];
   const weeklyForCard: WeeklySummary | null = weeklySummary ?? {
     stepsTotal: week.steps,
     stepsPrevTotal: 0,
@@ -599,14 +598,6 @@ export default function HomeScreen({ navigation }: any) {
               {bellDot && <View style={s.bellDot} />}
             </TouchableOpacity>
           </View>
-
-          {/* Banner lướt ngang */}
-          <HomeBannerCarousel
-            banners={homeBanners}
-            bannerIndex={bannerIndex}
-            onIndexChange={setBannerIndex}
-            theme={theme}
-          />
 
           <DateNavigator
             selectedLabel={selectedLabel}
@@ -662,8 +653,8 @@ export default function HomeScreen({ navigation }: any) {
               score == null
                 ? tr(
                     'home.notEnoughDesc',
-                    'Chưa đủ dữ liệu ngày này để tính điểm. Cần có ít nhất 2 trong các chỉ số: bước chân, giấc ngủ, nước và năng lượng trong ngày đó.',
-                    'Not enough data on this date to calculate a score. At least 2 of steps, sleep, water and energy are needed for that date.',
+                    'Chưa đủ dữ liệu ngày này để tính điểm.',
+                    'Not enough data on this date to calculate a score.',
                   )
                 : `${tr(
                     'home.scoreDesc',
@@ -672,6 +663,8 @@ export default function HomeScreen({ navigation }: any) {
                   )} ${score}.`
             }
             s={s}
+            onPress={() => goDetail('HealthData')}
+            detailsText={tr('home.viewDetails', 'Xem chi tiết', 'View details')}
           />
 
           <WaterCard
@@ -716,12 +709,14 @@ export default function HomeScreen({ navigation }: any) {
             onNutrition={() => goDetail('Nutrition')}
           />
 
-          {/* 2/4 — Đề xuất bài tập*/}
-          <TodayWorkoutCard
-            post={featuredPost}
-            onPress={goPlayer}
-            onSeeAll={goExplore}
-          />
+          {/* 2/4 — Đề xuất bài tập: ẩn với gói Free (item 8). */}
+          {planId !== 'free' ? (
+            <TodayWorkoutCard
+              post={featuredPost}
+              onPress={goPlayer}
+              onSeeAll={goExplore}
+            />
+          ) : null}
 
           {/* 3/4 — Tổng kết tuần */}
           <WeeklySummaryCard

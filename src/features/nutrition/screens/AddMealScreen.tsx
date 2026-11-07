@@ -24,15 +24,20 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { useSubscription } from '../../../context/SubscriptionContext';
 import { useToast } from '../../../components/NotificationToast';
+import { aiErrorMessageKey } from '../../../api/aiClient';
 import {
   aiToDraft,
   analyzeMealPhoto,
   deleteMealItem,
   draftTotals,
   fetchBarcodeProduct,
+  FREE_AI_PHOTO_DAILY_LIMIT,
   getFrequentFoods,
   getNutritionDay,
+  loadAiPhotoUsage,
+  recordAiPhotoUsage,
   saveMeal,
   searchFoods,
   toLocalDateString,
@@ -43,7 +48,7 @@ import {
   type Food,
   type LoggedItem,
   type MealType,
-} from '../../../lib/nutritionApi';
+} from '../../../api/nutritionApi';
 import {
   EMPTY_DRAFTS,
   MACRO_DOT_COLORS,
@@ -52,8 +57,8 @@ import {
   PRESET_SUGGESTIONS,
   isExcludedSuggestion,
 } from '../constants';
-import { defaultMealType, round1, toNum } from '../utils/nutritionFormat';
-import { BarcodeIcon } from '../components/BarcodeIcon';
+import { defaultMealType, round1, toNum } from '../../../utils/nutrition/nutritionFormat';
+import { BarcodeIcon } from '../../../components/nutrition/BarcodeIcon';
 import { makeStyles } from './AddMealScreen.styles';
 
 const AI_CARD_IMAGE = require('../../../../assets/images/meal.jpg');
@@ -61,6 +66,7 @@ const AI_CARD_IMAGE = require('../../../../assets/images/meal.jpg');
 export default function AddMealScreen({ navigation, route }: any) {
   const { user } = useAuth();
   const { theme, t } = useSettings();
+  const { aiUnlimited } = useSubscription();
   const s = makeStyles(theme);
 
   const params = route?.params ?? {};
@@ -85,6 +91,24 @@ export default function AddMealScreen({ navigation, route }: any) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiPhotoUri, setAiPhotoUri] = useState<string | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestionItem[]>([]);
+  // Lượt AI Camera đã dùng hôm nay (Free: 3 ảnh/ngày, Pro/Family: không giới hạn).
+  const [aiPhotoUsage, setAiPhotoUsage] = useState(0);
+  const aiPhotoLimitReached =
+    !aiUnlimited && aiPhotoUsage >= FREE_AI_PHOTO_DAILY_LIMIT;
+
+  const loadAiUsage = useCallback(async () => {
+    try {
+      setAiPhotoUsage(await loadAiPhotoUsage());
+    } catch {
+      setAiPhotoUsage(0);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAiUsage();
+    }, [loadAiUsage]),
+  );
   const [drafts, setDrafts] =
     useState<Record<MealType, DraftItem[]>>(EMPTY_DRAFTS);
   const draft = drafts[mealType] ?? [];
@@ -393,22 +417,37 @@ export default function AddMealScreen({ navigation, route }: any) {
 
       const items = await analyzeMealPhoto(base64Data);
       setAiSuggestions(items);
+      // Chỉ ghi nhận lượt khi phân tích thành công (lỗi thì không trừ lượt).
+      if (!aiUnlimited) setAiPhotoUsage(await recordAiPhotoUsage());
       if (items.length === 0) {
         Alert.alert(t('nutrition.aiCamera'), t('nutrition.aiEmpty'));
       }
     } catch (e: any) {
-      Alert.alert(
-        t('nutrition.aiCamera'),
-        e?.message === 'ai_not_configured'
-          ? t('nutrition.aiNotInstalled')
-          : (e?.message ?? String(e)),
-      );
+      // Khong hien nguyen van loi cua Gemini (chuoi JSON dai nhu anh loi
+      // 404). Chi hien cau tieng Viet/Anh ngan da dich san theo ma loi.
+      const code = typeof e?.message === 'string' ? e.message : 'ai_failed';
+      Alert.alert(t('nutrition.aiCamera'), t(aiErrorMessageKey(code)));
     } finally {
       setAiLoading(false);
     }
   };
 
   const onAiPhoto = () => {
+    // Free hết 3 ảnh/ngày thì chặn ngay, mời nâng cấp Pro (không mở camera).
+    if (aiPhotoLimitReached) {
+      Alert.alert(
+        t('nutrition.aiCameraLimitTitle'),
+        t('nutrition.aiCameraLimitBody'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('subscription.viewPlans'),
+            onPress: () => navigation.navigate('Plans'),
+          },
+        ],
+      );
+      return;
+    }
     Alert.alert(t('nutrition.choosePhotoSource'), t('nutrition.aiCameraDesc'), [
       {
         text: t('nutrition.takeNewPhoto'),
@@ -654,6 +693,16 @@ export default function AddMealScreen({ navigation, route }: any) {
                   : t('nutrition.takePhoto')}
               </Text>
             </TouchableOpacity>
+            {!aiUnlimited && (
+              <Text style={s.hint}>
+                {t('nutrition.aiCameraFreeLeft', {
+                  count: Math.max(
+                    0,
+                    FREE_AI_PHOTO_DAILY_LIMIT - aiPhotoUsage,
+                  ),
+                })}
+              </Text>
+            )}
             {aiSuggestions.length > 1 && (
               <TouchableOpacity
                 style={s.addAllAiBtn}

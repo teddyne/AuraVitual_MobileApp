@@ -1,0 +1,53 @@
+import { StyleSheet } from 'react-native';
+
+export const s = StyleSheet.create({
+  safe: { flex: 1 },
+  wrap: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  headerSub: { fontSize: 12, marginTop: 2 },
+  content: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
+  note: {
+    borderRadius: 16,
+    padding: 12,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  card: { borderRadius: 20, borderWidth: 1, padding: 16, gap: 6 },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2E7D32',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  planName: { fontSize: 18, fontWeight: '800' },
+  planTagline: { fontSize: 13 },
+  price: { fontSize: 24, fontWeight: '800', marginTop: 4 },
+  period: { fontSize: 13, fontWeight: '600' },
+  featureRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  featureText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  selectBtn: {
+    marginTop: 10,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  selectBtnText: { fontWeight: '800', fontSize: 15 },
+  cancelBtn: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelBtnText: { color: '#C62828', fontWeight: '800', fontSize: 15 },
+  freeNote: { fontSize: 14, textAlign: 'center' },
+});

@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { navigationRef } from '../lib/navigationRef';
+import { navigationRef } from '../navigation/navigationRef';
 
 // =====================================================================
 // Toast kiểu Zalo: banner nhỏ trượt ở phía trên cùng, hiện trên MỌI

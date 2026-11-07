@@ -18,15 +18,15 @@ import {
   toLocalDateString,
   type DayNutrition,
   type MealType,
-} from '../../../lib/nutritionApi';
+} from '../../../api/nutritionApi';
 import {
   DEFAULT_MEALS,
   MACRO_COLORS,
   MEAL_ICONS,
   MEAL_TYPES,
 } from '../constants';
-import { timeOf } from '../utils/nutritionFormat';
-import { RingChart } from '../components/RingChart';
+import { timeOf } from '../../../utils/nutrition/nutritionFormat';
+import { RingChart } from '../../../components/nutrition/RingChart';
 import { makeStyles } from './NutritionTrackerScreen.styles';
 
 export default function NutritionTrackerScreen({ navigation }: any) {

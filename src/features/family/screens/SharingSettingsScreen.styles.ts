@@ -31,4 +31,11 @@ export const s = StyleSheet.create({
   rowTitle: { fontSize: 15, fontWeight: '700' },
   muted: { fontSize: 13, lineHeight: 18, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '800', marginTop: 16, marginBottom: 10 },
+  // Màn khóa chia sẻ (chỉ gói Family mới dùng được).
+  lockWrap: { flex: 1, justifyContent: 'center' },
+  lockCard: { borderRadius: 20, padding: 24, alignItems: 'center', gap: 12 },
+  lockTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  lockBody: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  lockBtn: { borderRadius: 999, paddingVertical: 14, paddingHorizontal: 24, alignItems: 'center', marginTop: 4, alignSelf: 'stretch' },
+  lockBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 });

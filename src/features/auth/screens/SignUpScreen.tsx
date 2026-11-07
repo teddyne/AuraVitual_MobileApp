@@ -18,11 +18,11 @@ import {
 } from '../../../components/ui/Ui';
 import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
-import { getProfile } from '../../../lib/auravitalApi';
+import { getProfile } from '../../../api/auravitalApi';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { AuthField } from '../components/AuthField';
-import { focusInput } from '../utils/focusInput';
-import { passwordScore } from '../utils/passwordScore';
+import { AuthField } from '../../../components/auth/AuthField';
+import { focusInput } from '../../../utils/auth/focusInput';
+import { passwordScore } from '../../../utils/auth/passwordScore';
 import { EMAIL_RE, ICON_MUTED } from '../constants';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './SignUpScreen.styles';
@@ -73,8 +73,21 @@ export default function SignUpScreen() {
       }
       if (!res.user)
         return setError(t('auth.signup.noAccount'));
-      const profile = await getProfile(res.user.id);
-      navigation.replace(profile ? 'Main' : 'ProfileSetup');
+      // Tới đây là đăng ký thành công VÀ đã có phiên đăng nhập:
+      // AuthContext.register chỉ trả user khi data.session tồn tại,
+      // còn trường hợp bắt xác nhận email đã rẽ nhánh needsConfirmation
+      // ở trên (về Login) nên không tới được đây. Hỏi người dùng có
+      // muốn thiết lập hồ sơ ngay không; "Để sau" thì vào Main.
+      Alert.alert(t('auth.signup.setupProfileTitle'), undefined, [
+        {
+          text: t('common.yes'),
+          onPress: () => navigation.replace('ProfileSetup'),
+        },
+        {
+          text: t('auth.signup.setupProfileLater'),
+          onPress: () => navigation.replace('Main'),
+        },
+      ]);
     } finally {
       setSubmitting(false);
     }

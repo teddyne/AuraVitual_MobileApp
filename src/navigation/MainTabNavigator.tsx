@@ -26,8 +26,8 @@ export default function MainTabNavigator() {
           borderTopColor: theme.border,
           borderTopWidth: 1,
           paddingTop: 4,
-          paddingBottom: bottomPad,
-          height: 32 + bottomPad,
+          paddingBottom: bottomPad + 5,
+          height: 37 + bottomPad,
         },
           tabBarItemStyle: {
             paddingVertical: 2,

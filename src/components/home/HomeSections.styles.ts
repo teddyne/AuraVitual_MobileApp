@@ -114,4 +114,13 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 16,
   },
+  // Nút + nhãn khóa video trên thẻ bài tập hôm nay (gói Free).
+  lockBtn: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  lockBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

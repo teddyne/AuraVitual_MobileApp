@@ -17,8 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
-import { supabase } from '../../../lib/supabase';
-import { toNum } from '../utils/nutritionFormat';
+import { supabase } from '../../../api/supabase';
+import { toNum } from '../../../utils/nutrition/nutritionFormat';
 import { makeStyles } from './AddFoodScreen.styles';
 
 export default function AddFoodScreen({ navigation, route }: any) {

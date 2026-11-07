@@ -15,6 +15,7 @@ import AlarmWatcher from './src/components/AlarmWatcher';
 import FamilyWatcher from './src/components/FamilyWatcher';
 import { navigationRef } from './src/lib/navigationRef';
 import { setPendingDeepLink } from './src/lib/pendingDeepLink';
+import { SubscriptionProvider } from './src/context/SubscriptionContext';
 
 const linking = {
   prefixes: [Linking.createURL('/'), 'auravital://'],
@@ -29,10 +30,6 @@ const linking = {
 function AppContent() {
   const { theme, isDark } = useSettings();
 
-  // Lưu lại deep link mới nhất (kể cả khi app đang chạy nền) để màn
-  // ResetPassword đọc được code khôi phục. Chỉ lưu, KHÔNG tự đổi code
-  // ở đây — việc đổi code vẫn do ResetPasswordScreen làm một lần duy nhất,
-  // tránh trường hợp đổi trùng code rồi màn Reset báo link không hợp lệ.
   useEffect(() => {
     Linking.getInitialURL()
       .then((url) => {
@@ -91,9 +88,11 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <SettingsProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
+          <SubscriptionProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </SubscriptionProvider>
         </SettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>

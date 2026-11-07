@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fmt, fmtSleepHours } from './homeFormat';
+import { fmt, fmtSleepHours } from '../../utils/home/homeFormat';
 import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 

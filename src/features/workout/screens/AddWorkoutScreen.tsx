@@ -10,7 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { addCustomWorkout, levelLabel } from '../../../lib/workoutApi';
+import { addCustomWorkout, levelLabel } from '../../../api/workoutApi';
 import { useSettings } from '../../../context/SettingsContext';
 import { LEVELS } from '../constants';
 import { styles } from './AddWorkoutScreen.styles';
@@ -143,7 +143,7 @@ export default function AddWorkoutScreen() {
             style={styles.input}
             value={videoUrl}
             onChangeText={setVideoUrl}
-            placeholder='https://...'
+            placeholder='https://youtu.be/... hoặc link .mp4'
             autoCapitalize='none'
           />
           <Text style={styles.hint}>

@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
-import { AuthField } from '../components/AuthField';
+import { AuthField } from '../../../components/auth/AuthField';
 import { BG, EMAIL_RE } from '../constants';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ForgotPasswordScreen.styles';

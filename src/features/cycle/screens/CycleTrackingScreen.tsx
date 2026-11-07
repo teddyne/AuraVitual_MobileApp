@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -15,7 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { IconBadge } from '../../../components/ui/IconBadge';
 import { AppHeader } from '../../../components/ui/AppHeader';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../api/supabase';
+import { getPostsByTopic } from '../../../api/auravitalApi';
 import {
   addDaysKey,
   displayToKey,
@@ -40,16 +42,26 @@ import {
   computeDeviations,
   countPeriodDaysInMonth,
   predictedPeriod,
-} from '../utils/cycleCalc';
-import { CycleDayStrip } from '../components/CycleDayStrip';
-import { CycleHeroRing } from '../components/CycleHeroRing';
-import { CycleMonthPicker } from '../components/CycleMonthPicker';
+} from '../../../utils/cycle/cycleCalc';
+import { CycleDayStrip } from '../../../components/cycle/CycleDayStrip';
+import { ArticleCard } from '../../../components/explore/ArticleCard';
+import { CycleHeroRing } from '../../../components/cycle/CycleHeroRing';
+import { CycleMonthPicker } from '../../../components/cycle/CycleMonthPicker';
 import { styles } from './CycleTrackingScreen.styles';
 
 // Vòng tròn nhạt + icon xanh đậm, cùng kiểu với ProfileSettings/ProfileSetup.
 
 export default function CycleTrackingScreen({ navigation }: any) {
   const { t, locale } = useSettings();
+  // Dự phòng khi key i18n mới (keys-groupC-v2.json) chưa được gộp vào
+  // translations: hiện thẳng chữ vi/en thay vì hiện tên key.
+  const tr = (key: string, vi: string, en: string) => {
+    try {
+      const v = t(key);
+      if (v && v !== key) return v;
+    } catch {}
+    return locale === 'en' ? en : vi;
+  };
   const monthNames = locale === 'en' ? MONTH_NAMES_EN : MONTH_NAMES;
   const today = new Date();
   const todayKey = toKey(today);
@@ -107,15 +119,17 @@ export default function CycleTrackingScreen({ navigation }: any) {
       setCycles(cyc.data as Cycle[]);
       setCycle(cyc.data[cyc.data.length - 1] as Cycle);
     }
-    // Kiến thức chu kỳ: lấy DANH SÁCH bài viết thật từ posts,
-    // không chỉ 1 bài mới nhất, để người dùng chọn từng bài xem chi tiết.
-    const post = await supabase
-      .from('posts')
-      .select('id, title, summary, body')
-      .eq('kind', 'article')
-      .order('published_at', { ascending: false })
-      .limit(2);
-    if (post.data) setArticles(post.data as Article[]);
+    // Nhóm C (item 11b) — Kiến thức chu kỳ: chỉ bài viết topic='cycle',
+    // tối đa 2 bài như trước. Nếu DB chưa có bài nào đúng topic thì
+    // danh sách rỗng và màn hình hiện "Chưa có bài viết", KHÔNG
+    // fallback sang article chung. Lỗi (vd chưa chạy migration topic)
+    // cũng cho danh sách rỗng thay vì kẹt màn hình loading.
+    try {
+      const list = await getPostsByTopic('cycle', 2);
+      setArticles(list as Article[]);
+    } catch {
+      setArticles([]);
+    }
     setLoading(false);
   }, []);
 
@@ -537,22 +551,39 @@ export default function CycleTrackingScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
                 {showDatePicker && (
-                  <DateTimePicker
-                    value={editDateObj}
-                    mode='date'
-                    display='calendar'
-                    maximumDate={today}
-                    onChange={(_e, d) => {
-                      setShowDatePicker(false);
-                      if (d) {
-                        setEditDate(
-                          keyToDisplay(
-                            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-                          ),
-                        );
-                      }
-                    }}
-                  />
+                  <>
+                    <DateTimePicker
+                      value={editDateObj}
+                      mode='date'
+                      display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                      maximumDate={today}
+                      neutralButton={{ label: t('cycle.clearDate') }}
+                      onValueChange={(_e, d) => {
+                        if (d) {
+                          setEditDate(keyToDisplay(toKey(d)));
+                          // Android: lịch là hộp thoại, chọn xong tự đóng.
+                          // iOS: spinner hiện inline nên giữ lại để chọn
+                          // tiếp, bấm "Đóng" bên dưới mới ẩn.
+                          if (Platform.OS !== 'ios') setShowDatePicker(false);
+                        }
+                      }}
+                      onDismiss={() => setShowDatePicker(false)}
+                      onNeutralButtonPress={() => {
+                        setEditDate('');
+                        setShowDatePicker(false);
+                      }}
+                    />
+                    {Platform.OS === 'ios' && (
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.saveButtonText}>
+                          {t('common.close')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
                 )}
                 <Text style={styles.label}>{t('cycle.cycleLength')}</Text>
                 <TextInput
@@ -755,25 +786,23 @@ export default function CycleTrackingScreen({ navigation }: any) {
               </Text>
             </View>
             {articles.length === 0 ? (
-              <Text style={styles.cardText}>{t('cycle.noArticles')}</Text>
+              <Text style={styles.cardText}>
+                {tr(
+                  'cycle.noCycleArticles',
+                  'Chưa có bài viết về chu kỳ.',
+                  'No cycle articles yet.',
+                )}
+              </Text>
             ) : (
+              // Nhóm B (v4): render bài bằng ArticleCard chuẩn dùng chung
+              // (có ảnh cover ở đầu thẻ) thay cho hàng bài cũ không ảnh.
+              // Tiêu đề section, empty state và openArticle giữ nguyên.
               articles.map((a) => (
-                <TouchableOpacity
+                <ArticleCard
                   key={a.id}
-                  style={styles.articleRow}
-                  onPress={() => openArticle(a)}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.articleTitle}>{a.title}</Text>
-                    {a.summary ? (
-                      <Text style={styles.cardText} numberOfLines={2}>
-                        {a.summary}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.link}>{t('cycle.viewDetail')}</Text>
-                  </View>
-                  <Ionicons name='chevron-forward' size={20} color='#888888' />
-                </TouchableOpacity>
+                  post={a}
+                  onOpen={() => openArticle(a)}
+                />
               ))
             )}
           </View>

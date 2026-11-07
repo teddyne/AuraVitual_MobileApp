@@ -1,0 +1,91 @@
+import { StyleSheet } from 'react-native';
+import { colors } from '../../../theme/colors';
+
+export const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.white },
+  background: {
+    ...StyleSheet.absoluteFill,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+
+  content: { flex: 1, paddingTop: 56 },
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  badge: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  badgeText: { fontSize: 11, fontWeight: '700', color: colors.sageDark },
+  skip: { fontSize: 14, color: colors.ink, fontWeight: '600' },
+  brand: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logo: {
+    width: 84,
+    height: 84,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+    marginBottom: 16,
+  },
+  brandName: { fontSize: 32, fontWeight: '800', color: colors.ink },
+  subBadge: {
+    marginTop: 8,
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  subBadgeText: { fontSize: 11, fontWeight: '700', color: colors.ink },
+  card: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 40,
+    paddingBottom: 50,
+  },
+  cardTag: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.sageDark,
+    marginBottom: 20,
+  },
+  cardTitle: {
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.ink,
+    lineHeight: 30,
+    marginBottom: 10,
+  },
+  cardDesc: {
+    textAlign: 'center',
+    fontSize: 15,
+    color: colors.muted,
+    lineHeight: 21,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 20,
+    marginBottom: 30,
+  },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+  dotActive: { width: 24, backgroundColor: colors.sage },
+  loginLink: { alignItems: 'center', marginTop: 30 },
+  loginText: { fontSize: 14, color: colors.muted },
+});

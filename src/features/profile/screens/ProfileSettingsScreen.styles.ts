@@ -31,6 +31,7 @@ export const s = StyleSheet.create({
     marginTop: 10,
   },
   gold: { fontWeight: '800' },
+  planSub: { fontSize: 12, fontWeight: '600' },
   section: {
     fontSize: 12,
     fontWeight: '800',

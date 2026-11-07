@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api/supabase';
 import {
   ALARMS_KEY,
   TRIGGERED_KEY,
@@ -15,16 +15,16 @@ import {
   toTimeInput,
   setupNotificationChannels,
   cancelSnoozeNotification,
-} from '../lib/sleepSession';
-import { navigationRef } from '../lib/navigationRef';
+} from '../utils/health/sleepSession';
+import { navigationRef } from '../navigation/navigationRef';
 import { translate } from '../i18n/locale';
 import { useToast } from './NotificationToast';
-import { syncReminderNotifications } from '../lib/reminders';
+import { syncReminderNotifications } from '../utils/reminders/reminders';
 import {
   reconcilePresentedNotifications,
   recordDeliveredNotification,
-} from '../lib/notificationHistory';
-import { getProfile, getTodayMetric } from '../lib/auravitalApi';
+} from '../utils/notifications/notificationHistory';
+import { getProfile, getTodayMetric } from '../api/auravitalApi';
 
 // Điều hướng từ dữ liệu đính kèm trong thông báo (data.screen).
 // Khi app vừa khởi động lạnh, navigation có thể chưa sẵn sàng nên

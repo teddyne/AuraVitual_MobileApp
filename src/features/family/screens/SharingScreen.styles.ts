@@ -31,4 +31,9 @@ export const s = StyleSheet.create({
   ctaText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
   ctaOutline: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
   ctaOutlineText: { fontWeight: '700', fontSize: 15 },
+  // Màn khóa chia sẻ (chỉ gói Family mới dùng được).
+  lockWrap: { flex: 1, justifyContent: 'center' },
+  lockCard: { borderRadius: 20, padding: 24, alignItems: 'center', gap: 12 },
+  lockTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  lockBody: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
 });

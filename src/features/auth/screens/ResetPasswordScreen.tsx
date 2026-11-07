@@ -16,13 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../../theme/colors';
 import { useAuth } from '../AuthContext';
-import { supabase } from '../../../lib/supabase';
-import { getProfile } from '../../../lib/auravitalApi';
+import { supabase } from '../../../api/supabase';
+import { getProfile } from '../../../api/auravitalApi';
 import {
   getPendingDeepLink,
   clearPendingDeepLink,
-} from '../../../lib/pendingDeepLink';
-import { AuthField } from '../components/AuthField';
+} from '../../../navigation/pendingDeepLink';
+import { AuthField } from '../../../components/auth/AuthField';
 import { BG } from '../constants';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ResetPasswordScreen.styles';

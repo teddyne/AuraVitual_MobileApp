@@ -9,6 +9,9 @@ export type Article = {
   title: string;
   summary: string | null;
   body: string | null;
+  // Nhóm B (v4): cover_url do getPostsByTopic trả về (kiểu Post),
+  // để ArticleCard hiển thị ảnh cover ở đầu thẻ.
+  cover_url?: string | null;
 };
 
 export type Flow = 'light' | 'medium' | 'heavy' | null;

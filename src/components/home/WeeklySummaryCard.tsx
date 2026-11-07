@@ -1,8 +1,8 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fmt, fmtHoursMinutes, fmtSleepHours } from './homeFormat';
-import { type WeeklySummary } from '../../lib/workoutApi';
+import { fmt, fmtHoursMinutes, fmtSleepHours } from '../../utils/home/homeFormat';
+import { type WeeklySummary } from '../../api/workoutApi';
 import { useSettings } from '../../context/SettingsContext';
 import { styles } from './HomeSections.styles';
 

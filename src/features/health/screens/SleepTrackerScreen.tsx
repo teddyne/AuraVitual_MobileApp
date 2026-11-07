@@ -20,7 +20,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
-import { supabase } from '../../../lib/supabase';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from '../../../api/supabase';
+// Nhóm B (v2): getPostsByTopic do nhóm C thêm vào auravitalApi
+// (item 11b, kèm migration thêm cột topic cho posts + seed 3 bài ngủ).
+import {
+  getDeepSleepInRange,
+  getPostsByTopic,
+  getSleepMetricsInRange,
+  getSleepSessionsInRange,
+  type SleepSessionRange,
+} from '../../../api/auravitalApi';
 import {
   MODE_KEY,
   NOISE_KEY,
@@ -49,9 +59,12 @@ import {
   toDbTime,
   toKey,
   toTimeInput,
-} from '../../../lib/sleepSession';
+} from '../../../utils/health/sleepSession';
 import { AppHeader } from '../../../components/ui/AppHeader';
 import { AppIcon } from '../../../components/ui/AppIcon';
+import { DropdownSelect } from '../../../components/ui/DropdownSelect';
+import { ReminderTimeRow } from '../../../components/reminders/ReminderTimeRow';
+import { ArticleCard } from '../../../components/explore/ArticleCard';
 import { useSettings } from '../../../context/SettingsContext';
 import {
   PRIMARY,
@@ -62,14 +75,268 @@ import {
   DAY_SHORT,
   DAY_SHORT_EN,
 } from '../constants';
-import { fmtMMSS, displayLabel, alarmSub } from '../utils/sleepFormat';
-import { ProgressTrack } from '../components/SleepProgressTrack';
+import { fmtMMSS, displayLabel, alarmSub } from '../../../utils/health/sleepFormat';
+import { ProgressTrack } from '../../../components/health/SleepProgressTrack';
 import { styles } from './SleepTrackerScreen.styles';
 
 type SleepRow = { log_date: string; sleep_hours: number | null };
 
+// Nhóm D — thống kê Ngày/Tuần/Tháng (chỉ thêm mới, không sửa logic cũ).
+type StatsTab = 'day' | 'week' | 'month';
+type DaySegment = { startMin: number; endMin: number };
+const DAY_MINUTES = 24 * 60;
+const DEFAULT_SLEEP_GOAL_HOURS = 8;
+
+/**
+ * Khoảng ngủ nằm trong ngày đang xem (anchor), tính bằng phút từ 00:00,
+ * kẹp trong [0, 1440]. CHỈ vẽ từ phiên đang mở thật (session.startedAt
+ * tới giờ dậy dự kiến hoặc tới hiện tại). Nhóm B (v6) đã XÓA nhánh
+ * 'derived': trước đây không có phiên mà có health_metrics.sleep_hours
+ * thì suy ra khoảng ngủ từ giờ dậy/giờ đi ngủ đã đặt — giờ đặt chỉ dùng
+ * để nhắc/báo thức, không phải dữ liệu ngủ, nên ngày không có phiên thật
+ * thì kind 'none' và biểu đồ hiện "Chưa có dữ liệu".
+ */
+function buildDaySegments(
+  session: SleepSession | null,
+  profile: SleepProfile | null,
+  anchor: Date,
+): {
+  segments: DaySegment[];
+  kind: 'session' | 'none';
+  startLabel: string | null;
+  endLabel: string | null;
+} {
+  const now = new Date();
+  const midnight = new Date(
+    anchor.getFullYear(),
+    anchor.getMonth(),
+    anchor.getDate(),
+  );
+  const isToday = toKey(anchor) === toKey(now);
+  if (session && isToday) {
+    const started = new Date(session.startedAt);
+    const wakeAt = computeWakeAt(session.startedAt, profile?.wake_time ?? null);
+    const end = wakeAt ?? now;
+    const startMin = Math.max(
+      0,
+      Math.round((started.getTime() - midnight.getTime()) / 60000),
+    );
+    const endMin = Math.min(
+      DAY_MINUTES,
+      Math.round((end.getTime() - midnight.getTime()) / 60000),
+    );
+    return {
+      segments: endMin > startMin ? [{ startMin, endMin }] : [],
+      kind: 'session',
+      startLabel: fmtHHMM(started),
+      endLabel: fmtHHMM(end),
+    };
+  }
+  return { segments: [], kind: 'none', startLabel: null, endLabel: null };
+}
+
+// Nhóm B (v3) — tiện ích tuần (bắt đầu thứ Hai), viết local trong file
+// này (không sửa src/utils/dates.ts để tránh xung đột nhóm khác).
+const WEEK_YEAR_OPTIONS = [2025, 2026, 2027];
+const MONTH_SHORT_EN = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+function startOfWeekMonday(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+function addDaysLocal(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+/** Các thứ Hai mà tuần của nó chạm vào năm đã cho (kể cả tuần tràn từ cuối tháng 12 năm trước). */
+function mondaysOfYear(year: number): Date[] {
+  const out: Date[] = [];
+  let m = startOfWeekMonday(new Date(year, 0, 1));
+  const last = new Date(year, 11, 31);
+  while (m.getTime() <= last.getTime()) {
+    out.push(m);
+    m = addDaysLocal(m, 7);
+  }
+  return out;
+}
+
+/** Nhãn tuần: "19–26 tháng 10", tuần tràn tháng thì "29 tháng 9 – 5 tháng 10". */
+function formatWeekLabel(start: Date, locale: string): string {
+  const end = addDaysLocal(start, 6);
+  const sm = start.getMonth();
+  const em = end.getMonth();
+  if (locale === 'en') {
+    return sm === em
+      ? `${start.getDate()}–${end.getDate()} ${MONTH_SHORT_EN[sm]}`
+      : `${start.getDate()} ${MONTH_SHORT_EN[sm]} – ${end.getDate()} ${MONTH_SHORT_EN[em]}`;
+  }
+  return sm === em
+    ? `${start.getDate()}–${end.getDate()} tháng ${sm + 1}`
+    : `${start.getDate()} tháng ${sm + 1} – ${end.getDate()} tháng ${em + 1}`;
+}
+
+// Nhóm B (v5, giữ cho biểu đồ ngày) — cửa sổ đêm: 22:00 ngày xem →
+// 10:00 hôm sau (12 giờ), tính bằng phút từ 00:00 ngày xem: [1320,
+// 2040]. Nhóm B (v6): biểu đồ tuần/tháng đã về lại cột dọc kiểu v4 nên
+// không còn trục giờ dọc bên phải / thanh theo giờ (đã xóa
+// NIGHT_CHART_H, NIGHT_PX_PER_HOUR và nightBarLayout).
+const NIGHT_WINDOW_START_MIN = 22 * 60; // 1320
+const NIGHT_WINDOW_END_MIN = (24 + 10) * 60; // 2040
+const NIGHT_HOURS = 12;
+const NIGHT_DAY_CHART_H = 180; // px, vùng biểu đồ ngày
+
+/**
+ * Pure: đưa 1 khoảng ngủ thật [startMs, endMs] về phút tính từ 00:00
+ * ngày anchor, đặt vào cửa sổ đêm [1320, 2040]. Phiên qua nửa đêm thì
+ * endMin += 1440 (vd 23:00 → 07:00 thành [-60, 420]); đoạn kết thúc
+ * trước 22:00 thì dời +1440 để rơi đúng ô giờ của nó trong cửa sổ
+ * (vd [-60, 420] thành [1380, 1860]). Đoạn nằm hẳn ngoài cửa sổ vẫn
+ * giữ nguyên để nightCumulativeMinutes tự kẹp về 0 (vd giấc trưa).
+ * Trả null khi khoảng rỗng (end <= start).
+ */
+function toNightSegment(
+  startMs: number,
+  endMs: number,
+  midnightMs: number,
+): DaySegment | null {
+  if (endMs <= startMs) return null;
+  let startMin = Math.round((startMs - midnightMs) / 60000);
+  let endMin = Math.round((endMs - midnightMs) / 60000);
+  if (endMin <= startMin) endMin += DAY_MINUTES;
+  if (endMin <= NIGHT_WINDOW_START_MIN) {
+    startMin += DAY_MINUTES;
+    endMin += DAY_MINUTES;
+  }
+  return { startMin, endMin };
+}
+
+/**
+ * Khoảng ngủ KHÔNG kẹp trong ngày (đối tác của buildDaySegments, không
+ * sửa hàm đó): startMin có thể âm (ngủ từ tối hôm trước), endMin có thể
+ * > 1440 (dậy sáng hôm sau). CHỈ từ dữ liệu đo thật:
+ * - Phiên đang mở (ngày xem là hôm nay): session.startedAt + giờ dậy
+ *   dự kiến (computeWakeAt) hoặc tới hiện tại.
+ * - Phiên đã xong dậy vào ngày xem: từng dòng sleep_sessions thật đã
+ *   tải vào viewSessions (started_at/ended_at), trừ phiên đang mở nếu
+ *   trùng startedAt để không đếm đúp.
+ * Nhóm B (v6) đã XÓA nhánh suy ra từ health_metrics.sleep_hours +
+ * giờ dậy/giờ đi ngủ đã đặt (nhánh 'derived' cũ): tổng giờ thật vẫn
+ * hiện ở thẻ tóm tắt qua viewHours, nhưng vị trí cột trên biểu đồ chỉ
+ * vẽ khi có giờ bắt đầu/kết thúc thật. Sửa luôn lỗi v5 ở nhánh phiên
+ * mở: phiên bắt đầu 23:00 với giờ dậy 07:00 hôm sau bị dời cả đoạn
+ * +1440 rồi kẹp về 0 cột (endMin 420 < startMin 1380) nên biểu đồ trống.
+ */
+function buildNightSegments(
+  session: SleepSession | null,
+  profile: SleepProfile | null,
+  finished: SleepSessionRange[],
+  anchor: Date,
+): DaySegment[] {
+  const now = new Date();
+  const midnight = new Date(
+    anchor.getFullYear(),
+    anchor.getMonth(),
+    anchor.getDate(),
+  );
+  const midnightMs = midnight.getTime();
+  const isToday = toKey(anchor) === toKey(now);
+  const segments: DaySegment[] = [];
+  if (session && isToday) {
+    const started = new Date(session.startedAt);
+    const wakeAt = computeWakeAt(session.startedAt, profile?.wake_time ?? null);
+    const end = wakeAt ?? now;
+    const seg = toNightSegment(started.getTime(), end.getTime(), midnightMs);
+    if (seg) segments.push(seg);
+  }
+  for (const s of finished) {
+    if (session && s.startedAt === session.startedAt) continue;
+    const seg = toNightSegment(
+      new Date(s.startedAt).getTime(),
+      new Date(s.endedAt).getTime(),
+      midnightMs,
+    );
+    if (seg) segments.push(seg);
+  }
+  return segments;
+}
+
+/**
+ * Pure: từ các khoảng ngủ KHÔNG kẹp (buildNightSegments), trả về mảng
+ * 12 số = tổng phút ngủ TÍCH LŨY đến cuối mỗi giờ trong cửa sổ đêm
+ * 22:00 → 10:00 (giờ 22, 23, 00, ..., 09). Mỗi giờ cộng dồn đúng số
+ * phút ngủ trong giờ đó rồi cộng vào tổng các giờ trước.
+ * Vd đêm 23:00 → 07:00 (480 phút): [0, 60, 120, 180, 240, 300, 360,
+ * 420, 480, 480, 480, 480] — cột 23:00 cao 60, cột 00:00 cao 120,
+ * ..., cột 07:00 cao 480, các cột sau giữ nguyên 480.
+ */
+function nightCumulativeMinutes(segments: DaySegment[]): number[] {
+  const perHour = Array.from({ length: NIGHT_HOURS }, () => 0);
+  for (const s of segments) {
+    for (let i = 0; i < NIGHT_HOURS; i++) {
+      const hourStart = NIGHT_WINDOW_START_MIN + i * 60;
+      const hourEnd = hourStart + 60;
+      perHour[i] += Math.max(
+        0,
+        Math.min(s.endMin, hourEnd) - Math.max(s.startMin, hourStart),
+      );
+    }
+  }
+  const cumulative: number[] = [];
+  let total = 0;
+  for (const m of perHour) {
+    total += m;
+    cumulative.push(total);
+  }
+  return cumulative;
+}
+
+/**
+ * Pure: gộp các phiên sleep_sessions vừa tải vào map theo ngày dậy,
+ * thay thế (không cộng dồn trùng) các ngày trong [startKey, endKey].
+ */
+function mergeSessionRows(
+  prev: Map<string, SleepSessionRange[]>,
+  rows: SleepSessionRange[],
+  startKey: string,
+  endKey: string,
+): Map<string, SleepSessionRange[]> {
+  const next = new Map(prev);
+  const start = new Date(`${startKey}T00:00:00`);
+  const end = new Date(`${endKey}T00:00:00`);
+  for (
+    let d = new Date(start);
+    d.getTime() <= end.getTime();
+    d.setDate(d.getDate() + 1)
+  ) {
+    next.delete(toKey(d));
+  }
+  for (const r of rows) {
+    const arr = next.get(r.day) ?? [];
+    arr.push(r);
+    next.set(r.day, arr);
+  }
+  return next;
+}
+
 export default function SleepTrackerScreen({ navigation, route }: any) {
-  const { t, locale } = useSettings();
+  const { t, locale, theme } = useSettings();
   const wd = locale === 'en' ? WD_EN : WD;
   const dayShort = locale === 'en' ? DAY_SHORT_EN : DAY_SHORT;
   const [userId, setUserId] = useState<string | null>(null);
@@ -79,6 +346,40 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   const [profile, setProfile] = useState<SleepProfile | null>(null);
   const [hasProfile, setHasProfile] = useState(false);
   const [week, setWeek] = useState<SleepRow[]>([]);
+  // Nhóm D — tab thống kê + dữ liệu 30 ngày (tải lười khi chọn tab Tháng).
+  const [statsTab, setStatsTab] = useState<StatsTab>('day');
+  const [month, setMonth] = useState<SleepRow[]>([]);
+  const [monthLoaded, setMonthLoaded] = useState(false);
+  const [monthLoading, setMonthLoading] = useState(false);
+  // Nhóm B (v2/v3) — ngày đang xem cho thống kê (mặc định hôm nay): chỉ
+  // tab Ngày vẽ đúng ngày này (đổi bằng DateTimePicker bên dưới).
+  // Nhóm B (v3) — tab Tuần vẽ đúng 7 ngày của tuần đã chọn (bắt đầu thứ
+  // Hai, mặc định tuần này); tab Tháng vẽ đúng các ngày trong tháng đã
+  // chọn (mặc định tháng hiện tại, đổi bằng dropdown tháng/năm bên dưới).
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [weekYear, setWeekYear] = useState(2026);
+  const [weekStart, setWeekStart] = useState(() =>
+    startOfWeekMonday(new Date()),
+  );
+  const [viewRows, setViewRows] = useState<SleepRow[]>([]);
+  const [viewDeep, setViewDeep] = useState<Map<string, number>>(new Map());
+  // Nhóm B (v5) — phiên ngủ thật (started_at/ended_at) theo ngày dậy,
+  // để vẽ thanh ngủ theo giờ trên biểu đồ tuần/tháng. Tải gộp trong
+  // loadViewRange / loadWeekRange, không thêm state tải riêng.
+  const [viewSessions, setViewSessions] = useState<
+    Map<string, SleepSessionRange[]>
+  >(new Map());
+  const [viewLoading, setViewLoading] = useState(false);
+  // Nhóm B (v2) — 3 bài viết về giấc ngủ, lấy từ DB qua
+  // getPostsByTopic('sleep', 3) (nhóm C thêm hàm + seed bài, topic='sleep').
+  type SleepArticle = { id: string; title: string; summary: string | null; cover_url: string | null };
+  const [sleepArticles, setSleepArticles] = useState<SleepArticle[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  // Ngủ sâu đọc từ DB (sleep_sessions.deep_sleep_minutes), theo ngày dậy.
+  const [deepSleepByDay, setDeepSleepByDay] = useState<Map<string, number>>(
+    new Map(),
+  );
   const [session, setSession] = useState<SleepSession | null>(null);
   const [sleepMode, setSleepMode] = useState(false);
   const [noiseOn, setNoiseOn] = useState(false);
@@ -92,6 +393,28 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   const [tick, setTick] = useState(0);
   const [bedtimeInput, setBedtimeInput] = useState('22:00');
   const [wakeInput, setWakeInput] = useState('07:30');
+  // Nhóm B (v6) — sửa lịch ngủ bằng picker xoay (spinner) thay cho gõ tay,
+  // cùng pattern với ProfileSetupScreen.
+  const [scheduleTimePicker, setScheduleTimePicker] = useState<
+    'bedtime' | 'wake' | null
+  >(null);
+  const scheduleTimeToDate = (v: string, fallback: string) => {
+    const mins = parseHHMM(v) ?? parseHHMM(fallback) ?? 22 * 60;
+    const d = new Date();
+    d.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    return d;
+  };
+  const scheduleDateToHHMM = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const onScheduleTimePicked = (d: Date | undefined) => {
+    if (!d || !scheduleTimePicker) return;
+    const v = scheduleDateToHHMM(d);
+    if (scheduleTimePicker === 'bedtime') setBedtimeInput(v);
+    else setWakeInput(v);
+    // Android: spinner là hộp thoại, chọn xong (bấm OK) tự đóng;
+    // iOS: spinner hiện inline nên giữ lại để chọn tiếp, bấm "Đóng" mới ẩn.
+    if (Platform.OS !== 'ios') setScheduleTimePicker(null);
+  };
   const [goalInput, setGoalInput] = useState('8');
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [alarms, setAlarms] = useState<AlarmItem[]>([]);
@@ -283,6 +606,8 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
       .gte('log_date', toKey(from))
       .order('log_date', { ascending: true });
     setWeek((res.data || []) as SleepRow[]);
+    // Nhóm D: đánh dấu dữ liệu tháng đã cũ để tải lại khi mở tab Tháng.
+    setMonthLoaded(false);
     const noiseVal = await AsyncStorage.getItem(NOISE_KEY);
     setNoiseOn(noiseVal === '1');
     // SỬA: giữ danh sách báo thức và map đã reo trong biến cục bộ để
@@ -309,14 +634,17 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         setTriggeredMap(trigMap);
       } catch {}
     }
+    // Nhóm B (v6) — chỉ nhận phiên của đúng user này (loadSession lọc
+    // theo uid); MODE_KEY='1' còn sót từ tài khoản trước không được bật
+    // chế độ ngủ khi không có phiên của user hiện tại.
     const mode = await AsyncStorage.getItem(MODE_KEY);
-    setSleepMode(mode === '1');
-    const s = await loadSession();
+    const s = await loadSession(uid);
     setSession(s);
+    setSleepMode(mode === '1' && s !== null);
     if (!handledRoute.current) {
       handledRoute.current = true;
       if (route?.params?.autoSleep && !s) {
-        const created = await startSession();
+        const created = await startSession(uid);
         setSession(created);
         setSleepMode(true);
         if (noiseVal === '1') await playRain();
@@ -422,6 +750,160 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     loadAll();
   }, [loadAll]);
 
+  // Nhóm D — tải ngủ sâu 30 ngày gần nhất từ sleep_sessions (chỉ 1 lần
+  // cho cả 3 tab Ngày/Tuần/Tháng). Lỗi thì giữ map rỗng để thẻ hiện
+  // "Chưa có dữ liệu", không tự sinh số.
+  const loadDeepSleep = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 29);
+      const rows = await getDeepSleepInRange(
+        userId,
+        toKey(start),
+        toKey(end),
+      );
+      setDeepSleepByDay(new Map(rows.map((r) => [r.day, r.deepMinutes])));
+    } catch (e) {
+      console.warn('Cannot load deep sleep minutes', e);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadDeepSleep();
+  }, [loadDeepSleep]);
+
+  // Nhóm D — chỉ tải 30 ngày khi người dùng chọn tab Tháng (tải lười).
+  const loadMonth = useCallback(async () => {
+    if (!userId || monthLoaded) return;
+    setMonthLoading(true);
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 29);
+      const rows = await getSleepMetricsInRange(
+        userId,
+        toKey(start),
+        toKey(end),
+      );
+      setMonth((rows ?? []) as SleepRow[]);
+      setMonthLoaded(true);
+    } catch (e) {
+      console.warn('Cannot load month sleep metrics', e);
+    } finally {
+      setMonthLoading(false);
+    }
+  }, [userId, monthLoaded]);
+
+  useEffect(() => {
+    if (statsTab === 'month') loadMonth();
+  }, [statsTab, loadMonth]);
+
+  // Nhóm B (v2) — tải giờ ngủ + ngủ sâu cho khoảng chứa ngày đang xem:
+  // từ 29 ngày trước ngày xem tới ngày xem, mở rộng tới hết tháng của
+  // ngày xem để chip tháng/năm luôn có dữ liệu. Dùng đúng hàm có sẵn
+  // getSleepMetricsInRange / getDeepSleepInRange (DB thật, không tự sinh số).
+  const loadViewRange = useCallback(async () => {
+    if (!userId) return;
+    setViewLoading(true);
+    try {
+      const end = new Date(viewDate);
+      const start = new Date(viewDate);
+      start.setDate(start.getDate() - 29);
+      const firstOfMonth = new Date(
+        viewDate.getFullYear(),
+        viewDate.getMonth(),
+        1,
+      );
+      const lastOfMonth = new Date(
+        viewDate.getFullYear(),
+        viewDate.getMonth() + 1,
+        0,
+      );
+      if (firstOfMonth < start) start.setTime(firstOfMonth.getTime());
+      if (lastOfMonth > end) end.setTime(lastOfMonth.getTime());
+      const [rows, deep, sessions] = await Promise.all([
+        getSleepMetricsInRange(userId, toKey(start), toKey(end)),
+        getDeepSleepInRange(userId, toKey(start), toKey(end)),
+        getSleepSessionsInRange(userId, toKey(start), toKey(end)),
+      ]);
+      setViewRows((rows ?? []) as SleepRow[]);
+      setViewDeep(new Map(deep.map((r) => [r.day, r.deepMinutes])));
+      setViewSessions((prev) =>
+        mergeSessionRows(prev, sessions ?? [], toKey(start), toKey(end)),
+      );
+    } catch (e) {
+      console.warn('Cannot load sleep stats for selected date', e);
+    } finally {
+      setViewLoading(false);
+    }
+  }, [userId, viewDate]);
+
+  useEffect(() => {
+    void loadViewRange();
+  }, [loadViewRange]);
+
+  // Nhóm B (v3) — tải giờ ngủ + ngủ sâu cho đúng 7 ngày của tuần đã chọn
+  // (không neo vào viewDate nữa). Gộp vào viewRows/viewDeep đã có để
+  // statsMap/deepMap dùng chung, không thêm nguồn dữ liệu mới.
+  const loadWeekRange = useCallback(
+    async (monday: Date) => {
+      if (!userId) return;
+      const start = monday;
+      const end = addDaysLocal(monday, 6);
+      try {
+        const [rows, deep, sessions] = await Promise.all([
+          getSleepMetricsInRange(userId, toKey(start), toKey(end)),
+          getDeepSleepInRange(userId, toKey(start), toKey(end)),
+          getSleepSessionsInRange(userId, toKey(start), toKey(end)),
+        ]);
+        setViewRows((prev) => {
+          const m = new Map(prev.map((r) => [r.log_date, r]));
+          for (const r of rows ?? []) m.set(r.log_date, r as SleepRow);
+          return [...m.values()];
+        });
+        setViewSessions((prev) =>
+          mergeSessionRows(prev, sessions ?? [], toKey(start), toKey(end)),
+        );
+        setViewDeep(
+          (prev) =>
+            new Map([
+              ...prev,
+              ...deep.map((r): [string, number] => [r.day, r.deepMinutes]),
+            ]),
+        );
+      } catch (e) {
+        console.warn('Cannot load sleep stats for selected week', e);
+      }
+    },
+    [userId],
+  );
+
+  useEffect(() => {
+    if (statsTab === 'week') void loadWeekRange(weekStart);
+  }, [statsTab, weekStart, loadWeekRange]);
+
+  // Nhóm B (v2) — 3 bài viết giấc ngủ từ DB thật. Lỗi (vd cột topic chưa
+  // được migrate trên DB đang chạy) thì giữ danh sách rỗng để UI hiện
+  // "Chưa có bài viết", không bịa nội dung trong code.
+  const loadSleepArticles = useCallback(async () => {
+    setArticlesLoading(true);
+    try {
+      const rows = await getPostsByTopic('sleep', 3);
+      setSleepArticles((rows ?? []) as SleepArticle[]);
+    } catch (e) {
+      console.warn('Cannot load sleep articles', e);
+      setSleepArticles([]);
+    } finally {
+      setArticlesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSleepArticles();
+  }, [loadSleepArticles]);
+
   // SỬA: load lại mỗi lần màn được focus — đây là chỗ sửa lỗi
   // "thoát ra đăng nhập lại mà không thấy xác nhận dậy". Trước đây
   // màn chỉ load lúc mount nên state phiên ngủ bị cũ sau khi
@@ -429,7 +911,8 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
   useFocusEffect(
     useCallback(() => {
       loadAll();
-    }, [loadAll]),
+      void loadDeepSleep();
+    }, [loadAll, loadDeepSleep]),
   );
 
   useEffect(() => {
@@ -771,8 +1254,193 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
     : null;
   const goal = profile?.sleep_goal_hours ?? null;
 
+  // Nhóm D — dữ liệu cho tab thống kê đang chọn.
+  // Lưu ý: getWeekMetrics/getWeekMetricsEndingOn chỉ trả TỔNG 7 ngày nên cột
+  // từng ngày của tab Tuần tái dùng đúng truy vấn theo ngày đã có trong loadAll
+  // (health_metrics.sleep_hours, 7 ngày gần nhất); tab Tháng dùng hàm mới
+  // getSleepMetricsInRange trong src/api/auravitalApi.ts.
+  // Nhóm B (v2/v3) — gộp các nguồn DB thật đã tải: week (7 ngày gần nhất),
+  // month (30 ngày gần nhất) và viewRows (khoảng chứa ngày xem / tuần đã
+  // chọn); viewRows thắng khi trùng ngày. Tab Ngày neo theo ngày đang xem
+  // (viewDate), tab Tuần neo theo tuần đã chọn (weekStart), tab Tháng neo
+  // theo tháng của viewDate. Banner phía trên vẫn neo vào hôm nay (last7).
+  const viewKey = toKey(viewDate);
+  const statsMap = new Map<string, number | null>([
+    ...map,
+    ...new Map(month.map((w) => [w.log_date, w.sleep_hours])),
+    ...new Map(viewRows.map((w) => [w.log_date, w.sleep_hours])),
+  ]);
+  const deepMap = new Map<string, number>([...deepSleepByDay, ...viewDeep]);
+  const viewHours = statsMap.get(viewKey) ?? null;
+  const daySegments = buildDaySegments(session, profile, viewDate);
+  // Nhóm B (v5, v6) — biểu đồ ngày: cột tích lũy trong cửa sổ đêm
+  // 22:00 ngày xem → 10:00 hôm sau (buildNightSegments không kẹp
+  // segment, nightCumulativeMinutes cộng dồn theo giờ). Chỉ vẽ từ
+  // phiên thật: phiên đang mở (daySegments, kind 'session') hoặc phiên
+  // đã xong dậy vào ngày xem (viewSessions từ sleep_sessions).
+  // daySegments dùng để biết có phiên đang mở hay không (kind 'none'
+  // khi không có), nightSegments để biết có phiên đã xong hay không.
+  const nightSegments = buildNightSegments(
+    session,
+    profile,
+    viewSessions.get(viewKey) ?? [],
+    viewDate,
+  );
+  const dayHasData =
+    daySegments.kind !== 'none' || nightSegments.length > 0;
+  const nightCumulative = nightCumulativeMinutes(nightSegments);
+  const nightTotal = nightCumulative[nightCumulative.length - 1] ?? 0;
+  // Nhóm B (v6) — mốc dọc tối đa: làm tròn tổng phút thật lên bội số
+  // 60, tối thiểu 60 (v5 là tối thiểu 120, nhãn chỉ hiện cách 120ph).
+  const nightMaxTick = Math.max(60, Math.ceil(nightTotal / 60) * 60);
+  // Cột cuối cùng có dữ liệu (để hiện nhãn tổng phút ngay trên cột đó).
+  const nightLastIdx = (() => {
+    let idx = -1;
+    nightCumulative.forEach((v, i) => {
+      if (v > 0) idx = i;
+    });
+    return idx;
+  })();
+  // Nhóm B (v3) — tab Tuần: đúng 7 ngày của tuần đã chọn (thứ Hai →
+  // Chủ nhật), không còn 7 ngày gần nhất neo vào ngày xem. Tab Tháng:
+  // đúng các ngày trong tháng đã chọn, không còn 30 ngày gần nhất.
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDaysLocal(weekStart, i);
+    const k = toKey(d);
+    weekDays.push({
+      key: k,
+      label: wd[d.getDay()],
+      hours: statsMap.get(k) ?? null,
+    });
+  }
+  const monthDays = [];
+  const daysInMonth = new Date(
+    viewDate.getFullYear(),
+    viewDate.getMonth() + 1,
+    0,
+  ).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), d);
+    const k = toKey(date);
+    monthDays.push({
+      key: k,
+      label: `${d}/${viewDate.getMonth() + 1}`,
+      hours: statsMap.get(k) ?? null,
+    });
+  }
+  const monthWithData = monthDays.filter((x) => x.hours !== null);
+  // Giờ ngủ dùng cho 2 thẻ tóm tắt: giờ hôm nay (tab Ngày), trung bình/ngày
+  // (tab Tuần/Tháng). Tab Ngày đang có phiên mở mà DB chưa ghi thì dùng số giờ
+  // đã ngủ tới hiện tại (tính từ giờ bắt đầu thật của phiên).
+  const periodRows =
+    statsTab === 'day'
+      ? viewHours !== null
+        ? [{ hours: viewHours }]
+        : []
+      : statsTab === 'week'
+        ? weekDays.filter((x) => x.hours !== null)
+        : monthWithData;
+  const periodAvgHours = periodRows.length
+    ? periodRows.reduce((s, x) => s + Number(x.hours), 0) / periodRows.length
+    : null;
+  const elapsedHours = session
+    ? Math.max(
+        0,
+        (Date.now() - new Date(session.startedAt).getTime()) / 3600000,
+      )
+    : null;
+  const isViewingToday = viewKey === toKey(new Date());
+  const summaryHours =
+    periodAvgHours ??
+    (statsTab === 'day' && isViewingToday ? elapsedHours : null);
+  const goalHours = profile?.sleep_goal_hours ?? DEFAULT_SLEEP_GOAL_HOURS;
+  const isDefaultGoal = profile?.sleep_goal_hours == null;
+  const sleepRatio =
+    summaryHours !== null && goalHours > 0
+      ? Math.round((summaryHours / goalHours) * 100)
+      : null;
+  // Ngủ sâu ĐỌC TỪ DB (sleep_sessions.deep_sleep_minutes), không tự tính
+  // trong code hiển thị. Nhóm B (v3): đã bỏ cách tính chu kỳ 90 phút khỏi
+  // UI — giá trị trong DB do sleepSession.ts ghi lúc kết thúc phiên (nhóm
+  // khác sở hữu hàm đó). Tab Ngày: tổng phút ngủ sâu của phiên dậy vào
+  // ngày xem; tab Tuần/Tháng: trung bình/ngày có dữ liệu ngủ sâu (giống
+  // cách tính summaryHours). Ngày/khoảng không có phiên nào lưu
+  // deep_sleep_minutes thì deepSleepHours = null → UI hiện "Chưa có dữ liệu".
+  const deepDays =
+    statsTab === 'day'
+      ? [viewKey]
+      : statsTab === 'week'
+        ? weekDays.map((x) => x.key)
+        : monthDays.map((x) => x.key);
+  const deepMinutesList = deepDays
+    .map((k) => deepMap.get(k))
+    .filter((v): v is number => typeof v === 'number');
+  const deepTotalMin = deepMinutesList.length
+    ? deepMinutesList.reduce((s, v) => s + v, 0)
+    : null;
+  const deepSleepHours =
+    deepTotalMin === null
+      ? null
+      : statsTab === 'day'
+        ? Math.round(deepTotalMin / 6) / 10
+        : Math.round((deepTotalMin / deepMinutesList.length / 60) * 10) / 10;
+
+  // Nhóm B (v3) — chọn tuần: "Tuần này"/"Tuần trước" đặt cả tuần và năm
+  // theo tuần đó; đổi năm thì chọn tuần hiện tại nếu là năm nay, không thì
+  // tuần đầu tiên của năm đó. (Đã bỏ gợi ý "giờ dậy tỉnh táo" khỏi UI.)
+  const thisWeekMonday = startOfWeekMonday(new Date());
+  const lastWeekMonday = addDaysLocal(thisWeekMonday, -7);
+  const selectThisWeek = () => {
+    setWeekStart(thisWeekMonday);
+    setWeekYear(thisWeekMonday.getFullYear());
+  };
+  const selectLastWeek = () => {
+    setWeekStart(lastWeekMonday);
+    setWeekYear(lastWeekMonday.getFullYear());
+  };
+  const selectWeekYear = (y: number) => {
+    setWeekYear(y);
+    setWeekStart(
+      y === new Date().getFullYear() ? thisWeekMonday : mondaysOfYear(y)[0],
+    );
+  };
+  // Nhóm A (v4) — dropdown chọn tuần: "Tuần này", "Tuần trước" rồi các
+  // tuần cụ thể trong năm đã chọn (giữ nguyên mondaysOfYear /
+  // formatWeekLabel; tuần tràn sang năm sau ghi đúng ngày bắt đầu–kết
+  // thúc, vd "29 tháng 12 – 4 tháng 1"). Trùng Monday thì giữ nhãn đầu
+  // tiên ("Tuần này"/"Tuần trước" thắng) để value không trùng nhau.
+  const weekOptions = (() => {
+    const seen = new Set<string>();
+    const list = [
+      { value: toKey(thisWeekMonday), label: t('sleep.weekThis') },
+      { value: toKey(lastWeekMonday), label: t('sleep.weekLast') },
+      ...mondaysOfYear(weekYear).map((m) => ({
+        value: toKey(m),
+        label: formatWeekLabel(m, locale),
+      })),
+    ];
+    return list.filter((o) => {
+      if (seen.has(o.value)) return false;
+      seen.add(o.value);
+      return true;
+    });
+  })();
+  const onSelectWeek = (key: string) => {
+    if (key === toKey(thisWeekMonday)) {
+      selectThisWeek();
+      return;
+    }
+    if (key === toKey(lastWeekMonday)) {
+      selectLastWeek();
+      return;
+    }
+    const m = mondaysOfYear(weekYear).find((x) => toKey(x) === key);
+    if (m) setWeekStart(m);
+  };
+
   const startSleep = async () => {
-    const s = await startSession();
+    const s = await startSession(userId);
     setSession(s);
     setSleepMode(true);
     // SỬA: đặt lại thông báo giờ dậy ngay khi bắt đầu phiên mới, để
@@ -847,7 +1515,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
         snoozeUntil: new Date(Date.now() + 10 * 60000).toISOString(),
         snoozeCount: session.snoozeCount + 1,
       };
-      await saveSession(next);
+      await saveSession(next, userId);
       setSession(next);
       try {
         await scheduleSnoozeNotification(
@@ -1091,7 +1759,7 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               </Text>
               <Text style={styles.bannerText}>
                 {avgMin === null
-                  ? t('sleep.noData7d')
+                  ? t('sleep.statsNoData')
                   : goal
                     ? avgMin >= goal * 60
                       ? t('sleep.statsWithGoalReached', {
@@ -1107,33 +1775,389 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
               </Text>
             </View>
 
+            {/* Nhóm B (v2) — đã XÓA khối "Thống kê giấc ngủ (7 ngày)" ở đây:
+                nó vẽ lại đúng dữ liệu 7 ngày của tab Tuần bên dưới. Chỉ giữ
+                1 biểu đồ chính là thống kê theo kỳ Ngày/Tuần/Tháng. */}
+            {/* Nhóm D — thống kê Ngày/Tuần/Tháng (vẽ bằng View, không thêm lib chart). */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{t('sleep.statsTitle')}</Text>
-              <View style={styles.barArea}>
-                {goal ? (
-                  <View
-                    style={[styles.goalLine, { bottom: (goal / 12) * 140 }]}
-                  />
-                ) : null}
-                {last7.map((d) => (
-                  <View key={d.key} style={styles.barCol}>
-                    <View
+              <Text style={styles.cardTitle}>
+                {t('sleep.statsTabTitle')}
+              </Text>
+              <View style={styles.segRow}>
+                {(['day', 'week', 'month'] as StatsTab[]).map((tab) => (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[
+                      styles.segBtn,
+                      statsTab === tab && styles.segBtnActive,
+                    ]}
+                    onPress={() => setStatsTab(tab)}
+                  >
+                    <Text
                       style={[
-                        styles.bar,
-                        {
-                          height:
-                            d.hours !== null
-                              ? Math.min((Number(d.hours) / 12) * 140, 140)
-                              : 0,
-                        },
+                        styles.segBtnText,
+                        statsTab === tab && styles.segBtnTextActive,
                       ]}
-                    />
-                    <Text style={styles.barValue}>
-                      {d.hours !== null ? Number(d.hours).toFixed(1) : '--'}
+                    >
+                      {tab === 'day'
+                        ? t('sleep.statsTabDay')
+                        : tab === 'week'
+                          ? t('sleep.statsTabWeek')
+                          : t('sleep.statsTabMonth')}
                     </Text>
-                    <Text style={styles.barLabel}>{d.label}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
+              </View>
+
+              {/* Nhóm B (v3) — mỗi tab có bộ chọn riêng: tab Ngày chọn ngày
+                  bằng DateTimePicker (onValueChange, không dùng onChange đã
+                  deprecated); tab Tuần chọn tuần (bắt đầu thứ Hai) + năm;
+                  tab Tháng chọn tháng + năm bằng dropdown (Nhóm A v4),
+                  KHÔNG còn DateTimePicker chọn ngày trong tab Tháng.
+                  Chọn tháng/năm thì xem tới cuối tháng đó. */}
+              {statsTab === 'day' ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.datePickBtn}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Ionicons
+                      name='calendar-outline'
+                      size={16}
+                      color={PRIMARY}
+                    />
+                    <Text style={styles.datePickText}>
+                      {t('sleep.viewDate')}: {keyToDisplay(viewKey)}
+                    </Text>
+                  </TouchableOpacity>
+                  {showDatePicker ? (
+                    <>
+                      <DateTimePicker
+                        value={viewDate}
+                        mode='date'
+                        display={
+                          Platform.OS === 'ios' ? 'spinner' : 'calendar'
+                        }
+                        maximumDate={new Date()}
+                        onValueChange={(_e, d) => {
+                          if (d) {
+                            setViewDate(d);
+                            // Android: lịch là hộp thoại, chọn xong tự đóng.
+                            // iOS: spinner hiện inline nên giữ lại để chọn
+                            // tiếp, bấm "Đóng" bên dưới mới ẩn.
+                            if (Platform.OS !== 'ios')
+                              setShowDatePicker(false);
+                          }
+                        }}
+                        onDismiss={() => setShowDatePicker(false)}
+                      />
+                      {Platform.OS === 'ios' ? (
+                        <TouchableOpacity
+                          style={styles.secondaryButton}
+                          onPress={() => setShowDatePicker(false)}
+                        >
+                          <Text style={styles.secondaryButtonText}>
+                            {t('common.close')}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+              {statsTab === 'week' ? (
+                <View style={styles.dropdownRow}>
+                  <View style={styles.dropdownCol}>
+                    <DropdownSelect
+                      label={t('sleep.weekPickerTitle')}
+                      value={toKey(weekStart)}
+                      options={weekOptions}
+                      onChange={onSelectWeek}
+                      placeholder={t('sleep.weekPickerTitle')}
+                    />
+                  </View>
+                  <View style={styles.dropdownCol}>
+                    <DropdownSelect
+                      label={t('sleep.yearSelectLabel')}
+                      value={String(weekYear)}
+                      options={WEEK_YEAR_OPTIONS.map((y) => ({
+                        value: String(y),
+                        label: String(y),
+                      }))}
+                      onChange={(v) => selectWeekYear(Number(v))}
+                      placeholder={t('sleep.yearSelectLabel')}
+                    />
+                  </View>
+                </View>
+              ) : null}
+              {statsTab === 'month' ? (
+                <View style={styles.dropdownRow}>
+                  <View style={styles.dropdownCol}>
+                    <DropdownSelect
+                      label={t('sleep.monthSelectLabel')}
+                      value={String(viewDate.getMonth() + 1)}
+                      options={Array.from({ length: 12 }, (_, i) => i + 1).map(
+                        (m) => ({
+                          value: String(m),
+                          label: t(`sleep.monthName${m}`),
+                        }),
+                      )}
+                      onChange={(v) =>
+                        setViewDate(
+                          new Date(viewDate.getFullYear(), Number(v), 0),
+                        )
+                      }
+                      placeholder={t('sleep.monthSelectLabel')}
+                    />
+                  </View>
+                  <View style={styles.dropdownCol}>
+                    <DropdownSelect
+                      label={t('sleep.yearSelectLabel')}
+                      value={String(viewDate.getFullYear())}
+                      options={WEEK_YEAR_OPTIONS.map((y) => ({
+                        value: String(y),
+                        label: String(y),
+                      }))}
+                      onChange={(v) =>
+                        setViewDate(
+                          new Date(Number(v), viewDate.getMonth() + 1, 0),
+                        )
+                      }
+                      placeholder={t('sleep.yearSelectLabel')}
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              {statsTab === 'day' ? (
+                !dayHasData ? (
+                  <Text style={styles.note}>{t('sleep.statsNoData')}</Text>
+                ) : (
+                  <>
+                    {/* Nhóm B (v5) — biểu đồ ngày: cửa sổ đêm 22:00 →
+                        10:00, cột = tổng phút ngủ tích lũy đến cuối giờ
+                        đó, lưới solid nhạt, trục dọc phút 0/60/120/...
+                        (v6: hiện nhãn ở MỌI mốc 60ph). */}
+                    <Text style={styles.note}>
+                      {t('sleep.statsDayCumulativeNote')}
+                    </Text>
+                    <View style={styles.dayChartWrap}>
+                      <View style={styles.nightDayYAxis}>
+                        {Array.from(
+                          { length: nightMaxTick / 60 + 1 },
+                          (_, i) => i * 60,
+                        ).map((tick) => (
+                            <Text
+                              key={tick}
+                              style={[
+                                styles.nightDayYLabel,
+                                {
+                                  top: `${(1 - tick / nightMaxTick) * 100}%`,
+                                  marginTop:
+                                    tick === 0
+                                      ? -14
+                                      : tick === nightMaxTick
+                                        ? 0
+                                        : -7,
+                                },
+                              ]}
+                            >
+                              {tick === 0 ? '0' : `${tick}ph`}
+                            </Text>
+                          ))}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.nightDayPlot}>
+                          {Array.from(
+                            { length: nightMaxTick / 60 + 1 },
+                            (_, i) => i * 60,
+                          )
+                            .filter((tick) => tick > 0)
+                            .map((tick) => (
+                              <View
+                                key={tick}
+                                style={[
+                                  styles.nightGridH,
+                                  {
+                                    top: `${(1 - tick / nightMaxTick) * 100}%`,
+                                  },
+                                ]}
+                              />
+                            ))}
+                          {Array.from(
+                            { length: NIGHT_HOURS + 1 },
+                            (_, i) => i,
+                          ).map((i) => (
+                            <View
+                              key={i}
+                              style={[
+                                styles.nightGridV,
+                                { left: `${(i / NIGHT_HOURS) * 100}%` },
+                              ]}
+                            />
+                          ))}
+                          <View style={styles.nightDayBars}>
+                            {nightCumulative.map((cum, i) => (
+                              <View key={i} style={styles.nightDayCol}>
+                                {i === nightLastIdx ? (
+                                  <Text style={styles.nightDayValue}>
+                                    {`${nightTotal} phút`}
+                                  </Text>
+                                ) : null}
+                                <View
+                                  style={[
+                                    styles.nightDayBar,
+                                    {
+                                      height:
+                                        (cum / nightMaxTick) *
+                                        NIGHT_DAY_CHART_H,
+                                    },
+                                  ]}
+                                />
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                        <View style={styles.nightDayXAxis}>
+                          {[
+                            { label: '22:00', pos: 0 },
+                            { label: '00:00', pos: 2 },
+                            { label: '02:00', pos: 4 },
+                            { label: '04:00', pos: 6 },
+                            { label: '06:00', pos: 8 },
+                            { label: '08:00', pos: 10 },
+                            { label: '10:00', pos: 12 },
+                          ].map((x) => (
+                            <Text
+                              key={x.label}
+                              style={[
+                                styles.nightDayXLabel,
+                                { left: `${(x.pos / NIGHT_HOURS) * 100}%` },
+                              ]}
+                            >
+                              {x.label}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                )
+              ) : statsTab === 'week' ? (
+                weekDays.filter((x) => x.hours !== null).length === 0 ? (
+                  <Text style={styles.note}>{t('sleep.statsNoData')}</Text>
+                ) : (
+                  // Nhóm B (v6) — biểu đồ tuần về lại cột dọc kiểu v4:
+                  // cao = giờ ngủ/ngày (scale /12*140), nhãn giá trị là
+                  // số giờ, nhãn trục ngang là thứ; bỏ trục giờ dọc
+                  // bên phải + thanh trải theo giờ đi ngủ→dậy của v5.
+                  <View style={styles.barArea}>
+                    {weekDays.map((d) => (
+                      <View key={d.key} style={styles.barCol}>
+                        <View
+                          style={[
+                            styles.bar,
+                            {
+                              height:
+                                d.hours !== null
+                                  ? Math.min(
+                                      (Number(d.hours) / 12) * 140,
+                                      140,
+                                    )
+                                  : 0,
+                            },
+                          ]}
+                        />
+                        <Text style={styles.barValue}>
+                          {d.hours !== null
+                            ? Number(d.hours).toFixed(1)
+                            : '--'}
+                        </Text>
+                        <Text style={styles.barLabel}>{d.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )
+              ) : monthLoading || viewLoading ? (
+                <ActivityIndicator
+                  size='small'
+                  color={PRIMARY}
+                  style={{ marginVertical: 24 }}
+                />
+              ) : monthWithData.length === 0 ? (
+                <Text style={styles.note}>{t('sleep.statsNoData')}</Text>
+              ) : (
+                // Nhóm B (v6) — biểu đồ tháng về lại cột dọc kiểu v4
+                // (như biểu đồ tuần, cột hẹp hơn; nhãn ngày cách
+                // 5 ngày); bỏ trục giờ dọc + thanh theo giờ của v5.
+                <View style={styles.barArea}>
+                  {monthDays.map((d, idx) => (
+                    <View key={d.key} style={styles.monthBarCol}>
+                      <View
+                        style={[
+                          styles.monthBar,
+                          {
+                            height:
+                              d.hours !== null
+                                ? Math.min((Number(d.hours) / 12) * 140, 140)
+                                : 0,
+                          },
+                        ]}
+                      />
+                      <Text style={styles.monthBarLabel}>
+                        {idx % 5 === 0 ? d.label : ''}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.statRow}>
+                <View style={styles.statCard}>
+                  <View style={styles.statLabelRow}>
+                    <Ionicons
+                      name='battery-half-outline'
+                      size={16}
+                      color={PRIMARY}
+                    />
+                    <Text style={styles.statLabel}>
+                      {t('sleep.statsSleepRatioLabel')}
+                    </Text>
+                  </View>
+                  <Text style={styles.statValue}>
+                    {sleepRatio !== null ? `${sleepRatio}%` : '--'}
+                  </Text>
+                  <Text style={styles.statSub}>
+                    {summaryHours !== null
+                      ? t('sleep.statsRatioSub', {
+                          hours: (Math.round(summaryHours * 10) / 10).toString(),
+                          goal: goalHours,
+                        })
+                      : t('sleep.statsNoData')}
+                  </Text>
+                  {isDefaultGoal ? (
+                    <Text style={styles.statSub}>
+                      {t('sleep.statsDefaultGoalNote')}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.statCard}>
+                  <View style={styles.statLabelRow}>
+                    <Ionicons
+                      name='moon-outline'
+                      size={16}
+                      color={PRIMARY}
+                    />
+                    <Text style={styles.statLabel}>
+                      {t('sleep.statsDeepSleepLabel')}
+                    </Text>
+                  </View>
+                  <Text style={styles.statValue}>
+                    {deepSleepHours !== null
+                      ? `${deepSleepHours}h`
+                      : t('sleep.statsNoData')}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -1189,21 +2213,46 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                     : t('sleep.setupSchedule')}
                 </Text>
                 <Text style={styles.label}>{t('sleep.bedtime')}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={bedtimeInput}
-                  onChangeText={setBedtimeInput}
-                  placeholder='22:00'
-                  keyboardType='numbers-and-punctuation'
-                />
+                <TouchableOpacity
+                  style={[styles.input, { justifyContent: 'center' }]}
+                  onPress={() => setScheduleTimePicker('bedtime')}
+                >
+                  <Text>{bedtimeInput}</Text>
+                </TouchableOpacity>
                 <Text style={styles.label}>{t('sleep.wakeTime')}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={wakeInput}
-                  onChangeText={setWakeInput}
-                  placeholder='07:30'
-                  keyboardType='numbers-and-punctuation'
-                />
+                <TouchableOpacity
+                  style={[styles.input, { justifyContent: 'center' }]}
+                  onPress={() => setScheduleTimePicker('wake')}
+                >
+                  <Text>{wakeInput}</Text>
+                </TouchableOpacity>
+                {scheduleTimePicker ? (
+                  <>
+                    <DateTimePicker
+                      value={scheduleTimeToDate(
+                        scheduleTimePicker === 'bedtime'
+                          ? bedtimeInput
+                          : wakeInput,
+                        scheduleTimePicker === 'bedtime' ? '22:00' : '07:30',
+                      )}
+                      mode='time'
+                      display='spinner'
+                      is24Hour
+                      onValueChange={(_e, d) => onScheduleTimePicked(d)}
+                      onDismiss={() => setScheduleTimePicker(null)}
+                    />
+                    {Platform.OS === 'ios' ? (
+                      <TouchableOpacity
+                        style={styles.secondaryButton}
+                        onPress={() => setScheduleTimePicker(null)}
+                      >
+                        <Text style={styles.secondaryButtonText}>
+                          {t('common.close')}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </>
+                ) : null}
                 <Text style={styles.label}>{t('sleep.sleepGoal')}</Text>
                 <TextInput
                   style={styles.input}
@@ -1451,13 +2500,18 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                       ? t('sleep.editAlarm')
                       : t('sleep.addAlarm')}
                   </Text>
-                  <Text style={styles.label}>{t('sleep.alarmTime')}</Text>
-                  <TextInput
-                    style={styles.input}
+                  {/* V7 — giờ báo thức chọn bằng picker xoay giống giờ nhắc
+                      bữa ăn (ReminderTimeRow): bánh xe giờ 00→23, phút
+                      00→59, thay cho gõ tay. onBlur để trống vì form báo
+                      thức chỉ lưu khi bấm nút Lưu (saveAlarm vẫn kiểm tra
+                      parseHHMM như cũ). */}
+                  <ReminderTimeRow
+                    label={t('sleep.alarmTime')}
                     value={alarmTimeInput}
-                    onChangeText={setAlarmTimeInput}
                     placeholder='07:30'
-                    keyboardType='numbers-and-punctuation'
+                    theme={theme}
+                    onChangeText={setAlarmTimeInput}
+                    onBlur={() => {}}
                   />
                   <Text style={styles.label}>{t('sleep.label')}</Text>
                   <TextInput
@@ -1536,6 +2590,42 @@ export default function SleepTrackerScreen({ navigation, route }: any) {
                 >
                   <Text style={styles.addPlus}>+</Text>
                 </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Nhóm B (v2/v3) — 3 bài viết về giấc ngủ, lấy từ DB thật qua
+                getPostsByTopic('sleep', 3). Bấm vào mở ArticleDetail (cùng
+                cách mở bài viết như màn Khám phá / Trang chủ). Chưa có bài
+                trong DB thì hiện "Chưa có bài viết", không bịa nội dung.
+                Nhóm B (v3): dời xuống CUỐI màn hình, sau mục Báo thức. */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>
+                {t('sleep.articlesTitle')}
+              </Text>
+              {articlesLoading ? (
+                <ActivityIndicator
+                  size='small'
+                  color={PRIMARY}
+                  style={{ marginVertical: 12 }}
+                />
+              ) : sleepArticles.length === 0 ? (
+                <Text style={styles.note}>{t('sleep.noArticles')}</Text>
+              ) : (
+                // Nhóm B (v4): chỉ thay UI render bài bằng ArticleCard
+                // chuẩn dùng chung (có ảnh cover ở đầu thẻ). Vị trí
+                // (cuối màn hình, sau Báo thức), dữ liệu
+                // getPostsByTopic('sleep', 3) và mở ArticleDetail giữ nguyên.
+                sleepArticles.map((a) => (
+                  <ArticleCard
+                    key={a.id}
+                    post={a}
+                    onOpen={() =>
+                      navigation?.navigate('ArticleDetail', {
+                        postId: a.id,
+                      })
+                    }
+                  />
+                ))
               )}
             </View>
           </ScrollView>

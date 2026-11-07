@@ -4,7 +4,7 @@
 // Luu y: round1 / toNum KHONG lay tu src/lib/nutritionApi.ts —
 // ban trong lib khong export va toNum ban string (replace ',' -> '.')
 // khac ban trong lib; chung nam o ./utils/nutritionFormat.ts.
-import type { DraftItem, MealType } from '../../lib/nutritionApi';
+import type { DraftItem, MealType } from '../../api/nutritionApi';
 
 export const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 // ĐÃ BỎ MACRO_ICONS: chú thích biểu đồ không còn dùng emoji 🍞🥩🧈 nữa,

@@ -1,6 +1,6 @@
 // Hang so dung chung cho cum Gia dinh (doi nguyen van tu SharingSettingsScreen).
 // title/desc la key i18n (family.content.*); man hinh dich bang t() khi render.
-import type { SharingSettings } from '../../lib/familyApi';
+import type { SharingSettings } from '../../api/familyApi';
 
 export const CONTENT_ROWS: {
   key: keyof Omit<SharingSettings, 'share_enabled'>;

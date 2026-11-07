@@ -5,22 +5,25 @@
 // =====================================================================
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text,
+  ActivityIndicator, Alert, Image, PanResponder, RefreshControl, ScrollView, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
-import { getPostById, getWorkoutSteps, levelLabel, type Post, type WorkoutStep } from '../../../lib/workoutApi';
+import { getPostById, getWorkoutSteps, levelLabel, type Post, type WorkoutStep } from '../../../api/workoutApi';
 import { useSettings } from '../../../context/SettingsContext';
-import { VideoPlayer } from '../components/VideoPlayer';
-import { fmtClock } from '../utils/workoutFormat';
+import { useSubscription } from '../../../context/SubscriptionContext';
+import { VideoPlayer } from '../../../components/workout/VideoPlayer';
+import { fmtClock } from '../../../utils/workout/workoutFormat';
 import { styles } from './WorkoutPlayerScreen.styles';
 
 export default function WorkoutPlayerScreen() {
   useKeepAwake();
   const { t } = useSettings();
+  // Video bài tập chỉ mở với Pro/Family; Free thấy màn khóa.
+  const { canWorkout } = useSubscription();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const postId: string = route.params?.postId;
@@ -105,6 +108,55 @@ export default function WorkoutPlayerScreen() {
     setFinished(false);
   };
 
+  // Kéo thanh tiến trình bước tập: đổi elapsedTotal trực tiếp.
+  // Tôn trọng khóa bước như goToStep: không nhảy tới bước chưa mở.
+  // PanResponder chỉ tạo 1 lần nên handler đọc hàm mới nhất qua ref
+  // (tránh kẹt stepIdx/totalSec của lần render đầu).
+  const stepTrackWidth = useRef(0);
+  const stepLockAlerted = useRef(false);
+  const scrubStep = (x: number, isGrant: boolean) => {
+    if (totalSec <= 0 || stepTrackWidth.current <= 0 || steps.length === 0)
+      return;
+    if (isGrant) stepLockAlerted.current = false;
+    const ratio = Math.max(0, Math.min(1, x / stepTrackWidth.current));
+    const target = ratio * totalSec;
+    let acc = 0;
+    let targetIdx = steps.length - 1;
+    for (let i = 0; i < steps.length; i++) {
+      acc += steps[i].duration_sec || 0;
+      if (target < acc) {
+        targetIdx = i;
+        break;
+      }
+    }
+    if (targetIdx > stepIdx && !finished) {
+      if (!stepLockAlerted.current) {
+        stepLockAlerted.current = true;
+        Alert.alert(
+          t('workout.player.lockedTitle'),
+          t('workout.player.lockedBody'),
+        );
+      }
+      return;
+    }
+    setElapsedTotal(Math.floor(target));
+    setFinished(false);
+  };
+  const scrubStepRef = useRef(scrubStep);
+  scrubStepRef.current = scrubStep;
+  const stepPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) =>
+        scrubStepRef.current(evt.nativeEvent.locationX, true),
+      onPanResponderMove: (evt) =>
+        scrubStepRef.current(evt.nativeEvent.locationX, false),
+      onPanResponderRelease: () => {},
+      onPanResponderTerminate: () => {},
+    }),
+  ).current;
+
   const finishMinutes = totalSec > 0 ? Math.max(1, Math.round(totalSec / 60)) : post?.duration_min ?? 15;
 
   if (loading) {
@@ -121,6 +173,28 @@ export default function WorkoutPlayerScreen() {
       <SafeAreaProvider>
         <SafeAreaView style={[styles.center, { backgroundColor: '#fff' }]}>
           <Text style={styles.error}>{error || t('workout.player.noWorkout')}</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Gói Free: không phát video, hiện màn khóa + nút sang xem các gói.
+  // Mọi logic tải bài, bước tập, bộ đếm bên trên vẫn giữ nguyên.
+  if (!canWorkout) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={[styles.center, { backgroundColor: '#fff' }]}>
+          <View style={styles.lockCard}>
+            <Ionicons name="lock-closed" size={48} color="#2E7D32" />
+            <Text style={styles.lockTitle}>{t('workout.player.videoLockedTitle')}</Text>
+            <Text style={styles.lockBody}>{t('workout.player.videoLockedBody')}</Text>
+            <TouchableOpacity
+              style={styles.lockBtn}
+              onPress={() => navigation.navigate('Plans')}
+            >
+              <Text style={styles.lockBtnText}>{t('subscription.viewPlans')}</Text>
+            </TouchableOpacity>
+          </View>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -186,8 +260,22 @@ export default function WorkoutPlayerScreen() {
         <Text style={styles.timeText}>{fmtClock(elapsedTotal)}</Text>
         <Text style={styles.timeText}>{fmtClock(totalSec)}</Text>
       </View>
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${Math.min(100, progressPct)}%` }]} />
+      {/* Thanh tiến trình bước tập: bấm hoặc kéo ngang để tua. */}
+      <View
+        style={styles.barHit}
+        onLayout={(e) => {
+          stepTrackWidth.current = e.nativeEvent.layout.width;
+        }}
+        {...stepPan.panHandlers}
+      >
+        <View style={styles.barTrack}>
+          <View
+            style={[styles.barFill, { width: `${Math.min(100, progressPct)}%` }]}
+          />
+          <View
+            style={[styles.barThumb, { left: `${Math.min(100, progressPct)}%` }]}
+          />
+        </View>
       </View>
       {curStep && !finished && (
         <Text style={styles.nowPlaying}>{t('workout.player.nowPlaying', { title: curStep.title })}</Text>

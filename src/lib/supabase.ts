@@ -1,18 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
-
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-if (!url || !anonKey)
-  throw new Error(
-    'Thiếu EXPO_PUBLIC_SUPABASE_URL hoặc EXPO_PUBLIC_SUPABASE_ANON_KEY trong .env',
-  );
-
-export const supabase = createClient(url, anonKey, {
-  auth: {
-    storage: AsyncStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-  },
-});
+// SHIM — file thật đã dời sang src/api/supabase.ts (xem README_CAU_TRUC_MOI.md).
+// Giữ lại để App.tsx hoặc code ngoài src/ còn import đường cũ không bị vỡ.
+// Khi đã đổi hết import sang đường mới thì xóa cả thư mục src/lib/.
+export * from '../api/supabase';

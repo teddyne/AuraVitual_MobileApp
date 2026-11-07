@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -12,22 +12,54 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
 import { s } from './ProfileSettingsScreen.styles';
-import { Row } from '../components/SettingsRow';
-import { supabase } from '../../../lib/supabase';
+import { Row } from '../../../components/profile/SettingsRow';
+import { supabase } from '../../../api/supabase';
+import { useSubscription } from '../../../context/SubscriptionContext';
+import { getPlanById } from '../../subscription/plans';
 import {
   formatNumber,
   getProfile,
   type Profile,
   updateAvatarUrl,
-} from '../../../lib/auravitalApi';
+} from '../../../api/auravitalApi';
+
+// Bucket 'avatars' chưa tồn tại thì Storage trả 404 / NoSuchBucket.
+// Nhận diện để hiện câu ngắn hướng dẫn tạo bucket, không dump JSON
+// thô ({"statusCode":"404",...}) ra Alert.
+const AVATAR_BUCKET_MISSING =
+  /NoSuchBucket|Bucket not found|"statusCode"\s*:\s*404/i;
 
 export default function ProfileSettingsScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { theme, themeMode, setThemeMode, locale, setLocale, t, isDark } =
     useSettings();
+  const { planId, refresh: refreshSubscription } = useSubscription();
+  const currentPlan = getPlanById(planId);
+  // Màu pill theo gói thật: Free = xanh lá (theme.primary), Pro = vàng
+  // (theme.gold), Family = hồng. Nền/viền/chữ/icon đổi theo cả 3 nhánh
+  // và theo sáng/tối (isDark) để không vỡ dark mode; không hard-code nền trắng.
+  const planPill =
+    currentPlan.id === 'pro'
+      ? {
+          accent: theme.gold,
+          backgroundColor: isDark ? '#332D17' : '#FFF8E1',
+          borderColor: theme.gold,
+        }
+      : currentPlan.id === 'family'
+        ? {
+            accent: isDark ? '#F48FB1' : '#C2185B',
+            backgroundColor: isDark ? '#331E28' : '#FCE4EC',
+            borderColor: isDark ? '#F48FB1' : '#C2185B',
+          }
+        : {
+            accent: theme.primaryDark,
+            backgroundColor: isDark ? theme.cardAlt : '#E8F5E9',
+            borderColor: theme.primary,
+          };
   const [profile, setProfile] = useState<Profile | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarBroken, setAvatarBroken] = useState(false);
@@ -56,6 +88,14 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       .catch((e) => Alert.alert(t('common.errorTitle'), e.message))
       .finally(() => setLoading(false));
   }, [user]);
+
+  // Quay lại màn này sau khi thanh toán thì gói hiển thị phải là gói
+  // mới: refresh lại subscription mỗi lần màn hình được focus.
+  useFocusEffect(
+    useCallback(() => {
+      refreshSubscription().catch(() => {});
+    }, [refreshSubscription]),
+  );
 
   const onRefresh = async () => {
     if (!user) return;
@@ -118,6 +158,9 @@ export default function ProfileSettingsScreen({ navigation }: any) {
         },
       );
       if (up.status !== 200) {
+        if (up.status === 404 || AVATAR_BUCKET_MISSING.test(up.body ?? '')) {
+          throw new Error(t('settings.avatarBucketMissing'));
+        }
         throw new Error(
           t('settings.avatarServerError', {
             status: up.status,
@@ -133,24 +176,38 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       setAvatarBroken(false);
       setAvatarTick((t) => t + 1);
     } catch (e: any) {
+      const raw = e?.message ?? '';
       Alert.alert(
         t('settings.avatarChangeFailed'),
-        e?.message ?? t('settings.avatarTryLater'),
+        AVATAR_BUCKET_MISSING.test(raw)
+          ? t('settings.avatarBucketMissing')
+          : raw || t('settings.avatarTryLater'),
       );
     } finally {
       setUploadingAvatar(false);
     }
   };
 
-  const onLogout = async () => {
-    await logout();
-    getRootNav().replace('Login');
+  const onLogout = () => {
+    Alert.alert(t('settings.logoutConfirmTitle'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.logout'),
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          getRootNav().replace('Login');
+        },
+      },
+    ]);
   };
   const goSetup = () => getRootNav().navigate('ProfileSetup');
   // Mở trang Recommend không kèm params để nó load từ DB
   const goRecommend = () => getRootNav().navigate('Recommendation');
   // Mở trang nhắc nhở riêng, không code chung trong Settings
   const goReminders = () => getRootNav().navigate('Reminders');
+  const goPlans = () => getRootNav().navigate('Plans');
+  const goAiChat = () => getRootNav().navigate('AiChat');
 
   if (loading)
     return (
@@ -303,12 +360,33 @@ export default function ProfileSettingsScreen({ navigation }: any) {
                 {t('settings.memberSince')} {memberSince}
               </Text>
             ) : null}
-            <View style={s.goldPill}>
-              <Ionicons name='star' size={14} color='#B8860B' />
-              <Text style={[s.gold, { color: theme.gold }]}>
-                AuraVital Gold
+            <TouchableOpacity
+              style={[
+                s.goldPill,
+                {
+                  backgroundColor: planPill.backgroundColor,
+                  borderColor: planPill.borderColor,
+                  borderWidth: 1,
+                },
+              ]}
+              onPress={goPlans}
+              accessibilityRole='button'
+            >
+              <Ionicons name='star' size={14} color={planPill.accent} />
+              <Text style={[s.gold, { color: planPill.accent }]}>
+                {currentPlan.name}
               </Text>
-            </View>
+              <Text style={[s.planSub, { color: planPill.accent }]}>
+                {currentPlan.id === 'free'
+                  ? t('subscription.viewPlans')
+                  : t('subscription.currentPlan')}
+              </Text>
+              <Ionicons
+                name='chevron-forward'
+                size={16}
+                color={planPill.accent}
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Mục tiêu: tiêu đề trái, link Cập nhật mục tiêu phải -> Recommend */}
@@ -544,6 +622,7 @@ export default function ProfileSettingsScreen({ navigation }: any) {
             solid
             title={t('settings.chat')}
             sub={t('settings.chatDesc')}
+            onPress={goAiChat}
           />
 
           <TouchableOpacity

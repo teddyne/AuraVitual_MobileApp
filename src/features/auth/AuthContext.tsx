@@ -6,7 +6,12 @@ import React, {
   type ReactNode,
 } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { supabase } from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../../api/supabase';
+import {
+  SESSION_KEY,
+  SESSION_USER_KEY,
+} from '../../utils/health/sleepSession';
 import { translate } from '../../i18n/locale';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -119,6 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    // Nhóm B (v6) — xóa phiên ngủ đang mở khỏi máy để tài khoản khác đăng
+    // nhập sau không thấy dữ liệu ngủ của tài khoản này.
+    try {
+      await AsyncStorage.removeItem(SESSION_KEY);
+      await AsyncStorage.removeItem(SESSION_USER_KEY);
+    } catch {
+      // Bỏ qua: xóa thất bại cũng không chặn đăng xuất.
+    }
     // Không xóa SecureStore: Face ID / vân tay vẫn dùng được sau khi đăng xuất.
   };
 

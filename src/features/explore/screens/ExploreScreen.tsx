@@ -16,28 +16,33 @@ import {
   getArticles,
   getWorkouts,
   type Post,
-} from '../../../lib/workoutApi';
+} from '../../../api/workoutApi';
 import { FAV_KEY } from '../constants';
 import { useSettings } from '../../../context/SettingsContext';
-import { ExploreWorkoutCard } from '../components/ExploreWorkoutCard';
-import { ExploreArticleRow } from '../components/ExploreArticleRow';
-import { ExploreChipButton } from '../components/ExploreChipButton';
-import { ExploreTabSegment } from '../components/ExploreTabSegment';
+import { useSubscription } from '../../../context/SubscriptionContext';
+import { ExploreWorkoutCard } from '../../../components/explore/ExploreWorkoutCard';
+import { ArticleCard } from '../../../components/explore/ArticleCard';
+import { ExploreChipButton } from '../../../components/explore/ExploreChipButton';
+import { ExploreTabSegment } from '../../../components/explore/ExploreTabSegment';
 import { styles } from './ExploreScreen.styles';
 
-type Chip = 'all' | 'foryou' | 'nutrition' | 'workout';
 type Tab = 'explore' | 'workout';
+type TopicFilter = 'all' | 'nutrition' | 'sleep' | 'cycle' | 'fitness' | 'general';
 
 export default function ExploreScreen() {
   const { t } = useSettings();
   const navigation = useNavigation<any>();
+  // Quyền xem video: Pro và Family mở, Free thấy ổ khóa (xem plans.ts).
+  const { canWorkout } = useSubscription();
   const [workouts, setWorkouts] = useState<Post[]>([]);
   const [articles, setArticles] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [chip, setChip] = useState<Chip>('all');
   const [tab, setTab] = useState<Tab>('explore');
+  // Nhóm B (v6): lọc bài viết theo topic — hàng chip quay lại theo
+  // yêu cầu mới của user (v4 đã bỏ, user đổi ý, không phải lỗi v4).
+  const [topicFilter, setTopicFilter] = useState<TopicFilter>('all');
   const [favs, setFavs] = useState<string[]>([]);
   const [badImg, setBadImg] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
@@ -46,7 +51,7 @@ export default function ExploreScreen() {
   // và khi kéo refresh, thay cho chỉ tải 1 lần lúc mount.
   const load = useCallback(async () => {
     try {
-      const [w, a] = await Promise.all([getWorkouts(), getArticles(10)]);
+      const [w, a] = await Promise.all([getWorkouts(), getArticles(20)]);
       setWorkouts(w);
       setArticles(a);
       const saved = await AsyncStorage.getItem(FAV_KEY);
@@ -76,23 +81,30 @@ export default function ExploreScreen() {
     await AsyncStorage.setItem(FAV_KEY, JSON.stringify(next));
   };
 
+  // Nhóm B (v6): lọc topic TRƯỚC, rồi mới lọc theo ô tìm kiếm
+  // (matches). Bài chưa có topic (topic = null, seed trước
+  // migration) chỉ hiện ở nút "Tất cả".
+  const matchesTopic = (p: Post) =>
+    topicFilter === 'all' || p.topic === topicFilter;
   const matches = (p: Post) => {
     const q = query.trim().toLowerCase();
     if (q && !`${p.title} ${p.summary ?? ''}`.toLowerCase().includes(q))
       return false;
-    if (chip === 'foryou') return p.level === 'beginner';
-    if (chip === 'nutrition') return p.kind === 'article';
-    if (chip === 'workout') return p.kind === 'workout';
     return true;
   };
 
   const shownWorkouts = useMemo(
     () => workouts.filter(matches),
-    [workouts, chip, query],
+    [workouts, query],
   );
+  // Nhóm B (v6): tab Bài viết lọc theo topic đã chọn rồi mới lọc
+  // theo tìm kiếm (getArticles đã loại topic='workout').
   const shownArticles = useMemo(
-    () => articles.filter((a) => tab === 'explore' && matches(a)),
-    [articles, chip, query, tab],
+    () =>
+      articles.filter(
+        (a) => tab === 'explore' && matchesTopic(a) && matches(a),
+      ),
+    [articles, query, tab, topicFilter],
   );
 
   if (loading) {
@@ -109,9 +121,6 @@ export default function ExploreScreen() {
       <SafeAreaProvider>
         <SafeAreaView style={[styles.center, { backgroundColor: '#F9FBF9' }]}>
           <Text style={styles.error}>{error}</Text>
-          <Text style={styles.hint}>
-            {t('explore.migrationHint')}
-          </Text>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -147,36 +156,74 @@ export default function ExploreScreen() {
               />
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.chipRow}
-            >
-              <ExploreChipButton label={t('explore.chipAll')} active={chip === 'all'} onPress={() => setChip('all')} />
-              <ExploreChipButton label={t('explore.chipForYou')} active={chip === 'foryou'} onPress={() => setChip('foryou')} />
-              <ExploreChipButton label={t('home.nutrition')} active={chip === 'nutrition'} onPress={() => setChip('nutrition')} />
-              <ExploreChipButton label={t('home.workout')} active={chip === 'workout'} onPress={() => setChip('workout')} />
-            </ScrollView>
-
-            <Text style={styles.h2}> {t('explore.featuredWorkouts')}</Text>
-            {shownWorkouts.length === 0 && (
-              <Text style={styles.empty}>
-                {t('explore.noWorkoutsMatch')}
-              </Text>
+            {/* Nhóm B (v6): hàng lọc topic — chỉ ở tab Bài viết,
+                1 hàng duy nhất, cuộn ngang. Tab Luyện tập không
+                có hàng này. */}
+            {tab === 'explore' && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipRow}
+              >
+                <ExploreChipButton
+                  label={t('notifications.filter.all')}
+                  active={topicFilter === 'all'}
+                  onPress={() => setTopicFilter('all')}
+                />
+                <ExploreChipButton
+                  label={t('home.nutrition')}
+                  active={topicFilter === 'nutrition'}
+                  onPress={() => setTopicFilter('nutrition')}
+                />
+                <ExploreChipButton
+                  label={t('home.sleep')}
+                  active={topicFilter === 'sleep'}
+                  onPress={() => setTopicFilter('sleep')}
+                />
+                <ExploreChipButton
+                  label={t('home.cycle')}
+                  active={topicFilter === 'cycle'}
+                  onPress={() => setTopicFilter('cycle')}
+                />
+                <ExploreChipButton
+                  label={t('explore.filterFitness')}
+                  active={topicFilter === 'fitness'}
+                  onPress={() => setTopicFilter('fitness')}
+                />
+                <ExploreChipButton
+                  label={t('explore.filterGeneral')}
+                  active={topicFilter === 'general'}
+                  onPress={() => setTopicFilter('general')}
+                />
+              </ScrollView>
             )}
-            {shownWorkouts.map((w) => (
-              <ExploreWorkoutCard
-                key={w.id}
-                post={w}
-                isFav={favs.includes(w.id)}
-                hasBadImg={!!badImg[w.id]}
-                onToggleFav={() => toggleFav(w.id)}
-                onOpen={() =>
-                  navigation.navigate('WorkoutPlayer', { postId: w.id })
-                }
-                onMarkBadImg={() => setBadImg((s) => ({ ...s, [w.id]: true }))}
-              />
-            ))}
+
+            {tab === 'workout' && (
+              <>
+                <Text style={styles.h2}> {t('explore.featuredWorkouts')}</Text>
+                {shownWorkouts.length === 0 && (
+                  <Text style={styles.empty}>
+                    {t('explore.noWorkoutsMatch')}
+                  </Text>
+                )}
+                {shownWorkouts.map((w) => (
+                  <ExploreWorkoutCard
+                    key={w.id}
+                    post={w}
+                    isFav={favs.includes(w.id)}
+                    hasBadImg={!!badImg[w.id]}
+                    locked={!canWorkout}
+                    onToggleFav={() => toggleFav(w.id)}
+                    onOpen={() =>
+                      canWorkout
+                        ? navigation.navigate('WorkoutPlayer', { postId: w.id })
+                        : navigation.navigate('Plans')
+                    }
+                    onMarkBadImg={() => setBadImg((s) => ({ ...s, [w.id]: true }))}
+                  />
+                ))}
+              </>
+            )}
 
             {tab === 'explore' && (
               <>
@@ -187,15 +234,11 @@ export default function ExploreScreen() {
                   </Text>
                 )}
                 {shownArticles.map((a) => (
-                  <ExploreArticleRow
+                  <ArticleCard
                     key={a.id}
                     post={a}
-                    hasBadImg={!!badImg[a.id]}
                     onOpen={() =>
                       navigation.navigate('ArticleDetail', { postId: a.id })
-                    }
-                    onMarkBadImg={() =>
-                      setBadImg((s) => ({ ...s, [a.id]: true }))
                     }
                   />
                 ))}

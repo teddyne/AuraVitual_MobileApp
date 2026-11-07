@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -8,10 +9,16 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettings } from '../../../context/SettingsContext';
+import { supabase } from '../../../api/supabase';
 import {
   WATER_WINDOWS,
+  cleanupDuplicateNotifications,
   syncReminderNotifications,
-} from '../../../lib/reminders';
+} from '../../../utils/reminders/reminders';
+import {
+  scheduleSleepNotifications,
+  type SleepProfile,
+} from '../../../utils/health/sleepSession';
 import {
   CYCLE_DAYS,
   DEFAULT_NOTIF,
@@ -19,10 +26,10 @@ import {
   NOTIF_KEY,
   normalizeTime,
   type NotifSettings,
-} from '../utils/reminderSettings';
-import { buildNextReminders } from '../utils/nextReminders';
-import { ReminderToggleCard } from '../components/ReminderToggleCard';
-import { ReminderTimeRow } from '../components/ReminderTimeRow';
+} from '../../../utils/reminders/reminderSettings';
+import { buildNextReminders } from '../../../utils/reminders/nextReminders';
+import { ReminderToggleCard } from '../../../components/reminders/ReminderToggleCard';
+import { ReminderTimeRow } from '../../../components/reminders/ReminderTimeRow';
 import { AppHeader } from '../../../components/ui/AppHeader';
 import { s } from './RemindersScreen.styles';
 
@@ -34,6 +41,8 @@ export default function RemindersScreen({ navigation }: any) {
   const [lunchDraft, setLunchDraft] = useState('12:00');
   const [dinnerDraft, setDinnerDraft] = useState('18:30');
   const [wakeDraft, setWakeDraft] = useState('07:30');
+  // Nhóm C (v3): đang dọn lịch trùng thì khóa nút dọn để không bấm 2 lần.
+  const [cleaning, setCleaning] = useState(false);
 
   // The nao dang mo rong (so xuong) de xem/sua chi tiet; mac dinh gap
   // het cho gon, chi hien dong tom tat.
@@ -92,6 +101,71 @@ export default function RemindersScreen({ navigation }: any) {
 
   const goNotifications = () =>
     (navigation.getParent() ?? navigation).navigate('Notifications');
+
+  // Nhóm C (v3): nút "Dọn lịch thông báo trùng" — chữa cho máy user
+  // hiện tại: chỉ sửa code không tự xóa được các lịch mồ côi đã đặt
+  // (tới 21 lịch đổ chuông cùng lúc). Bấm 1 lần: hủy toàn bộ lịch
+  // nhắc/báo thức đã đặt rồi đồng bộ lại 1 bộ mới duy nhất (water+meal
+  // ở reminders, bedtime/wake/custom alarm ở màn Ngủ).
+  const handleCleanupDuplicates = () => {
+    Alert.alert(
+      t('reminders.cleanupConfirmTitle'),
+      t('reminders.cleanupConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          onPress: async () => {
+            if (cleaning) return;
+            setCleaning(true);
+            try {
+              await cleanupDuplicateNotifications();
+              // Đồng bộ lại bedtime/wake/custom alarm theo profile Ngủ
+              // (cleanupDuplicateNotifications chỉ đồng bộ lại water+meal).
+              try {
+                const { data: auth } = await supabase.auth.getUser();
+                if (auth.user) {
+                  const prof = await supabase
+                    .from('profiles')
+                    .select(
+                      'sleep_goal_hours, bedtime_time, wake_time, sleep_reminder_enabled, alarm_enabled',
+                    )
+                    .eq('id', auth.user.id)
+                    .maybeSingle();
+                  const p: SleepProfile = {
+                    sleep_goal_hours: prof.data?.sleep_goal_hours
+                      ? Number(prof.data.sleep_goal_hours)
+                      : null,
+                    bedtime_time: prof.data?.bedtime_time
+                      ? String(prof.data.bedtime_time)
+                      : null,
+                    wake_time: prof.data?.wake_time
+                      ? String(prof.data.wake_time)
+                      : null,
+                    sleep_reminder_enabled:
+                      prof.data?.sleep_reminder_enabled !== false,
+                    alarm_enabled: prof.data?.alarm_enabled !== false,
+                  };
+                  await scheduleSleepNotifications(p);
+                }
+              } catch {}
+              Alert.alert(
+                t('reminders.cleanupDoneTitle'),
+                t('reminders.cleanupDoneBody'),
+              );
+            } catch (e: any) {
+              Alert.alert(
+                t('reminders.cleanupFailedTitle'),
+                e?.message || t('reminders.cleanupFailedBody'),
+              );
+            } finally {
+              setCleaning(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const nextReminders = buildNextReminders(notif);
 
@@ -404,6 +478,19 @@ export default function RemindersScreen({ navigation }: any) {
           >
             <Text style={s.primaryBtnText}>
               {t('settings.goToNotifications')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              s.primaryBtn,
+              { backgroundColor: theme.cardAlt, marginTop: 12 },
+            ]}
+            onPress={handleCleanupDuplicates}
+            disabled={cleaning}
+          >
+            <Text style={[s.primaryBtnText, { color: theme.text }]}>
+              {t('reminders.cleanupDuplicates')}
             </Text>
           </TouchableOpacity>
         </ScrollView>

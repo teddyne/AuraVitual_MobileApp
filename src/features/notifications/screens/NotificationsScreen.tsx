@@ -15,7 +15,7 @@ import {
   acceptRequest,
   declineRequest,
   getReceivedRequests,
-} from '../../../lib/familyApi';
+} from '../../../api/familyApi';
 import {
   deleteHistoryEntry,
   groupOf,
@@ -25,7 +25,7 @@ import {
   reconcilePresentedNotifications,
   type HistoryEntry,
   type HistoryGroup,
-} from '../../../lib/notificationHistory';
+} from '../../../utils/notifications/notificationHistory';
 import { Ionicons } from '@expo/vector-icons';
 import { PRIMARY } from '../constants';
 import {
@@ -33,9 +33,9 @@ import {
   groupLabel,
   type DisplayItem,
   type NotificationFilter,
-} from '../utils/notificationDisplay';
-import { NotificationCard } from '../components/NotificationCard';
-import { NotificationFilterTabs } from '../components/NotificationFilterTabs';
+} from '../../../utils/notifications/notificationDisplay';
+import { NotificationCard } from '../../../components/notifications/NotificationCard';
+import { NotificationFilterTabs } from '../../../components/notifications/NotificationFilterTabs';
 import { s } from './NotificationsScreen.styles';
 
 const READ_KEY = '@auravital:notifications_read';

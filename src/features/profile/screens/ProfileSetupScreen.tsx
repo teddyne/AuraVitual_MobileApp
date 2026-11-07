@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Switch,
@@ -14,9 +15,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { IconBadge } from '../../../components/ui/IconBadge';
 import { s } from './ProfileSetupScreen.styles';
-import { CardTitle } from '../components/CardTitle';
-import { FieldLabel } from '../components/FieldLabel';
-import { DragRuler } from '../components/DragRuler';
+import { CardTitle } from '../../../components/profile/CardTitle';
+import { FieldLabel } from '../../../components/profile/FieldLabel';
+import { DragRuler } from '../../../components/profile/DragRuler';
 import { GENDERS, GOALS, ACTIVITY_ICONS } from '../constants';
 import {
   parseDate,
@@ -25,23 +26,25 @@ import {
   fmtSleepHours,
   toDbTime,
   toTimeInput,
-} from '../utils/profileFormat';
+} from '../../../utils/profile/profileFormat';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../api/supabase';
 import {
   getProfile,
   saveProfile,
   saveCycleStart,
-} from '../../../lib/auravitalApi';
+} from '../../../api/auravitalApi';
 import {
   ACTIVITY_LEVELS,
   calcRecommendation,
   parseTimeMinutes,
   sleepHoursFromTimes,
-} from '../../../lib/healthCalc';
-import type { ActivityId, DurationUnit } from '../../../lib/healthCalc';
+} from '../../../utils/health/healthCalc';
+import type { ActivityId, DurationUnit } from '../../../utils/health/healthCalc';
+import { formatDateInputDigits } from '../../../utils/dates';
 
 // Vòng tròn nhạt + icon xanh đậm, đúng kiểu ảnh bạn gửi.
 
@@ -66,6 +69,10 @@ export default function ProfileSetupScreen({ navigation }: any) {
   const [exerciseMinutes, setExerciseMinutes] = useState(30);
   const [bedtime, setBedtime] = useState('22:30');
   const [wakeTime, setWakeTime] = useState('06:30');
+  // Picker giờ dạng xoay (spinner) đang mở cho ô nào; null = không mở.
+  const [timePicker, setTimePicker] = useState<'bedtime' | 'wake' | null>(
+    null,
+  );
   const [sleepReminder, setSleepReminder] = useState(true);
   const [alarmEnabled, setAlarmEnabled] = useState(true);
   const [cycleStartText, setCycleStartText] = useState('');
@@ -178,14 +185,38 @@ export default function ProfileSetupScreen({ navigation }: any) {
     setExerciseSessions(lv && lv.sessions === 0 ? 3 : (lv?.sessions ?? 4));
   };
   const onBirthChange = (t: string) => {
-    setBirthText(t);
-    const p = parseDate(t);
+    const f = formatDateInputDigits(t);
+    setBirthText(f);
+    const p = parseDate(f);
     setBirthIso(p ? p.iso : null);
   };
   const onCycleChange = (t: string) => {
-    setCycleStartText(t);
-    const p = parseDate(t);
+    const f = formatDateInputDigits(t);
+    setCycleStartText(f);
+    const p = parseDate(f);
     setCycleStartIso(p ? p.iso : null);
+  };
+  // "HH:MM" -> Date trong ngày hôm nay để đưa vào DateTimePicker.
+  // Chuỗi sai định dạng thì dùng giờ mặc định của từng ô.
+  const timeStringToDate = (v: string, fallback: string) => {
+    const mins =
+      parseTimeMinutes(v) ?? parseTimeMinutes(fallback) ?? 22 * 60 + 30;
+    const d = new Date();
+    d.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    return d;
+  };
+  const dateToHHMM = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  // Giờ đã chọn vẫn lưu đúng "HH:MM" như cũ vào state (rồi toDbTime
+  // khi lưu profile); sleepHoursFromTimes và các tính toán khác giữ nguyên.
+  const onTimePicked = (d: Date | undefined) => {
+    if (!d || !timePicker) return;
+    const v = dateToHHMM(d);
+    if (timePicker === 'bedtime') setBedtime(v);
+    else setWakeTime(v);
+    // Android: spinner là hộp thoại, chọn xong (bấm OK) tự đóng;
+    // iOS: spinner hiện inline nên giữ lại để chọn tiếp, bấm "Đóng" mới ẩn.
+    if (Platform.OS !== 'ios') setTimePicker(null);
   };
   const openCal = (target: 'birth' | 'cycle') => {
     const iso = target === 'birth' ? birthIso : cycleStartIso;
@@ -517,7 +548,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
             <View style={s.adjustRow}>
               <TouchableOpacity
                 style={s.adjust}
-                onPress={() => setHeight(Math.max(50, height - 1))}
+                onPress={() => setHeight(Math.max(120, height - 1))}
               >
                 <Text style={s.adjustText}>−</Text>
               </TouchableOpacity>
@@ -537,15 +568,15 @@ export default function ProfileSetupScreen({ navigation }: any) {
               </View>
               <TouchableOpacity
                 style={s.adjust}
-                onPress={() => setHeight(Math.min(250, height + 1))}
+                onPress={() => setHeight(Math.min(200, height + 1))}
               >
                 <Text style={s.adjustText}>+</Text>
               </TouchableOpacity>
             </View>
             <DragRuler
               value={height}
-              min={50}
-              max={250}
+              min={120}
+              max={200}
               step={1}
               onChange={setHeight}
               onDragStart={() => setScrollEnabled(false)}
@@ -558,7 +589,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               <TouchableOpacity
                 style={s.adjust}
                 onPress={() =>
-                  setWeight(Math.max(20, +(weight - 0.5).toFixed(1)))
+                  setWeight(Math.max(30, +(weight - 0.5).toFixed(1)))
                 }
               >
                 <Text style={s.adjustText}>−</Text>
@@ -580,7 +611,7 @@ export default function ProfileSetupScreen({ navigation }: any) {
               <TouchableOpacity
                 style={s.adjust}
                 onPress={() =>
-                  setWeight(Math.min(300, +(weight + 0.5).toFixed(1)))
+                  setWeight(Math.min(150, +(weight + 0.5).toFixed(1)))
                 }
               >
                 <Text style={s.adjustText}>+</Text>
@@ -588,8 +619,8 @@ export default function ProfileSetupScreen({ navigation }: any) {
             </View>
             <DragRuler
               value={weight}
-              min={20}
-              max={300}
+              min={30}
+              max={150}
               step={0.5}
               onChange={setWeight}
               onDragStart={() => setScrollEnabled(false)}
@@ -633,25 +664,50 @@ export default function ProfileSetupScreen({ navigation }: any) {
             <FieldLabel icon="moon-outline" theme={theme}>
               {t('profile.setup.bedtimeLabel')}
             </FieldLabel>
-            <TextInput
-              style={[s.input, { color: theme.text }]}
-              value={bedtime}
-              onChangeText={setBedtime}
-              placeholder='22:30'
-              placeholderTextColor={theme.muted}
-              keyboardType='numbers-and-punctuation'
-            />
+            <TouchableOpacity
+              style={[s.input, { justifyContent: 'center' }]}
+              onPress={() => setTimePicker('bedtime')}
+            >
+              <Text style={{ color: theme.text, fontSize: 16 }}>
+                {bedtime}
+              </Text>
+            </TouchableOpacity>
             <FieldLabel icon="sunny-outline" theme={theme}>
               {t('profile.setup.wakeLabel')}
             </FieldLabel>
-            <TextInput
-              style={[s.input, { color: theme.text }]}
-              value={wakeTime}
-              onChangeText={setWakeTime}
-              placeholder='06:30'
-              placeholderTextColor={theme.muted}
-              keyboardType='numbers-and-punctuation'
-            />
+            <TouchableOpacity
+              style={[s.input, { justifyContent: 'center' }]}
+              onPress={() => setTimePicker('wake')}
+            >
+              <Text style={{ color: theme.text, fontSize: 16 }}>
+                {wakeTime}
+              </Text>
+            </TouchableOpacity>
+            {timePicker ? (
+              <>
+                <DateTimePicker
+                  value={timeStringToDate(
+                    timePicker === 'bedtime' ? bedtime : wakeTime,
+                    timePicker === 'bedtime' ? '22:30' : '06:30',
+                  )}
+                  mode='time'
+                  display='spinner'
+                  is24Hour
+                  onValueChange={(_e, d) => onTimePicked(d)}
+                  onDismiss={() => setTimePicker(null)}
+                />
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={s.closeBtn}
+                    onPress={() => setTimePicker(null)}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>
+                      {t('common.close')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            ) : null}
             <View
               style={{
                 flexDirection: 'row',

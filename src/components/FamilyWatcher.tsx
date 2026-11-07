@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api/supabase';
 import {
   DEFAULT_SHARING,
   displayNameOf,
   getMembers,
   getReceivedRequests,
-} from '../lib/familyApi';
+} from '../api/familyApi';
 import { useToast } from './NotificationToast';
 import type { ToastTarget } from './NotificationToast';
-import { appendHistory } from '../lib/notificationHistory';
+import { appendHistory } from '../utils/notifications/notificationHistory';
 import { displayLocale, translate } from '../i18n/locale';
 
 // =====================================================================

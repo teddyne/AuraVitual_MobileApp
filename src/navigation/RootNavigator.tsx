@@ -9,6 +9,7 @@ import ProfileSetupScreen from '../features/profile/screens/ProfileSetupScreen';
 import MainTabNavigator from './MainTabNavigator';
 import HomeScreen from '@/features/home/screens/HomeScreen';
 import StepsDetailScreen from '../features/health/screens/StepsDetailScreen';
+import HealthDataScreen from '../features/health/screens/HealthDataScreen';
 import SleepTrackerScreen from '../features/health/screens/SleepTrackerScreen';
 import CycleTrackingScreen from '../features/cycle/screens/CycleTrackingScreen';
 import RecommendationScreen from '../features/profile/screens/RecommendationScreen';
@@ -23,41 +24,15 @@ import WorkoutLogScreen from '../features/workout/screens/WorkoutLogScreen';
 import AddWorkoutScreen from '../features/workout/screens/AddWorkoutScreen';
 import FamilyDetailScreen from '../features/family/screens/FamilyDetailScreen';
 import SharingSettingsScreen from '../features/family/screens/SharingSettingsScreen';
+import AiChatScreen from '../features/ai/screens/AiChatScreen';
+import PlansScreen from '../features/subscription/screens/PlansScreen';
+import SubscriptionCheckoutScreen from '../features/subscription/screens/SubscriptionCheckoutScreen';
+import type { RootStackParamList } from '../types/navigation';
 
-export type RootStackParamList = {
-  Onboarding: undefined;
-  Login: undefined;
-  SignUp: undefined;
-  ForgotPassword: undefined;
-  ResetPassword: undefined;
-  Home: undefined;
-  ProfileSetup: undefined;
-  Recommendation: { recommendation?: any } | undefined;
-  Main: undefined;
-  StepsDetail: undefined;
-  SleepTracker:
-    | {
-        alarm?: boolean;
-        alarmId?: string | null;
-        autoSleep?: boolean;
-        triggerToken?: number;
-      }
-    | undefined;
-  CycleTracking: undefined;
-  Reminders: undefined;
-  Notifications: undefined;
-  Nutrition: undefined;
-  AddMeal:
-    | { mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack'; date?: string }
-    | undefined;
-  AddFood: undefined;
-  WorkoutPlayer: { postId: string };
-  ArticleDetail: { postId: string };
-  WorkoutLog: { postId?: string; minutes?: number } | undefined;
-  AddWorkout: undefined;
-  FamilyDetail: { memberId: string };
-  SharingSettings: undefined;
-};
+// Type params đã dời sang src/types/navigation.ts để tránh màn hình
+// import ngược file Navigator (circular dependency). Re-export lại
+// để code cũ import từ đây vẫn chạy.
+export type { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -79,6 +54,7 @@ export default function RootNavigator() {
       <Stack.Screen name='Notifications' component={NotificationsScreen} />
       <Stack.Screen name='Main' component={MainTabNavigator} />
       <Stack.Screen name='StepsDetail' component={StepsDetailScreen} />
+      <Stack.Screen name='HealthData' component={HealthDataScreen} />
       <Stack.Screen name='SleepTracker' component={SleepTrackerScreen} />
       <Stack.Screen name='CycleTracking' component={CycleTrackingScreen} />
       <Stack.Screen name='WorkoutPlayer' component={WorkoutPlayerScreen} />
@@ -87,6 +63,12 @@ export default function RootNavigator() {
       <Stack.Screen name='AddWorkout' component={AddWorkoutScreen} />
       <Stack.Screen name='FamilyDetail' component={FamilyDetailScreen} />
       <Stack.Screen name='SharingSettings' component={SharingSettingsScreen} />
+      <Stack.Screen name='AiChat' component={AiChatScreen} />
+      <Stack.Screen name='Plans' component={PlansScreen} />
+      <Stack.Screen
+        name='SubscriptionCheckout'
+        component={SubscriptionCheckoutScreen}
+      />
     </Stack.Navigator>
   );
 }

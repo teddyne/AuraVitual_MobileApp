@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { levelLabel, type Post } from '../../lib/workoutApi';
+import { useNavigation } from '@react-navigation/native';
+import { levelLabel, type Post } from '../../api/workoutApi';
 import { useSettings } from '../../context/SettingsContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { styles } from './HomeSections.styles';
 
 export function TodayWorkoutCard({
@@ -15,6 +17,9 @@ export function TodayWorkoutCard({
   onSeeAll: () => void;
 }) {
   const { t } = useSettings();
+  // Free bấm video thì không mở trình phát mà sang xem các gói.
+  const { canWorkout } = useSubscription();
+  const navigation = useNavigation<any>();
   const [imgError, setImgError] = useState(false);
   if (!post) {
     return (
@@ -53,7 +58,9 @@ export function TodayWorkoutCard({
       </View>
       <TouchableOpacity
         style={styles.workoutCard}
-        onPress={() => onPress(post)}
+        onPress={() =>
+          canWorkout ? onPress(post) : navigation.navigate('Plans')
+        }
         activeOpacity={0.9}
       >
         {post.cover_url && !imgError ? (
@@ -78,6 +85,11 @@ export function TodayWorkoutCard({
         )}
         <View style={styles.workoutOverlay} />
         <View style={styles.chipRow}>
+          {!canWorkout && (
+            <View style={[styles.chip, { backgroundColor: '#B7791F' }]}>
+              <Text style={styles.chipText}>🔒 {t('home.workoutLocked')}</Text>
+            </View>
+          )}
           {post.duration_min != null && (
             <View style={[styles.chip, { backgroundColor: '#2E7D32' }]}>
               <Text style={styles.chipText}>
@@ -95,10 +107,10 @@ export function TodayWorkoutCard({
         </View>
         <View style={styles.playBtn}>
           <Ionicons
-            name='play'
+            name={canWorkout ? 'play' : 'lock-closed'}
             size={28}
             color='#2E7D32'
-            style={{ marginLeft: 3 }}
+            style={{ marginLeft: canWorkout ? 3 : 0 }}
           />
         </View>
         <View style={styles.workoutText}>
@@ -112,6 +124,16 @@ export function TodayWorkoutCard({
           ) : null}
         </View>
       </TouchableOpacity>
+      {!canWorkout && (
+        <TouchableOpacity
+          style={styles.lockBtn}
+          onPress={() => navigation.navigate('Plans')}
+        >
+          <Text style={styles.lockBtnText}>
+            {t('subscription.viewPlans')}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

@@ -8,9 +8,9 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { s } from './RecommendationScreen.styles';
-import { CardTitle } from '../components/CardTitle';
+import { CardTitle } from '../../../components/profile/CardTitle';
 import { GOAL_LABEL } from '../constants';
-import { fmtHours } from '../utils/profileFormat';
+import { fmtHours } from '../../../utils/profile/profileFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
@@ -18,12 +18,12 @@ import {
   getRecommendation,
   saveRecommendation,
   syncRecommendationToProfile,
-} from '../../../lib/auravitalApi';
+} from '../../../api/auravitalApi';
 import {
   isoToLabel,
   localizeBmiLabel,
   localizeBmiRisk,
-} from '../../../lib/healthCalc';
+} from '../../../utils/health/healthCalc';
 
 export default function RecommendationScreen({ route, navigation }: any) {
   const { theme, t, locale } = useSettings();

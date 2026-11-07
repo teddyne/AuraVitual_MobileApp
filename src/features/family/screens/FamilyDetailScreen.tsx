@@ -13,7 +13,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../../../context/SettingsContext';
-import { healthScore } from '../../../lib/auravitalApi';
+import { healthScore } from '../../../api/auravitalApi';
 import {
   DEFAULT_SHARING,
   deriveEvents,
@@ -23,10 +23,10 @@ import {
   setNickname,
   timeAgo,
   type FamilyMember,
-} from '../../../lib/familyApi';
-import { FamilyVitalGrid } from '../components/FamilyVitalGrid';
-import { FamilyEventList } from '../components/FamilyEventList';
-import { FamilySosBanner } from '../components/FamilySosBanner';
+} from '../../../api/familyApi';
+import { FamilyVitalGrid } from '../../../components/family/FamilyVitalGrid';
+import { FamilyEventList } from '../../../components/family/FamilyEventList';
+import { FamilySosBanner } from '../../../components/family/FamilySosBanner';
 import { s } from './FamilyDetailScreen.styles';
 
 export default function FamilyDetailScreen({ navigation, route }: any) {

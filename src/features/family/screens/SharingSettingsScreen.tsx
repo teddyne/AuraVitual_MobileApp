@@ -11,6 +11,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSettings } from '../../../context/SettingsContext';
+import { useSubscription } from '../../../context/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import {
   DEFAULT_SHARING,
@@ -21,13 +22,15 @@ import {
   saveMySharingSettings,
   type FamilyMember,
   type SharingSettings,
-} from '../../../lib/familyApi';
+} from '../../../api/familyApi';
 import { CONTENT_ROWS } from '../constants';
-import { SharingMemberRow } from '../components/SharingMemberRow';
+import { SharingMemberRow } from '../../../components/family/SharingMemberRow';
 import { s } from './SharingSettingsScreen.styles';
 
 export default function SharingSettingsScreen({ navigation }: any) {
   const { theme, t } = useSettings();
+  // Cài đặt chia sẻ chỉ mở với gói Family; Free/Pro thấy màn khóa.
+  const { canShare } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<SharingSettings>(DEFAULT_SHARING);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -82,6 +85,34 @@ export default function SharingSettingsScreen({ navigation }: any) {
       <SafeAreaProvider>
         <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
           <ActivityIndicator size='large' color={theme.primaryDark} style={{ marginTop: 80 }} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Chưa phải gói Family: chỉ hiện màn khóa, giữ nguyên mọi hàm bên dưới
+  // (load, toggle, onRevoke).
+  if (!canShare) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
+          <View style={[s.lockWrap, { padding: 16 }]}>
+            <View style={[s.lockCard, { backgroundColor: theme.card }]}>
+              <Ionicons name='lock-closed' size={48} color={theme.primaryDark} />
+              <Text style={[s.lockTitle, { color: theme.text }]}>
+                {t('family.shareLockedTitle')}
+              </Text>
+              <Text style={[s.lockBody, { color: theme.muted }]}>
+                {t('family.shareLockedBody')}
+              </Text>
+              <TouchableOpacity
+                style={[s.lockBtn, { backgroundColor: theme.primaryDark }]}
+                onPress={() => navigation.navigate('Plans')}
+              >
+                <Text style={s.lockBtnText}>{t('subscription.viewPlans')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </SafeAreaView>
       </SafeAreaProvider>
     );
