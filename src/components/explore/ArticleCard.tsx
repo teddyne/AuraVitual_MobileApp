@@ -46,7 +46,7 @@ export function ArticleCard({
   const [saved, setSaved] = useState(false);
   const refreshSaved = useCallback(() => {
     let alive = true;
-    isSavedPost('article', post.id).then((v) => {
+    void isSavedPost('article', post.id).then((v) => {
       if (alive) setSaved(v);
     });
     return () => {

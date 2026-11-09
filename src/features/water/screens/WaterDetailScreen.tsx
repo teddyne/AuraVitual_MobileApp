@@ -24,10 +24,6 @@ import {
 import { syncReminderNotifications } from '../../../utils/reminders/reminders';
 import { s } from './WaterDetailScreen.styles';
 
-// Trang nước uống riêng (Nov 2026): thay cho việc chỉ bấm mỗi ly
-// cố định 250 ml ở Trang chủ. Người dùng chọn lượng có sẵn hoặc nhập
-// lượng vừa uống (ví dụ 1 cốc nhỏ ~100 ml), rồi bấm Thêm vào nhật ký.
-// Chỉ tính chung lượng nước, không chia loại đồ uống.
 const QUICK_AMOUNTS = [100, 200, 250, 400, 500];
 
 export default function WaterDetailScreen({ navigation }: any) {
@@ -67,7 +63,7 @@ export default function WaterDetailScreen({ navigation }: any) {
   );
 
   // Ưu tiên ô nhập tay khi có chữ; không thì lấy lượng đã chọn.
-  const customNum = parseInt(custom.replace(/\D/g, ''), 10);
+  const customNum = Number.parseInt(custom.replace(/\D/g, ''), 10);
   const amount = custom.trim().length > 0 ? customNum : selected;
   const pct = goal > 0 ? Math.min(todayTotal / goal, 1) : 0;
   // Biểu đồ tròn: vòng 170px, r = 79, chu vi C ≈ 496.

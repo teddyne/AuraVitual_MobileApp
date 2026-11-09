@@ -19,11 +19,7 @@ import {
 } from '../../../utils/saved/savedPosts';
 import { s } from './SavedPostsScreen.styles';
 
-// Trang Đã lưu (Nov 2026): mở từ mục "Đã lưu" đầu tiên trong tab
-// Tài khoản. Bố cục theo ảnh tham khảo trang Yêu thích: mỗi card có
-// bìa ảnh + nút lưu ở góc trên bên phải bìa + tiêu đề + thông tin
-// phụ bên dưới — nhưng 1 card 1 hàng (không xếp 2 cột như ảnh mẫu),
-// theo chuẩn UI của app (AppHeader, theme.card, Ionicons).
+// Trang Đã lưu: mở từ mục "Đã lưu" đầu tiên trong tab
 export default function SavedPostsScreen({ navigation }: any) {
   const { theme, t } = useSettings();
   const [posts, setPosts] = useState<SavedPost[]>([]);

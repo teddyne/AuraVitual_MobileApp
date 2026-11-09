@@ -560,7 +560,7 @@ export default function StepsDetailScreen({ navigation }: any) {
   // gồm biểu đồ re-render nên ô nhập bị lag). Trả true khi lưu được
   // để form tự xóa ô nhập.
   const saveManual = async (rawValue: string): Promise<boolean> => {
-    const v = parseInt(rawValue.replace(/\D/g, ''), 10);
+    const v = Number.parseInt(rawValue.replace(/\D/g, ''), 10);
     if (!Number.isFinite(v) || v < 0 || v > 100000) {
       setSensorNote(t('steps.manualRange'));
       return false;
