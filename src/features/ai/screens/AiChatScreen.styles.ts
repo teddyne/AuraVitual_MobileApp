@@ -49,6 +49,7 @@ export const s = StyleSheet.create({
   },
   input: {
     flex: 1,
+    backgroundColor: '#F1F8E9',
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 16,

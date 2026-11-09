@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
 import { AppHeader } from '../../../components/ui/AppHeader';
+import { AppIcon } from '../../../components/ui/AppIcon';
 import {
   getNutritionDay,
   toLocalDateString,
@@ -213,7 +214,7 @@ export default function NutritionTrackerScreen({ navigation }: any) {
               const kcal = items.reduce((s, it) => s + it.kcal, 0);
               return (
                 <View key={type} style={styles.card}>
-                  <Text style={styles.mealIcon}>{MEAL_ICONS[type]}</Text>
+                  <AppIcon name={MEAL_ICONS[type]} size={24} tone='primaryDark' />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>
                       {t(`nutrition.${type}`)}
@@ -261,9 +262,12 @@ export default function NutritionTrackerScreen({ navigation }: any) {
                   style={styles.modalBtn}
                   onPress={() => chooseMeal(type)}
                 >
-                  <Text style={styles.modalBtnText}>
-                    {MEAL_ICONS[type]} {t(`nutrition.${type}`)}
-                  </Text>
+                  <View style={styles.modalBtnContent}>
+                    <AppIcon name={MEAL_ICONS[type]} size='md' tone='primaryDark' />
+                    <Text style={styles.modalBtnText}>
+                      {t(`nutrition.${type}`)}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity onPress={() => setMealPickerVisible(false)}>

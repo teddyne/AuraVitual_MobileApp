@@ -21,17 +21,27 @@ export function SharingMemberCard({
   onPress: () => void;
 }) {
   const { t } = useSettings();
-  const score = healthScore(m.latest, {
+  const score = healthScore(m.today, {
     step_goal: m.stepGoal,
     water_goal_ml: m.waterGoalMl,
     sleep_goal_hours: m.sleepGoalHours,
   } as any);
-  const badge = healthBadge(score);
+  const badge = score != null ? healthBadge(score) : null;
   const showHr =
     (m.settings ?? { share_enabled: true, share_heart_rate: true } as any)
       .share_enabled !== false &&
     (m.settings?.share_heart_rate ?? true) &&
-    m.latest?.heart_rate != null;
+    m.today?.heart_rate != null;
+  // Dòng trạng thái: có chỉ số hôm nay thì hiện giờ đồng bộ; chỉ có
+  // Kcal/Chu kỳ hôm nay thì hiện "đã có dữ liệu hôm nay" thay vì
+  // "chưa có dữ liệu" (trước đây chỉ xét dòng metrics).
+  const hasTodayData =
+    m.today != null || m.kcalToday != null || m.daysToNextPeriod != null;
+  const subText = m.today
+    ? t('family.syncedAgo', { time: timeAgo(m.today.updated_at) })
+    : hasTodayData
+      ? t('family.hasTodayData')
+      : t('family.noData');
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -47,16 +57,18 @@ export function SharingMemberCard({
           <Text style={[styles.memberName, { color: theme.text }]} numberOfLines={1}>
             {displayNameOf(m)}
           </Text>
-          <View style={[styles.miniBadge, { backgroundColor: badgeBg(badge) }]}>
-            <Text style={[styles.miniBadgeText, { color: theme.text }]}>{badge}</Text>
-          </View>
+          {badge != null && (
+            <View style={[styles.miniBadge, { backgroundColor: badgeBg(badge) }]}>
+              <Text style={[styles.miniBadgeText, { color: theme.text }]}>{badge}</Text>
+            </View>
+          )}
         </View>
         <Text style={[styles.memberSub, { color: theme.muted }]}>
-          {m.latest ? t('family.syncedAgo', { time: timeAgo(m.latest.updated_at) }) : t('family.noData')}
+          {subText}
         </Text>
       </View>
       {showHr ? (
-        <Text style={[styles.bpm, { color: theme.text }]}>♡ {m.latest!.heart_rate} BPM</Text>
+        <Text style={[styles.bpm, { color: theme.text }]}>♡ {m.today!.heart_rate} BPM</Text>
       ) : null}
       <Text style={[styles.chev, { color: theme.muted }]}>›</Text>
     </TouchableOpacity>

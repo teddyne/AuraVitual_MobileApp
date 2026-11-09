@@ -11,11 +11,15 @@ import {
   ActivityIndicator, Image, RefreshControl, ScrollView, Text,
   TouchableOpacity, View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getArticles, getPostById, levelLabel, type Post } from '../../../api/workoutApi';
 import { getPostsByTopic, type PostTopic } from '../../../api/auravitalApi';
+import {
+  isSavedPost,
+  toggleSavedPost,
+} from '../../../utils/saved/savedPosts';
 import { useSettings } from '../../../context/SettingsContext';
 import { styles } from './ArticleDetailScreen.styles';
 
@@ -30,6 +34,23 @@ export default function ArticleDetailScreen() {
   const [error, setError] = useState('');
   const [imgError, setImgError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Dấu lưu: đọc lúc mở màn + mỗi lần quay lại (bỏ lưu ở trang Tài
+  // khoản thì nút ở đây cập nhật theo).
+  const refreshSaved = useCallback(async () => {
+    if (!postId) return;
+    setSaved(await isSavedPost('article', postId));
+  }, [postId]);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSaved();
+    }, [refreshSaved]),
+  );
+  const onToggleSave = async () => {
+    if (!postId) return;
+    setSaved(await toggleSavedPost('article', postId));
+  };
 
   const load = useCallback(async () => {
     try {
@@ -99,13 +120,23 @@ export default function ArticleDetailScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
 
-      {post.cover_url && !imgError ? (
-        <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
-      ) : (
-        <View style={[styles.cover, { backgroundColor: '#EAF6EC', justifyContent: 'center', alignItems: 'center' }]}>
-          <Ionicons name="book" size={56} color="#2E7D32" />
-        </View>
-      )}
+      {/* Bìa + dấu lưu góc trên bên phải (cùng kiểu card luyện tập). */}
+      <View style={{ position: 'relative' }}>
+        {post.cover_url && !imgError ? (
+          <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
+        ) : (
+          <View style={[styles.cover, { backgroundColor: '#EAF6EC', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="book" size={56} color="#2E7D32" />
+          </View>
+        )}
+        <TouchableOpacity style={styles.bookmark} onPress={onToggleSave}>
+          <Ionicons
+            name={saved ? 'bookmark' : 'bookmark-outline'}
+            size={20}
+            color='#fff'
+          />
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.tag}>
         {t('home.nutritionTag')} · {levelLabel(post.level).toUpperCase()}

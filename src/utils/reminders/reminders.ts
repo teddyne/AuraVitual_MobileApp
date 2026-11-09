@@ -47,6 +47,30 @@ export function isFixedNotificationId(id: string): boolean {
   return FIXED_ID_PATTERNS.some((re) => re.test(id));
 }
 
+// Bắn 1 thông báo local NGAY LẬP TỨC (không đặt lịch): dùng cho cột
+// mốc mới (đạt mục tiêu bước chân...) để người dùng thấy banner như
+// nhắc uống/ăn, thay vì chỉ có chấm trên chuông. Chưa cấp quyền
+// thông báo thì bỏ qua lặng lẽ.
+export async function notifyNow(
+  title: string,
+  body: string,
+  data?: Record<string, any>,
+): Promise<void> {
+  try {
+    const perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted) return;
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: { kind: 'milestone', screen: 'Notifications', ...(data ?? {}) },
+        sound: 'default',
+      },
+      trigger: null,
+    });
+  } catch {}
+}
+
 export type WaterWindow = {
   time: string; // HH:MM, mốc bắt đầu
   range: string; // khung giờ hiển thị
@@ -303,7 +327,7 @@ async function syncReminderNotificationsInner(): Promise<void> {
             // THAY THẾ lịch cũ thay vì tạo thêm — không còn trùng được.
             identifier: `water-${w.time}`,
             content: {
-              title: `💧 ${translate(w.titleKey)}`,
+              title: translate(w.titleKey),
               body: translate(w.bodyKey),
               data: { kind: 'water', screen: 'Notifications', window: w.time },
               sound: 'default',

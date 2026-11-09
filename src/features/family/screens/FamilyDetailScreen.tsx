@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../../../context/SettingsContext';
+import { AppHeader } from '../../../components/ui/AppHeader';
+import { AppIcon } from '../../../components/ui/AppIcon';
 import { healthScore } from '../../../api/auravitalApi';
 import {
   DEFAULT_SHARING,
@@ -73,10 +74,9 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
   };
 
   const onSosSettings = () => {
-    Alert.alert(
-      t('family.sosDemoTitle'),
-      t('family.sosDemoBody'),
-    );
+    // Chi hien 1 dong: tinh nang that se phat trien sau (khong mo
+    // hop thoai dai nhu ban demo truoc).
+    Alert.alert(t('family.sosComingSoon'));
   };
 
   if (loading) {
@@ -95,7 +95,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
         <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
           <View style={{ padding: 16 }}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
-              <Ionicons name="chevron-back" size={28}/>
+              <AppIcon name='chevron-back' size={24} tone='text' />
             </TouchableOpacity>
             <Text style={[s.notFound, { color: theme.text }]}>
               {t('family.detailNotFound')}
@@ -107,7 +107,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
   }
 
   const name = displayNameOf(member);
-  const metric = member.latest;
+  const metric = member.today;
   const settings = member.settings ?? DEFAULT_SHARING;
   const score = metric ? healthScore(metric, {
     step_goal: member.stepGoal,
@@ -121,22 +121,18 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
     <SafeAreaProvider>
       <SafeAreaView style={[s.safe, { backgroundColor: theme.background }]}>
         <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-          {/* Header: quay lại + tiêu đề + cài đặt */}
-          <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12, paddingVertical: 4 }}>
-              <Ionicons name="chevron-back" size={28}/>
-            </TouchableOpacity>
-
-            <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>
-              {t('family.detailTitle', { name })}
-            </Text>
-
-            <View style={s.headerBtns}>
-              <TouchableOpacity onPress={goSettings}>
-                <Ionicons name='settings-outline' size={24} color={theme.text} />
+          {/* Header chung AppHeader như các màn khác (ngủ, dinh dưỡng):
+              trước đây tự vẽ (chevron 28 + tiêu đề 17) nên hàng tiêu đề
+              cao hơn chuẩn, khoảng cách xuống thẻ hồ sơ bị xa. */}
+          <AppHeader
+            title={t('family.detailTitle', { name })}
+            withTopInset={false}
+            right={
+              <TouchableOpacity onPress={goSettings} hitSlop={8}>
+                <AppIcon name='settings-outline' size={24} tone='text' />
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
         </View>
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -161,7 +157,7 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
                     placeholder={t('family.nickPlaceholder')}
                     placeholderTextColor={theme.muted}
                     maxLength={30}
-                    style={[s.nickInput, { backgroundColor: '#FFFFFF', color: theme.text }]}
+                    style={[s.nickInput, { backgroundColor: '#F1F8E9', color: theme.text }]}
                   />
                   <TouchableOpacity onPress={onSaveNick}>
                     <Text style={[s.nickSave, { color: theme.primaryDark }]}>{t('common.save')}</Text>
@@ -189,7 +185,11 @@ export default function FamilyDetailScreen({ navigation, route }: any) {
               )}
               <Text style={[s.profileSub, { color: theme.text }]}>{t('family.connected')}</Text>
               <Text style={[s.profileSub2, { color: theme.muted }]}>
-                {metric ? t('family.syncedOn', { time: timeAgo(metric.updated_at) }) : t('family.noData')}
+                {metric
+                  ? t('family.syncedOn', { time: timeAgo(metric.updated_at) })
+                  : member.kcalToday != null || member.daysToNextPeriod != null
+                    ? t('family.hasTodayData')
+                    : t('family.noData')}
               </Text>
             </View>
             {score != null && (

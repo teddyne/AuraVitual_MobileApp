@@ -13,6 +13,7 @@ export function WaterCard({
   cupCount,
   isToday,
   onGlassPress,
+  onOpenDetail,
   title,
   readOnlyText,
   s,
@@ -23,21 +24,33 @@ export function WaterCard({
   cupCount: number;
   isToday: boolean;
   onGlassPress: (index: number) => void;
+  // Bấm vào tiêu đề thì mở trang nước uống riêng (nhập lượng linh hoạt).
+  onOpenDetail?: () => void;
   title: string;
   readOnlyText: string;
   s: ReturnType<typeof makeStyles>;
 }) {
   return (
     <View style={s.card}>
-      <View style={s.rowBetween}>
+      <TouchableOpacity
+        style={s.rowBetween}
+        onPress={onOpenDetail}
+        disabled={!onOpenDetail}
+        activeOpacity={0.7}
+      >
         <Text style={s.cardTitle}>{title}</Text>
-        <Text style={s.waterValue}>
-          {formatNumber(water)}
-          <Text style={s.muted}>
-            {waterGoal > 0 ? `/${formatNumber(waterGoal)} ml` : ' ml'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Text style={s.waterValue}>
+            {formatNumber(water)}
+            <Text style={s.muted}>
+              {waterGoal > 0 ? `/${formatNumber(waterGoal)} ml` : ' ml'}
+            </Text>
           </Text>
-        </Text>
-      </View>
+          {onOpenDetail ? (
+            <Ionicons name='chevron-forward' size={18} color='#8A968E' />
+          ) : null}
+        </View>
+      </TouchableOpacity>
       <View style={s.glasses}>
         {Array.from({ length: cupCount }).map((_, i) => (
           <TouchableOpacity

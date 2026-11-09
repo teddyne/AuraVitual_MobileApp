@@ -3,15 +3,6 @@ import { StyleSheet } from 'react-native';
 export function makeStyles(theme: any) {
   return StyleSheet.create({
     wrap: { flex: 1, backgroundColor: theme.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-    },
-    back: { fontSize: 30, color: theme.text, width: 32 },
-    title: { fontSize: 18, fontWeight: '700', color: theme.text },
     tabs: {
       flexDirection: 'row',
       gap: 8,
@@ -28,17 +19,18 @@ export function makeStyles(theme: any) {
     tabActive: { backgroundColor: theme.primaryDark },
     tabText: { color: theme.text, fontWeight: '600', fontSize: 13 },
     tabTextActive: { color: '#fff' },
+    tabContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     searchBox: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#FFFFFF',
+      gap: 8,
+      backgroundColor: '#F1F8E9',
       borderWidth: 1,
       borderColor: '#E5E5E5',
       borderRadius: 12,
       marginHorizontal: 16,
       paddingHorizontal: 12,
     },
-    searchIcon: { fontSize: 18, marginRight: 8 },
     searchInput: { flex: 1, paddingVertical: 12, color: '#000' },
     chips: {
       flexDirection: 'row',
@@ -122,7 +114,7 @@ export function makeStyles(theme: any) {
     },
     barcodeInput: {
       flex: 1,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#F1F8E9',
       borderWidth: 1,
       borderColor: '#E5E5E5',
       borderRadius: 12,

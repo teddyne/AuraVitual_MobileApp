@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
+  type ScrollViewInstance,
   Text,
   TextInput,
   TouchableOpacity,
@@ -48,7 +49,7 @@ export default function AiChatScreen({ navigation }: any) {
   const [online, setOnline] = useState(
     !!process.env.EXPO_PUBLIC_GEMINI_API_KEY,
   );
-  const scrollRef = useRef<ScrollView>(null);
+const scrollRef = useRef<ScrollViewInstance | null>(null);
 
   useEffect(() => {
     loadChatUsage().then(setUsage).catch(() => {});

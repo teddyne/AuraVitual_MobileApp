@@ -29,6 +29,7 @@ import {
   type Plan,
   type PlanId,
 } from '../features/subscription/plans';
+import { useAuth } from '../features/auth/AuthContext';
 
 type SubscriptionValue = {
   planId: PlanId;
@@ -63,6 +64,10 @@ export const useSubscription = () => {
 };
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
+  // Nằm trong <AuthProvider> (App.tsx) nên đọc được tài khoản hiện
+  // tại. Nạp lại gói mỗi khi đổi tài khoản, nếu không bộ nhớ sẽ giữ
+  // gói của tài khoản trước dù AsyncStorage đã tách theo tài khoản.
+  const { user } = useAuth();
   const [state, setState] = useState<SubscriptionState>({
     planId: 'free',
     activatedAt: null,
@@ -79,7 +84,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [user?.id]);
 
   const setActivePlan = async (planId: PlanId, orderId: string | null = null) => {
     const s = await activatePlan(planId, orderId);

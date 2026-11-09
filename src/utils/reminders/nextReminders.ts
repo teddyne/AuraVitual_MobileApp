@@ -14,20 +14,20 @@ export function buildNextReminders(notif: NotifSettings): string[] {
     if (notif.water) {
       const { window, tomorrow } = nextWaterWindow(now);
       nextReminders.push(
-        `💧 ${translate('reminders.nextWater', {
+        translate('reminders.nextWater', {
           time: window.time,
           tomorrow: tomorrow ? translate('reminders.nextTomorrow') : '',
-        })}`,
+        }),
       );
     }
     if (notif.meal) {
       nextReminders.push(
-        `🍽 ${translate('nutrition.breakfast')} ${notif.mealBreakfast} • ${translate('nutrition.lunch')} ${notif.mealLunch} • ${translate('nutrition.dinner')} ${notif.mealDinner}`,
+        `${translate('nutrition.breakfast')} ${notif.mealBreakfast} • ${translate('nutrition.lunch')} ${notif.mealLunch} • ${translate('nutrition.dinner')} ${notif.mealDinner}`,
       );
     }
     if (notif.wake) {
       nextReminders.push(
-        `⏰ ${translate('reminders.nextWake', { time: notif.wakeTime })}`,
+        translate('reminders.nextWake', { time: notif.wakeTime }),
       );
     }
     if (notif.sleep) {
@@ -36,14 +36,14 @@ export function buildNextReminders(notif: NotifSettings): string[] {
         const base = translate('reminders.nextSleep', { time: notif.sleepTime });
         nextReminders.push(
           h * 60 + m > nowMin
-            ? `😴 ${base}`
-            : `😴 ${base}${translate('reminders.nextTomorrow')}`,
+            ? base
+            : `${base}${translate('reminders.nextTomorrow')}`,
         );
       }
     }
     if (notif.cycle) {
       nextReminders.push(
-        `🌸 ${translate('reminders.nextCycle', { days: notif.cycleDaysBefore })}`,
+        translate('reminders.nextCycle', { days: notif.cycleDaysBefore }),
       );
     }
   }

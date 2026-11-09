@@ -100,12 +100,12 @@ export default function FamilyWatcher() {
       let toasted = false;
 
       for (const m of members) {
-        const cur = m.latest
+        const cur = m.today
           ? {
-              log_date: m.latest.log_date,
-              steps: m.latest.steps,
-              sleep_hours: m.latest.sleep_hours,
-              water_ml: m.latest.water_ml,
+              log_date: m.today.log_date,
+              steps: m.today.steps,
+              sleep_hours: m.today.sleep_hours,
+              water_ml: m.today.water_ml,
             }
           : null;
         const prev = snap[m.ownerId];

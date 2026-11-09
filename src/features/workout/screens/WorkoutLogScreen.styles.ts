@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   workTitle: { fontSize: 15, fontWeight: '700', color: '#1B2A1E' },
   workSub: { fontSize: 13, color: '#5B665E', marginTop: 3 },
   check: { fontSize: 20, color: '#2E7D32', fontWeight: '800' },
-  input: { backgroundColor: '#fff', borderRadius: 14, padding: 14, fontSize: 18, color: '#1B2A1E' },
+  input: { backgroundColor: '#F1F8E9', borderRadius: 14, padding: 14, fontSize: 18, color: '#1B2A1E' },
   kcalLine: { fontSize: 14, color: '#5B665E', marginTop: 8 },
   saveBtn: { backgroundColor: '#2E7D32', borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 14 },
   saveText: { color: '#fff', fontSize: 16, fontWeight: '800' },

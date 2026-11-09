@@ -21,6 +21,10 @@ import { supabase } from '../../../api/supabase';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { getPlanById } from '../../subscription/plans';
 import {
+  loadSavedPosts,
+  type SavedPost,
+} from '../../../utils/saved/savedPosts';
+import {
   formatNumber,
   getProfile,
   type Profile,
@@ -72,6 +76,7 @@ export default function ProfileSettingsScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [savedPosts, setSavedPosts] = useState<SavedPost[]>([]);
 
   // Lấy navigator gốc (Stack) để navigate tới ProfileSetup /
   // Recommendation / Reminders cho đúng, không bị kẹt ở Tab.
@@ -91,11 +96,20 @@ export default function ProfileSettingsScreen({ navigation }: any) {
 
   // Quay lại màn này sau khi thanh toán thì gói hiển thị phải là gói
   // mới: refresh lại subscription mỗi lần màn hình được focus.
+  // Cùng lúc tải lại mục Đã lưu (bỏ lưu ở màn chi tiết thì danh
+  // sách ở đây cập nhật theo).
   useFocusEffect(
     useCallback(() => {
       refreshSubscription().catch(() => {});
+      loadSavedPosts()
+        .then(setSavedPosts)
+        .catch(() => {});
     }, [refreshSubscription]),
   );
+
+  // Mở trang Đã lưu riêng (mục đầu tiên, trên mục tiêu). Danh sách
+  // chi tiết + bỏ lưu nằm ở trang đó, màn này chỉ giữ số lượng.
+  const goSaved = () => getRootNav().navigate('SavedPosts');
 
   const onRefresh = async () => {
     if (!user) return;
@@ -388,6 +402,17 @@ export default function ProfileSettingsScreen({ navigation }: any) {
               />
             </TouchableOpacity>
           </View>
+
+          {/* Đã lưu: mục đầu tiên, trên mục tiêu đã thiết lập. Bấm vào
+              mở trang riêng (1 card 1 hàng). */}
+          <Row
+            theme={theme}
+            dark={isDark}
+            icon='bookmark-outline'
+            title={t('settings.savedSection')}
+            sub={t('settings.savedCount', { count: savedPosts.length })}
+            onPress={goSaved}
+          />
 
           {/* Mục tiêu: tiêu đề trái, link Cập nhật mục tiêu phải -> Recommend */}
           <View style={s.sectionHeader}>

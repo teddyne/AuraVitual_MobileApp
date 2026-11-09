@@ -33,6 +33,7 @@ export const s = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
+    backgroundColor: '#F1F8E9',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 14,

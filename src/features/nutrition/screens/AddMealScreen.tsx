@@ -24,6 +24,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
+import { AppHeader } from '../../../components/ui/AppHeader';
+import { AppIcon } from '../../../components/ui/AppIcon';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { useToast } from '../../../components/NotificationToast';
 import { aiErrorMessageKey } from '../../../api/aiClient';
@@ -506,12 +508,8 @@ export default function AddMealScreen({ navigation, route }: any) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={s.wrap}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={s.back}>‹</Text>
-          </TouchableOpacity>
-          <Text style={s.title}>{t('nutrition.title')}</Text>
-          <View style={{ width: 32 }} />
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <AppHeader title={t('nutrition.title')} withTopInset={false} />
         </View>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 24 }}
@@ -526,15 +524,22 @@ export default function AddMealScreen({ navigation, route }: any) {
                 style={[s.tab, mealType === type && s.tabActive]}
                 onPress={() => setMealType(type)}
               >
-                <Text style={[s.tabText, mealType === type && s.tabTextActive]}>
-                  {MEAL_ICONS[type]} {t(`nutrition.${type}`)}
-                </Text>
+                <View style={s.tabContent}>
+                  <AppIcon
+                    name={MEAL_ICONS[type]}
+                    size={18}
+                    color={mealType === type ? '#fff' : theme.text}
+                  />
+                  <Text style={[s.tabText, mealType === type && s.tabTextActive]}>
+                    {t(`nutrition.${type}`)}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
 
           <View style={s.searchBox}>
-            <Text style={s.searchIcon}>🔍</Text>
+            <AppIcon name='search-outline' size={20} tone='muted' />
             <TextInput
               style={s.searchInput}
               placeholder={t('nutrition.searchPlaceholder')}

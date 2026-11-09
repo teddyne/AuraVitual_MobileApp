@@ -38,6 +38,38 @@ export type DemoOrder = {
 const SUB_KEY = 'auravital:subscription';
 const ORDERS_KEY = 'auravital:subscriptionOrders';
 
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let legacySubscriptionDropped = false;
+async function dropLegacySubscriptionKeys(): Promise<void> {
+  if (legacySubscriptionDropped) return;
+  legacySubscriptionDropped = true;
+  try {
+    await AsyncStorage.multiRemove([SUB_KEY, ORDERS_KEY]);
+  } catch {}
+}
+
+async function subscriptionKey(): Promise<string | null> {
+  const uid = await currentUserId();
+  if (!uid) return null;
+  await dropLegacySubscriptionKeys();
+  return `${SUB_KEY}:${uid}`;
+}
+
+async function ordersKey(): Promise<string | null> {
+  const uid = await currentUserId();
+  if (!uid) return null;
+  await dropLegacySubscriptionKeys();
+  return `${ORDERS_KEY}:${uid}`;
+}
+
 export const DEMO_BANK = {
   bank: 'Agribank',
   account: '6902205441281',
@@ -67,7 +99,9 @@ export function makeOrderId(now = new Date()): string {
 
 export async function loadSubscription(): Promise<SubscriptionState> {
   try {
-    const raw = await AsyncStorage.getItem(SUB_KEY);
+    const key = await subscriptionKey();
+    if (!key) return FREE_STATE;
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return FREE_STATE;
     const parsed = JSON.parse(raw) as SubscriptionState;
     // Hết hạn thì tự về Free, không giữ gói trả phí quá hạn.
@@ -87,7 +121,9 @@ export async function loadSubscription(): Promise<SubscriptionState> {
 export async function saveSubscription(
   state: SubscriptionState,
 ): Promise<void> {
-  await AsyncStorage.setItem(SUB_KEY, JSON.stringify(state));
+  const key = await subscriptionKey();
+  if (!key) return;
+  await AsyncStorage.setItem(key, JSON.stringify(state));
 }
 
 export async function activatePlan(
@@ -154,10 +190,11 @@ export async function createDraftOrder(input: {
     createdAt: now.toISOString(),
     expiresAt: addDays(now.toISOString(), 30),
   };
-  const raw = await AsyncStorage.getItem(ORDERS_KEY);
+  const key = await ordersKey();
+  const raw = key ? await AsyncStorage.getItem(key) : null;
   const orders: DemoOrder[] = raw ? JSON.parse(raw) : [];
   orders.unshift(order);
-  await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  if (key) await AsyncStorage.setItem(key, JSON.stringify(orders));
   // Ghi đơn lên DB thật (trạng thái pending_demo — chỉ chuyển thành
   // paid_demo khi người dùng bấm "Tôi đã thanh toán"). Best-effort:
   // chưa chạy migration hoặc chưa đăng nhập thì chỉ warn.
@@ -204,13 +241,15 @@ async function updateStoredOrderStatus(
   status: DemoOrder['status'],
 ): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(ORDERS_KEY);
+    const key = await ordersKey();
+    if (!key) return;
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return;
     const orders: DemoOrder[] = JSON.parse(raw);
     const found = orders.find((o) => o.id === orderId);
     if (!found) return;
     found.status = status;
-    await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    await AsyncStorage.setItem(key, JSON.stringify(orders));
   } catch {
     // Bỏ qua: lỗi đọc/ghi local không chặn kích hoạt hay hủy gói.
   }

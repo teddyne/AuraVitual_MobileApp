@@ -28,7 +28,10 @@ import {
 } from '../../../api/auravitalApi';
 import { getNutritionDay } from '../../../api/nutritionApi';
 import { getReceivedRequests } from '../../../api/familyApi';
-import { syncReminderNotifications } from '../../../utils/reminders/reminders';
+import {
+  notifyNow,
+  syncReminderNotifications,
+} from '../../../utils/reminders/reminders';
 import {
   appendHistory,
   countUnreadHistory,
@@ -209,7 +212,10 @@ export default function HomeScreen({ navigation }: any) {
               ? Number(loadedProfile.step_goal)
               : null;
           if (steps != null && goal != null && steps >= goal) {
-            await appendHistory({
+            // Chỉ bắn thông báo thật khi đây là cột mốc MỚI trong
+            // ngày (appendHistory trả true). Lần load sau đã ghi
+            // rồi thì chỉ còn chấm trên chuông, không bắn thêm.
+            const isNew = await appendHistory({
               kind: 'milestone',
               category: t('home.milestoneCategory'),
               title: t('home.milestoneStepsTitle'),
@@ -219,6 +225,12 @@ export default function HomeScreen({ navigation }: any) {
               firedAt: Date.now(),
               dedupeKey: `milestone-steps-${dateKey}`,
             });
+            if (isNew) {
+              await notifyNow(
+                t('home.milestoneStepsTitle'),
+                t('home.milestoneStepsBody', { steps, goal }),
+              );
+            }
           }
         } catch {}
       }
@@ -674,6 +686,7 @@ export default function HomeScreen({ navigation }: any) {
             cupCount={cupCount}
             isToday={isToday}
             onGlassPress={onGlassPress}
+            onOpenDetail={() => navigation.navigate('WaterDetail')}
             title={tr('home.waterTitle', 'Lượng nước đã uống', 'Water drunk')}
             readOnlyText={tr(
               'home.readOnly',

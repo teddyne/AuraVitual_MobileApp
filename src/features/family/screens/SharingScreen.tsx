@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCameraPermissions } from 'expo-camera';
 import { useSettings } from '../../../context/SettingsContext';
 import { useSubscription } from '../../../context/SubscriptionContext';
-import { localToday } from '../../../api/auravitalApi';
 import {
   acceptRequest,
   declineRequest,
@@ -137,9 +136,9 @@ export default function SharingScreen({ navigation }: any) {
     );
   };
 
-  const syncedToday = members.filter(
-    (m) => m.latest?.log_date === localToday(),
-  ).length;
+  // 'today' cua thanh vien chi co khi hom nay co dong metrics, nen
+  // dem nay la so thanh vien co du lieu hom nay.
+  const syncedToday = members.filter((m) => m.today != null).length;
 
   const onSend = async () => {
     const code = codeInput.trim().toUpperCase();

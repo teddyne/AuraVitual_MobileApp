@@ -48,7 +48,7 @@ export function makeStyles(theme: any) {
     },
     fieldLabel: { fontSize: 14, fontWeight: '700', color: theme.text },
     input: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.cardAlt,
       borderWidth: 1,
       borderColor: '#E5E5E5',
       borderRadius: 14,

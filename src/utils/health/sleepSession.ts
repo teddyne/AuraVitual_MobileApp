@@ -361,7 +361,7 @@ export async function scheduleSnoozeNotification(
       // Identifier cố định: đặt lại snooze thì THAY THẾ lịch snooze cũ.
       identifier: 'snooze-alarm',
       content: {
-        title: `⏰ ${title}`,
+        title,
         body,
         data: { screen: 'Sleep', alarm: true, alarmId, isSnooze: true },
         sound: 'default',
@@ -537,7 +537,7 @@ async function syncAllAlarmNotificationsInner(
           // Báo thức 1 lần: identifier cố định theo id báo thức.
           identifier: `alarm-${a.id}`,
           content: {
-            title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+            title: a.label || translate('reminders.alarmDefault'),
             body: translate('reminders.alarmBody', { time: a.time }),
             data: { screen: 'Sleep', alarm: true, alarmId: a.id },
             sound: 'default',
@@ -556,7 +556,7 @@ async function syncAllAlarmNotificationsInner(
           // Báo thức hằng ngày: identifier cố định theo id báo thức.
           identifier: `alarm-${a.id}`,
           content: {
-            title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+            title: a.label || translate('reminders.alarmDefault'),
             body: translate('reminders.alarmBody', { time: a.time }),
             data: { screen: 'Sleep', alarm: true, alarmId: a.id },
             sound: 'default',
@@ -579,7 +579,7 @@ async function syncAllAlarmNotificationsInner(
             // đè nhau chỉ còn 1 ngày.
             identifier: `alarm-${a.id}-${d}`,
             content: {
-              title: `⏰ ${a.label || translate('reminders.alarmDefault')}`,
+              title: a.label || translate('reminders.alarmDefault'),
               body: translate('reminders.alarmBody', { time: a.time }),
               data: { screen: 'Sleep', alarm: true, alarmId: a.id },
               sound: 'default',

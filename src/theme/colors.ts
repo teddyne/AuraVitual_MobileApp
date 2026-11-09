@@ -7,5 +7,7 @@ export const colors = {
   border: '#E5E7EB',
   white: '#FFFFFF',
   danger: '#DC2626',
-  inputBg: '#F9FAFB',
+  // Ô nhập liệu toàn app: xanh lá pastel, cùng màu chip giờ trên
+  // trang Thông báo & Nhắc nhở (theme.cardAlt #F1F8E9).
+  inputBg: '#F1F8E9',
 };

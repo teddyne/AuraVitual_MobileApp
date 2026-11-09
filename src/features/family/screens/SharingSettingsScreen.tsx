@@ -25,6 +25,8 @@ import {
 } from '../../../api/familyApi';
 import { CONTENT_ROWS } from '../constants';
 import { SharingMemberRow } from '../../../components/family/SharingMemberRow';
+import { AppIcon } from '../../../components/ui/AppIcon';
+import { IconBadge } from '../../../components/ui/IconBadge';
 import { s } from './SharingSettingsScreen.styles';
 
 export default function SharingSettingsScreen({ navigation }: any) {
@@ -135,7 +137,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
 
           <View style={[s.card, { backgroundColor: theme.card }]}>
             <View style={s.row}>
-              <Text style={s.icon}>👨‍👩‍👧</Text>
+              <IconBadge name='people-outline' />
               <View style={{ flex: 1 }}>
                 <Text style={[s.rowTitle, { color: theme.text }]}>{t('family.shareHealth')}</Text>
                 <Text style={[s.muted, { color: theme.muted }]}>
@@ -163,7 +165,7 @@ export default function SharingSettingsScreen({ navigation }: any) {
           >
             {CONTENT_ROWS.map((row) => (
               <View key={row.key} style={s.row}>
-                <Text style={s.icon}></Text>
+                <AppIcon name={row.icon as any} size='md' tone='primaryDark' />
                 <View style={{ flex: 1 }}>
                   <Text style={[s.rowTitle, { color: theme.text }]}>{t(row.titleKey)}</Text>
                   <Text style={[s.muted, { color: theme.muted }]}>{t(row.descKey)}</Text>

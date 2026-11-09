@@ -1,9 +1,31 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSettings, type ThemePalette } from '../../context/SettingsContext';
+import { AppIcon, type AppIconName } from '../ui/AppIcon';
 import { timeAgo } from '../../api/familyApi';
 import { PRIMARY } from '../../features/notifications/constants';
 import type { DisplayItem } from '../../utils/notifications/notificationDisplay';
+
+// Icon của thẻ: Ionicons theo loại thông báo (đồng bộ toàn app).
+// Lịch sử cũ lưu icon emoji (💧🍽🌙🏆...) nên map cả 2 dạng: emoji cũ
+// và tên Ionicons, để thẻ cũ vẫn hiện đúng icon mới.
+function iconFor(item: DisplayItem): AppIconName {
+  const byEmoji: Record<string, AppIconName> = {
+    '💧': 'water-outline',
+    '🍽': 'restaurant-outline',
+    '🌙': 'moon-outline',
+    '⏰': 'alarm-outline',
+    '🏆': 'trophy-outline',
+    '👨‍👩‍👧': 'people-outline',
+  };
+  if (byEmoji[item.icon]) return byEmoji[item.icon];
+  if (item.icon.endsWith('-outline') || item.icon.endsWith('-sharp')) {
+    return item.icon as AppIconName;
+  }
+  if (item.kind === 'family') return 'people-outline';
+  if (item.kind === 'milestone') return 'trophy-outline';
+  return 'notifications-outline';
+}
 
 // The thong bao trong NotificationsScreen (doi nguyen van).
 export function NotificationCard({
@@ -31,7 +53,7 @@ export function NotificationCard({
       <View
         style={[styles.iconCircle, { backgroundColor: item.iconBg }]}
       >
-        <Text style={styles.iconText}>{item.icon}</Text>
+        <AppIcon name={iconFor(item)} size={22} tone='primaryDark' />
       </View>
       <View style={{ flex: 1 }}>
         <View style={styles.cardTop}>
@@ -94,7 +116,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconText: { fontSize: 20 },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',

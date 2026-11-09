@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { translate } from '../../i18n/locale';
+import { supabase } from '../../api/supabase';
 
 export type HistoryKind = 'reminder' | 'family' | 'milestone';
 
@@ -23,6 +24,31 @@ const HISTORY_KEY = '@auravital:notification_history';
 // Chặn kho phình vô hạn: chỉ giữ 200 dòng mới nhất.
 const MAX_ENTRIES = 200;
 
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let legacyHistoryDropped = false;
+async function dropLegacyHistoryKey(): Promise<void> {
+  if (legacyHistoryDropped) return;
+  legacyHistoryDropped = true;
+  try {
+    await AsyncStorage.removeItem(HISTORY_KEY);
+  } catch {}
+}
+
+async function historyKey(): Promise<string | null> {
+  const uid = await currentUserId();
+  if (!uid) return null;
+  await dropLegacyHistoryKey();
+  return `${HISTORY_KEY}:${uid}`;
+}
+
 function dayKeyOf(t: number): string {
   const d = new Date(t);
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -30,7 +56,9 @@ function dayKeyOf(t: number): string {
 
 export async function loadHistory(): Promise<HistoryEntry[]> {
   try {
-    const raw = await AsyncStorage.getItem(HISTORY_KEY);
+    const key = await historyKey();
+    if (!key) return [];
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return [];
     const list = JSON.parse(raw) as HistoryEntry[];
     if (!Array.isArray(list)) return [];
@@ -44,8 +72,10 @@ export async function loadHistory(): Promise<HistoryEntry[]> {
 
 async function saveHistory(list: HistoryEntry[]): Promise<void> {
   try {
+    const key = await historyKey();
+    if (!key) return;
     await AsyncStorage.setItem(
-      HISTORY_KEY,
+      key,
       JSON.stringify(list.slice(0, MAX_ENTRIES)),
     );
   } catch {}
@@ -65,12 +95,14 @@ export type NewHistoryEntry = {
 
 // Ghi 1 dòng lịch sử. Trùng dedupeKey thì bỏ qua (thông báo đã ghi
 // rồi mà listener/tray đối chiếu gặp lại cũng không ghi thêm).
+// Trả về true chỉ khi ghi mới thật (để nơi gọi biết có cột mốc mới
+// mà bắn thông báo thật, thay vì chỉ hiện chấm trên chuông).
 export async function appendHistory(
   entry: NewHistoryEntry,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const list = await loadHistory();
-    if (list.some((e) => e.id === entry.dedupeKey)) return;
+    if (list.some((e) => e.id === entry.dedupeKey)) return false;
     list.unshift({
       id: entry.dedupeKey,
       kind: entry.kind,
@@ -84,7 +116,10 @@ export async function appendHistory(
       memberId: entry.memberId ?? null,
     });
     await saveHistory(list);
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function markEntryRead(id: string): Promise<void> {

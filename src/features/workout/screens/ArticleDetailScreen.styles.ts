@@ -7,6 +7,18 @@ export const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 12 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1B2A1E', marginRight: 180 },
   cover: { width: '100%', height: 220, borderRadius: 20 },
+  // Dấu lưu góc trên bên phải của bìa (cùng kiểu card luyện tập).
+  bookmark: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   tag: { fontSize: 12, fontWeight: '700', color: '#2E7D32', marginTop: 18 },
   title: { fontSize: 24, fontWeight: '800', color: '#1B2A1E', marginTop: 6, lineHeight: 30 },
   summary: { fontSize: 16, color: '#5B665E', marginTop: 10, lineHeight: 23 },
