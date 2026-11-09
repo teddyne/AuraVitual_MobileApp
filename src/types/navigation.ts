@@ -32,6 +32,8 @@ export type RootStackParamList = {
   AddFood: undefined;
   WorkoutPlayer: { postId: string };
   ArticleDetail: { postId: string };
+  SavedPosts: undefined;
+  WaterDetail: undefined;
   WorkoutLog: { postId?: string; minutes?: number } | undefined;
   AddWorkout: undefined;
   FamilyDetail: { memberId: string };

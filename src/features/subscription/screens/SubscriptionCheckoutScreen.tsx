@@ -253,7 +253,7 @@ export default function SubscriptionCheckoutScreen({ navigation, route }: any) {
                   {t('checkout.name')}
                 </Text>
                 <TextInput
-                  style={[s.field, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]}
+                  style={[s.field, { borderColor: theme.border, backgroundColor: theme.cardAlt, color: theme.text }]}
                   value={name}
                   onChangeText={setName}
                   onBlur={() => setTouched(true)}
@@ -268,7 +268,7 @@ export default function SubscriptionCheckoutScreen({ navigation, route }: any) {
                   {t('checkout.phone')}
                 </Text>
                 <TextInput
-                  style={[s.field, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]}
+                  style={[s.field, { borderColor: theme.border, backgroundColor: theme.cardAlt, color: theme.text }]}
                   value={phone}
                   onChangeText={setPhone}
                   onBlur={() => setTouched(true)}

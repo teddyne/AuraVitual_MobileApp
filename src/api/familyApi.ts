@@ -1,6 +1,12 @@
 import { supabase } from './supabase';
-import { localToday, type Metric } from './auravitalApi';
+import {
+  getDaysToNextPeriodOnDate,
+  localToday,
+  type Metric,
+} from './auravitalApi';
+import { getNutritionDay } from './nutritionApi';
 import { displayLocale, translate } from '../i18n/locale';
+import type { AppIconName } from '../components/ui/AppIcon';
 
 // =====================================================================
 // Chia sẻ gia đình — lớp API duy nhất cho tính năng này.
@@ -21,6 +27,8 @@ export type SharingSettings = {
   share_spo2: boolean;
   share_water: boolean;
   share_weight: boolean;
+  share_kcal: boolean;
+  share_cycle: boolean;
 };
 
 export const DEFAULT_SHARING: SharingSettings = {
@@ -31,6 +39,8 @@ export const DEFAULT_SHARING: SharingSettings = {
   share_spo2: true,
   share_water: true,
   share_weight: true,
+  share_kcal: true,
+  share_cycle: true,
 };
 
 export type MemberMetric = Metric & {
@@ -45,8 +55,10 @@ export type FamilyMember = {
   stepGoal: number;
   waterGoalMl: number;
   sleepGoalHours: number;
-  latest: MemberMetric | null;
+  today: MemberMetric | null;
   settings: SharingSettings | null;
+  kcalToday: number | null;
+  daysToNextPeriod: number | null;
 };
 
 export type FamilyRequest = {
@@ -231,15 +243,16 @@ export async function getMembers(): Promise<FamilyMember[]> {
     (profiles ?? []).map((p) => [p.id, p]),
   );
 
+  const todayKey = localToday();
   const { data: metrics } = await supabase
     .from('health_metrics')
     .select('user_id, log_date, updated_at, steps, sleep_hours, water_ml, weight_kg, heart_rate, spo2')
     .in('user_id', ownerIds)
-    .order('log_date', { ascending: false });
-  const latestByOwner = new Map<string, MemberMetric>();
+    .eq('log_date', todayKey);
+  const todayByOwner = new Map<string, MemberMetric>();
   for (const m of metrics ?? []) {
-    if (!latestByOwner.has(m.user_id)) {
-      latestByOwner.set(m.user_id, {
+    if (!todayByOwner.has(m.user_id)) {
+      todayByOwner.set(m.user_id, {
         log_date: m.log_date,
         updated_at: m.updated_at,
         steps: m.steps,
@@ -267,12 +280,41 @@ export async function getMembers(): Promise<FamilyMember[]> {
         share_spo2: s.share_spo2,
         share_water: s.share_water,
         share_weight: s.share_weight,
+        share_kcal: s.share_kcal ?? true,
+        share_cycle: s.share_cycle ?? true,
       },
     ]),
   );
 
+  const extraByOwner = new Map<
+    string,
+    { kcalToday: number | null; daysToNextPeriod: number | null }
+  >();
+  await Promise.all(
+    ownerIds.map(async (ownerId) => {
+      const [kcalRes, cycleRes] = await Promise.allSettled([
+        getNutritionDay(ownerId, todayKey),
+        getDaysToNextPeriodOnDate(ownerId, todayKey),
+      ]);
+      const day = kcalRes.status === 'fulfilled' ? kcalRes.value : null;
+      const mealCount = day
+        ? Object.values(day.meals).reduce((n, arr) => n + arr.length, 0)
+        : 0;
+      extraByOwner.set(ownerId, {
+        kcalToday:
+          day && mealCount > 0 ? Math.round(day.totalKcal ?? 0) : null,
+        daysToNextPeriod:
+          cycleRes.status === 'fulfilled' ? cycleRes.value : null,
+      });
+    }),
+  );
+
   return ownerIds.map((ownerId) => {
     const p = profileById.get(ownerId);
+    const extra = extraByOwner.get(ownerId) ?? {
+      kcalToday: null,
+      daysToNextPeriod: null,
+    };
     return {
       ownerId,
       displayName: p?.display_name ?? translate('family.userFallback'),
@@ -280,8 +322,10 @@ export async function getMembers(): Promise<FamilyMember[]> {
       stepGoal: p?.step_goal ?? 10000,
       waterGoalMl: p?.water_goal_ml ?? 2200,
       sleepGoalHours: p?.sleep_goal_hours != null ? Number(p.sleep_goal_hours) : 8,
-      latest: latestByOwner.get(ownerId) ?? null,
+      today: todayByOwner.get(ownerId) ?? null,
       settings: settingsByOwner.get(ownerId) ?? null,
+      kcalToday: extra.kcalToday,
+      daysToNextPeriod: extra.daysToNextPeriod,
     };
   });
 }
@@ -346,6 +390,8 @@ export async function getMySharingSettings(): Promise<SharingSettings> {
     share_spo2: data.share_spo2,
     share_water: data.share_water,
     share_weight: data.share_weight,
+    share_kcal: data.share_kcal ?? true,
+    share_cycle: data.share_cycle ?? true,
   };
 }
 
@@ -368,7 +414,7 @@ export async function saveMySharingSettings(
 // (Nhịp tim lúc tập, huyết áp... không có nguồn dữ liệu nên không bịa.)
 export type MemberEvent = {
   id: string;
-  icon: string;
+  icon: AppIconName;
   title: string;
   subtitle: string;
   body: string;
@@ -376,7 +422,7 @@ export type MemberEvent = {
 
 export function deriveEvents(m: FamilyMember): MemberEvent[] {
   const events: MemberEvent[] = [];
-  const metric = m.latest;
+  const metric = m.today;
   if (!metric || metric.log_date !== localToday()) return events;
   const name = displayNameOf(m);
   const s = m.settings ?? DEFAULT_SHARING;
@@ -390,7 +436,7 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
   ) {
     events.push({
       id: 'steps-goal',
-      icon: '🏃',
+      icon: 'footsteps-outline',
       title: translate('family.eventStepsTitle'),
       subtitle: translate('family.eventStepsSub', {
         name,
@@ -407,7 +453,7 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
   ) {
     events.push({
       id: 'sleep-goal',
-      icon: '🌙',
+      icon: 'moon-outline',
       title: translate('family.eventSleepTitle'),
       subtitle: translate('family.eventSleepSub'),
       body: translate('family.eventSleepBody', {
@@ -423,7 +469,7 @@ export function deriveEvents(m: FamilyMember): MemberEvent[] {
   ) {
     events.push({
       id: 'water-goal',
-      icon: '💧',
+      icon: 'water-outline',
       title: translate('family.eventWaterTitle'),
       subtitle: translate('family.eventWaterSub', {
         name,

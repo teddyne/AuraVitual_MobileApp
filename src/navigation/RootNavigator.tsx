@@ -20,6 +20,8 @@ import AddMealScreen from '../features/nutrition/screens/AddMealScreen';
 import AddFoodScreen from '../features/nutrition/screens/AddFoodScreen';
 import WorkoutPlayerScreen from '../features/workout/screens/WorkoutPlayerScreen';
 import ArticleDetailScreen from '../features/workout/screens/ArticleDetailScreen';
+import SavedPostsScreen from '../features/profile/screens/SavedPostsScreen';
+import WaterDetailScreen from '../features/water/screens/WaterDetailScreen';
 import WorkoutLogScreen from '../features/workout/screens/WorkoutLogScreen';
 import AddWorkoutScreen from '../features/workout/screens/AddWorkoutScreen';
 import FamilyDetailScreen from '../features/family/screens/FamilyDetailScreen';
@@ -59,6 +61,8 @@ export default function RootNavigator() {
       <Stack.Screen name='CycleTracking' component={CycleTrackingScreen} />
       <Stack.Screen name='WorkoutPlayer' component={WorkoutPlayerScreen} />
       <Stack.Screen name='ArticleDetail' component={ArticleDetailScreen} />
+      <Stack.Screen name='SavedPosts' component={SavedPostsScreen} />
+      <Stack.Screen name='WaterDetail' component={WaterDetailScreen} />
       <Stack.Screen name='WorkoutLog' component={WorkoutLogScreen} />
       <Stack.Screen name='AddWorkout' component={AddWorkoutScreen} />
       <Stack.Screen name='FamilyDetail' component={FamilyDetailScreen} />

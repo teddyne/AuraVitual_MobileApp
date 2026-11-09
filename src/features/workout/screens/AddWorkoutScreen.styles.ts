@@ -18,7 +18,7 @@ export const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F6F8F6',
+    backgroundColor: '#F1F8E9',
     borderRadius: 14,
     padding: 14,
     fontSize: 16,

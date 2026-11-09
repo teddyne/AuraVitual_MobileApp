@@ -8,11 +8,15 @@ import {
   ActivityIndicator, Alert, Image, PanResponder, RefreshControl, ScrollView, Text,
   TouchableOpacity, View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { getPostById, getWorkoutSteps, levelLabel, type Post, type WorkoutStep } from '../../../api/workoutApi';
+import {
+  isSavedPost,
+  toggleSavedPost,
+} from '../../../utils/saved/savedPosts';
 import { useSettings } from '../../../context/SettingsContext';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { VideoPlayer } from '../../../components/workout/VideoPlayer';
@@ -39,7 +43,23 @@ export default function WorkoutPlayerScreen() {
   const [finished, setFinished] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [saved, setSaved] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Dấu lưu: đọc lúc mở màn + mỗi lần quay lại.
+  const refreshSaved = useCallback(async () => {
+    if (!postId) return;
+    setSaved(await isSavedPost('workout', postId));
+  }, [postId]);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSaved();
+    }, [refreshSaved]),
+  );
+  const onToggleSave = async () => {
+    if (!postId) return;
+    setSaved(await toggleSavedPost('workout', postId));
+  };
 
   // Tải lại khi kéo refresh (không reset bộ đếm đang chạy).
   const load = useCallback(async () => {
@@ -220,18 +240,28 @@ export default function WorkoutPlayerScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
 
-      {post.video_url ? (
-        <View style={styles.videoWrap}>
-          <VideoPlayer uri={post.video_url} />
-          <Text style={styles.videoNote}>{t('workout.player.sampleVideo')}</Text>
-        </View>
-      ) : post.cover_url && !imgError ? (
-        <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
-      ) : (
-        <View style={[styles.cover, { backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center' }]}>
-          <Ionicons name="fitness" size={64} color="#fff" />
-        </View>
-      )}
+      {/* Video/bìa + dấu lưu góc trên bên phải (cùng kiểu card luyện tập). */}
+      <View style={{ position: 'relative' }}>
+        {post.video_url ? (
+          <View style={styles.videoWrap}>
+            <VideoPlayer uri={post.video_url} />
+            <Text style={styles.videoNote}>{t('workout.player.sampleVideo')}</Text>
+          </View>
+        ) : post.cover_url && !imgError ? (
+          <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
+        ) : (
+          <View style={[styles.cover, { backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="fitness" size={64} color="#fff" />
+          </View>
+        )}
+        <TouchableOpacity style={styles.bookmark} onPress={onToggleSave}>
+          <Ionicons
+            name={saved ? 'bookmark' : 'bookmark-outline'}
+            size={20}
+            color='#fff'
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* Thanh tiến trình của bộ đếm bước tập */}
       <View style={styles.playerBar}>

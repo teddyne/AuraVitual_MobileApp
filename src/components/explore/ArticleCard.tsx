@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSettings } from '../../context/SettingsContext';
+import {
+  isSavedPost,
+  toggleSavedPost,
+} from '../../utils/saved/savedPosts';
 
 // Thẻ bài viết chuẩn dùng chung (Nhóm B, v4) — mẫu: mục "Kiến thức
 // chu kỳ & Thể trạng" ở CycleTrackingScreen: ảnh cover ở đầu thẻ,
@@ -38,6 +43,27 @@ export function ArticleCard({
   })();
   const [imgFailed, setImgFailed] = useState(false);
   const showPlaceholder = !post.cover_url || hasBadImg || imgFailed;
+  const [saved, setSaved] = useState(false);
+  const refreshSaved = useCallback(() => {
+    let alive = true;
+    void isSavedPost('article', post.id).then((v) => {
+      if (alive) setSaved(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [post.id]);
+  useEffect(() => refreshSaved(), [refreshSaved]);
+  useFocusEffect(
+    useCallback(() => {
+      const cleanup = refreshSaved();
+      return cleanup;
+    }, [refreshSaved]),
+  );
+  const onToggleSave = async () => {
+    const next = await toggleSavedPost('article', post.id);
+    setSaved(next);
+  };
   return (
     <TouchableOpacity
       style={styles.card}
@@ -58,6 +84,14 @@ export function ArticleCard({
           }}
         />
       )}
+      {/* Dấu lưu góc trên bên phải của bìa (cùng kiểu card luyện tập). */}
+      <TouchableOpacity style={styles.bookmark} onPress={onToggleSave}>
+        <Ionicons
+          name={saved ? 'bookmark' : 'bookmark-outline'}
+          size={20}
+          color='#fff'
+        />
+      </TouchableOpacity>
       <View style={styles.body}>
         <Text style={styles.title}>{post.title}</Text>
         {post.summary ? (
@@ -90,6 +124,17 @@ const styles = StyleSheet.create({
   cover: { width: '100%', height: 160 },
   coverPlaceholder: {
     backgroundColor: '#EAF6EC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bookmark: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },

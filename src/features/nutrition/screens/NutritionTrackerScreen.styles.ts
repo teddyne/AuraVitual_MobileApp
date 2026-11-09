@@ -61,7 +61,6 @@ export function makeStyles(theme: any) {
       gap: 10,
     },
     colorBar: { width: 6, height: 32, borderRadius: 3 },
-    mealIcon: { fontSize: 24 },
     cardTitle: { fontSize: 15, fontWeight: '600', color: theme.text, flex: 1 },
     cardValue: { fontSize: 15, fontWeight: '700', color: theme.text },
     muted: { fontSize: 13, color: theme.muted, marginTop: 2 },
@@ -123,6 +122,7 @@ export function makeStyles(theme: any) {
       padding: 14,
       marginBottom: 8,
     },
+    modalBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     modalBtnText: { color: theme.primaryDark, fontWeight: '700', fontSize: 15 },
     cancelText: {
       color: theme.muted,

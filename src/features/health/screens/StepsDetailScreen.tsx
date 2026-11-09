@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
@@ -51,8 +52,13 @@ export default function StepsDetailScreen({ navigation }: any) {
   const [syncing, setSyncing] = useState(false);
   const [sensorNote, setSensorNote] = useState<string | null>(null);
   const [sensorReady, setSensorReady] = useState(false);
-  const [manualInput, setManualInput] = useState('');
-  const [savingManual, setSavingManual] = useState(false);
+
+  // Chặn đồng bộ chồng nhau + chống gọi dồn khi app về foreground:
+  // trước đây mỗi lần AppState về 'active' là syncSensor chạy lại và
+  // hỏi quyền chuyển động lần nữa, nút "Đang đồng bộ..." / "Đồng bộ
+  // lại" nhấp nháy liên tục và ô nhập tay bị lag theo.
+  const syncingRef = useRef(false);
+  const lastAutoSyncRef = useRef(0);
 
   const lastUpsertRef = useRef<{ steps: number; at: number }>({
     steps: -1,
@@ -314,8 +320,22 @@ export default function StepsDetailScreen({ navigation }: any) {
     [upsertTodaySteps],
   );
 
+  // Đồng bộ cảm biến. Mặc định CHỈ KIỂM TRA quyền (không hỏi lại):
+  // các lần tự chạy (mở màn, về foreground, kéo refresh) mà cứ hỏi
+  // quyền là hộp thoại hệ thống hiện rồi tắt liên tục, AppState về
+  // 'active' lại gọi đồng bộ tiếp — thành vòng lặp nhấp nháy.
+  // Chỉ khi người dùng bấm "Cấp quyền lại" mới hỏi quyền thật
+  // (requestStepPermission bên dưới).
   const syncSensor = useCallback(
-    async (force = false): Promise<boolean> => {
+    async (
+      force = false,
+      opts: { requestPermission?: boolean } = {},
+    ): Promise<boolean> => {
+      // Đang đồng bộ thì bỏ qua lần gọi chồng lên (nút đã disable rồi
+      // nhưng AppState/mount vẫn có thể gọi cùng lúc).
+      if (syncingRef.current) return false;
+      syncingRef.current = true;
+      lastAutoSyncRef.current = Date.now();
       setSyncing(true);
       try {
         const { data: auth } = await supabase.auth.getUser();
@@ -332,10 +352,16 @@ export default function StepsDetailScreen({ navigation }: any) {
           return false;
         }
         let perm = await Pedometer.getPermissionsAsync();
-        if (!perm.granted) perm = await Pedometer.requestPermissionsAsync();
+        if (!perm.granted && opts.requestPermission) {
+          perm = await Pedometer.requestPermissionsAsync();
+        }
         if (!perm.granted) {
           setSensorStatus('denied');
-          setSensorNote(t('steps.noPermission'));
+          setSensorNote(
+            perm.canAskAgain === false
+              ? t('steps.openSettingsNote')
+              : t('steps.noPermission'),
+          );
           return false;
         }
         setSensorReady(true);
@@ -407,22 +433,63 @@ export default function StepsDetailScreen({ navigation }: any) {
         setSensorNote(t('steps.sensorUnreadable'));
         return false;
       } finally {
+        syncingRef.current = false;
         setSyncing(false);
       }
     },
     [loadAll, upsertTodaySteps, backfillWeekIOS, markSynced, t],
   );
 
+  // Luôn giữ hàm đồng bộ mới nhất trong ref để effect mount và
+  // listener AppState không chạy lại mỗi khi identity của syncSensor
+  // đổi (trước đây effect mount phụ thuộc syncSensor nên có thể chạy
+  // lại nhiều lần, góp phần làm nút đồng bộ nhấp nháy).
+  const syncRef = useRef(syncSensor);
+  syncRef.current = syncSensor;
+
+  // Chỉ nút "Cấp quyền lại" mới hỏi quyền thật. Đã bị từ chối vĩnh
+  // viễn (canAskAgain = false) thì mở Cài đặt của máy để người dùng
+  // bật quyền Hoạt động thể chất bằng tay — hỏi lại nữa hệ thống
+  // cũng không hiện hộp thoại.
+  const requestStepPermission = useCallback(async () => {
+    try {
+      const perm = await Pedometer.getPermissionsAsync();
+      if (perm.granted) {
+        await syncRef.current(false);
+        return;
+      }
+      if (perm.canAskAgain === false) {
+        setSensorNote(t('steps.openSettingsNote'));
+        await Linking.openSettings();
+        return;
+      }
+      const req = await Pedometer.requestPermissionsAsync();
+      if (!req.granted) {
+        setSensorStatus('denied');
+        setSensorNote(
+          req.canAskAgain === false
+            ? t('steps.openSettingsNote')
+            : t('steps.noPermission'),
+        );
+        return;
+      }
+      await syncRef.current(false);
+    } catch {
+      setSensorStatus('error');
+      setSensorNote(t('steps.sensorUnreadable'));
+    }
+  }, [t]);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       await loadAll();
-      if (alive) await syncSensor(false);
+      if (alive) await syncRef.current(false);
     })();
     return () => {
       alive = false;
     };
-  }, [loadAll, syncSensor]);
+  }, [loadAll]);
 
   // Đăng ký watch khi đã có quyền. Chỉ chạy khi màn này đang mở.
   useEffect(() => {
@@ -466,12 +533,17 @@ export default function StepsDetailScreen({ navigation }: any) {
   }, [sensorReady, refreshTodayIOS, handleAndroidUpdate]);
 
   // Về foreground là đồng bộ lại (bắt bước đã đi lúc app đóng, trên iOS).
+  // Tiết chế: lần về foreground trong vòng 30 giây sau lần đồng bộ
+  // gần nhất thì bỏ qua — hộp thoại xin quyền vừa tắt cũng làm app về
+  // 'active', không tiết chế là đồng bộ lại ngay rồi hỏi quyền tiếp.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncSensor(false);
+      if (state !== 'active') return;
+      if (Date.now() - lastAutoSyncRef.current < 30000) return;
+      void syncRef.current(false);
     });
     return () => sub.remove();
-  }, [syncSensor]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -483,16 +555,19 @@ export default function StepsDetailScreen({ navigation }: any) {
     }
   };
 
-  const saveManual = async () => {
-    const v = parseInt(manualInput.replace(/\D/g, ''), 10);
+  // Lưu số nhập tay. Nhận giá trị từ form (form giữ state riêng để
+  // gõ phím không re-render cả màn — trước đây mỗi phím gõ là cả màn
+  // gồm biểu đồ re-render nên ô nhập bị lag). Trả true khi lưu được
+  // để form tự xóa ô nhập.
+  const saveManual = async (rawValue: string): Promise<boolean> => {
+    const v = Number.parseInt(rawValue.replace(/\D/g, ''), 10);
     if (!Number.isFinite(v) || v < 0 || v > 100000) {
       setSensorNote(t('steps.manualRange'));
-      return;
+      return false;
     }
-    setSavingManual(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
+      if (!auth.user) return false;
       const uid = auth.user.id;
       const key = toKey(new Date());
       const { error } = await supabase
@@ -510,15 +585,14 @@ export default function StepsDetailScreen({ navigation }: any) {
           );
         if (r2.error) throw r2.error;
       }
-      setManualInput('');
       setSensorToday(null);
       setManualToday(true);
       setSensorStatus('manual');
       await loadAll();
+      return true;
     } catch {
       setSensorNote(t('steps.manualSaveFailed'));
-    } finally {
-      setSavingManual(false);
+      return false;
     }
   };
 
@@ -624,15 +698,11 @@ export default function StepsDetailScreen({ navigation }: any) {
             syncing={syncing}
             manualToday={manualToday}
             onSync={(force) => void syncSensor(force)}
+            onGrantPermission={() => void requestStepPermission()}
           />
 
           {showManualForm ? (
-            <StepsManualForm
-              manualInput={manualInput}
-              onChangeText={setManualInput}
-              savingManual={savingManual}
-              onSave={saveManual}
-            />
+            <StepsManualForm onSave={saveManual} />
           ) : null}
 
           <StepsGauge todaySteps={todaySteps} goal={goal} percent={percent} />

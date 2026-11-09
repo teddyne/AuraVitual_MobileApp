@@ -19,6 +19,7 @@ export function StepsSyncCard({
   syncing,
   manualToday,
   onSync,
+  onGrantPermission,
 }: {
   statusText: string;
   lastSyncAt: string | null;
@@ -28,6 +29,9 @@ export function StepsSyncCard({
   syncing: boolean;
   manualToday: boolean;
   onSync: (force: boolean) => void;
+  // Nút "Cấp quyền lại" hỏi quyền thật (mở hộp thoại hệ thống hoặc
+  // Cài đặt của máy); nút "Đồng bộ lại" chỉ kiểm tra, không hỏi quyền.
+  onGrantPermission: () => void;
 }) {
   const { t } = useSettings();
   return (
@@ -58,7 +62,7 @@ export function StepsSyncCard({
         {sensorStatus === 'denied' ? (
           <TouchableOpacity
             style={styles.syncBtn}
-            onPress={() => onSync(false)}
+            onPress={onGrantPermission}
           >
             <Text style={styles.syncBtnText}>{t('steps.grantAgain')}</Text>
           </TouchableOpacity>

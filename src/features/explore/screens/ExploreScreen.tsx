@@ -5,19 +5,20 @@ import {
   ScrollView,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getArticles,
   getWorkouts,
   type Post,
 } from '../../../api/workoutApi';
-import { FAV_KEY } from '../constants';
+import {
+  loadSavedIds,
+  toggleSavedPost,
+} from '../../../utils/saved/savedPosts';
 import { useSettings } from '../../../context/SettingsContext';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { ExploreWorkoutCard } from '../../../components/explore/ExploreWorkoutCard';
@@ -54,8 +55,7 @@ export default function ExploreScreen() {
       const [w, a] = await Promise.all([getWorkouts(), getArticles(20)]);
       setWorkouts(w);
       setArticles(a);
-      const saved = await AsyncStorage.getItem(FAV_KEY);
-      if (saved) setFavs(JSON.parse(saved) as string[]);
+      setFavs(await loadSavedIds('workout'));
     } catch (e: any) {
       setError(e?.message ?? t('common.loadFailed'));
     } finally {
@@ -74,11 +74,10 @@ export default function ExploreScreen() {
   }, [load]);
 
   const toggleFav = async (id: string) => {
-    const next = favs.includes(id)
-      ? favs.filter((x) => x !== id)
-      : [...favs, id];
-    setFavs(next);
-    await AsyncStorage.setItem(FAV_KEY, JSON.stringify(next));
+    const nowSaved = await toggleSavedPost('workout', id);
+    setFavs((prev) =>
+      nowSaved ? [...prev, id] : prev.filter((x) => x !== id),
+    );
   };
 
   // Nhóm B (v6): lọc topic TRƯỚC, rồi mới lọc theo ô tìm kiếm
@@ -245,12 +244,6 @@ export default function ExploreScreen() {
               </>
             )}
           </ScrollView>
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => navigation.navigate('AddWorkout')}
-          >
-            <Ionicons name='add' size={30} color='#fff' />
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

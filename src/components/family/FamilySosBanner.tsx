@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSettings, type ThemePalette } from '../../context/SettingsContext';
+import { AppIcon } from '../ui/AppIcon';
 
 // Banner SOS — chi UI theo yeu cau — trong FamilyDetailScreen (doi nguyen van).
 export function FamilySosBanner({
@@ -15,7 +16,7 @@ export function FamilySosBanner({
   const { t } = useSettings();
   return (
     <View style={[styles.sosCard, { backgroundColor: '#FFEBEE' }]}>
-      <Text style={styles.sosIcon}>🛡</Text>
+      <AppIcon name='shield-outline' size={26} tone='danger' />
       <View style={{ flex: 1 }}>
         <Text style={[styles.sosTitle, { color: theme.text }]}>{t('family.sosTitle')}</Text>
         <Text style={[styles.sosBody, { color: theme.text }]}>
@@ -33,8 +34,7 @@ export function FamilySosBanner({
 }
 
 const styles = StyleSheet.create({
-  sosCard: { flexDirection: 'row', borderRadius: 16, padding: 14, marginTop: 24, gap: 10 },
-  sosIcon: { fontSize: 26 },
+  sosCard: { flexDirection: 'row', borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
   sosTitle: { fontSize: 16, fontWeight: '800' },
   sosBody: { fontSize: 13, lineHeight: 19, marginTop: 4 },
   sosFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },

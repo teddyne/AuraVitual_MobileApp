@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
   manualRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   manualInput: {
     flex: 1,
-    backgroundColor: '#EEF1FF',
+    backgroundColor: '#F1F8E9',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,

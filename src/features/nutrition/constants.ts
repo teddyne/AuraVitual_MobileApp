@@ -5,16 +5,19 @@
 // ban trong lib khong export va toNum ban string (replace ',' -> '.')
 // khac ban trong lib; chung nam o ./utils/nutritionFormat.ts.
 import type { DraftItem, MealType } from '../../api/nutritionApi';
+import type { AppIconName } from '../../components/ui/AppIcon';
 
 export const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-// ĐÃ BỎ MACRO_ICONS: chú thích biểu đồ không còn dùng emoji 🍞🥩🧈 nữa,
-// chỉ còn chấm màu + tên + %, màu giữ nguyên như cũ.
-export const MEAL_ICONS: Record<MealType, string> = {
-  breakfast: '🍳',
-  lunch: '🍱',
-  dinner: '🍲',
-  snack: '🍩',
+// Icon bữa ăn = Ionicons qua AppIcon (đồng bộ toàn app). Trước đây là
+// emoji 🍳🍱🍲🍩 nên nhìn lạc với các màn khác.
+export const MEAL_ICONS: Record<MealType, AppIconName> = {
+  breakfast: 'sunny-outline',
+  lunch: 'restaurant-outline',
+  dinner: 'moon-outline',
+  snack: 'cafe-outline',
 };
+// Chú thích biểu đồ macro không dùng emoji 🍞🥩🧈 nữa, chỉ còn chấm
+// màu + tên + %, màu giữ nguyên như cũ.
 export const MACRO_COLORS = {
   carbs: '#4E8A47',
   protein: '#A63D2F',

@@ -30,7 +30,7 @@ export function SharingNicknameBox({
         placeholder={t('family.nickExample')}
         placeholderTextColor={theme.muted}
         maxLength={30}
-        style={[styles.nickInput, { backgroundColor: '#FFFFFF', color: theme.text }]}
+        style={[styles.nickInput, { backgroundColor: '#F1F8E9', color: theme.text }]}
       />
       <View style={styles.reqBtns}>
         <TouchableOpacity

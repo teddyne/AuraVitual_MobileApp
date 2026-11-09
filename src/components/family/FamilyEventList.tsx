@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSettings, type ThemePalette } from '../../context/SettingsContext';
+import { AppIcon } from '../ui/AppIcon';
 import type { MemberEvent } from '../../api/familyApi';
 
 // Cum Lich su su kien hom nay trong FamilyDetailScreen (doi nguyen van).
@@ -24,7 +25,7 @@ export function FamilyEventList({
       {events.map((e) => (
         <View key={e.id} style={[styles.eventCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={[styles.eventIcon, { backgroundColor: theme.cardAlt }]}>
-            <Text style={styles.eventEmoji}>{e.icon}</Text>
+            <AppIcon name={e.icon} size={22} tone='primaryDark' />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.eventTitle, { color: theme.primaryDark }]}>{e.title}</Text>
@@ -42,7 +43,6 @@ const styles = StyleSheet.create({
   notice: { fontSize: 14, lineHeight: 20 },
   eventCard: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8, gap: 10 },
   eventIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  eventEmoji: { fontSize: 20 },
   eventTitle: { fontSize: 12, fontWeight: '800' },
   eventSub: { fontSize: 14, fontWeight: '700', marginTop: 2 },
   eventBody: { fontSize: 13, marginTop: 2, lineHeight: 18 },
