@@ -1367,7 +1367,7 @@ export const vi = {
   aiChat: {
     title: 'Trò chuyện với trợ lý',
     hello:
-      'Chào bạn! Mình là trợ lý AuraVital. Bạn hỏi về calo, bước chân, giấc ngủ, nước uống hay bài tập nhé.',
+      'Chào bạn! Mình là trợ lý AuraVital. Bạn cứ hỏi mình về sức khỏe của bạn (calo, bước chân, giấc ngủ, nước uống, bài tập), thông tin về thực phẩm, hay bất cứ thắc mắc sức khỏe nào nhé.',
     online: 'AI trực tuyến',
     offline: 'Trả lời bằng dữ liệu của bạn',
     placeholder: 'Nhập câu hỏi...',

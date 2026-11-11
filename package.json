@@ -19,7 +19,6 @@
     "expo-asset": "~58.0.19",
     "expo-audio": "~58.0.11",
     "expo-camera": "~58.0.14",
-    "expo-dev-client": "~58.0.18",
     "expo-file-system": "~58.0.13",
     "expo-font": "~58.0.11",
     "expo-image": "~58.0.18",
@@ -63,9 +62,9 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start --go",
-    "android": "expo start --go --android",
-    "ios": "expo start --go --ios",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
