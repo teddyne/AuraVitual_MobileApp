@@ -28,7 +28,25 @@ export function getYouTubeVideoId(uri: string): string | null {
   return null;
 }
 
-export function VideoPlayer({ uri }: { uri: string }) {
+export type VideoProgress = {
+  currentTime: number;
+  duration: number;
+  playing: boolean;
+};
+
+export type VideoSeekRequest = { time: number; nonce: number };
+
+export function VideoPlayer({
+  uri,
+  onProgress,
+  seekRequest,
+}: {
+  uri: string;
+  // Chi co tac dung voi file mp4 (expo-video); link YouTube nhung qua
+  // WebView nen khong bao tien do / khong tua duoc tu app.
+  onProgress?: (p: VideoProgress) => void;
+  seekRequest?: VideoSeekRequest | null;
+}) {
   const { t } = useSettings();
   const youtubeId = getYouTubeVideoId(uri);
   if (youtubeId) {
@@ -58,13 +76,23 @@ export function VideoPlayer({ uri }: { uri: string }) {
       </View>
     );
   }
-  return <ExpoVideoPlayer uri={uri} />;
+  return <ExpoVideoPlayer uri={uri} onProgress={onProgress} seekRequest={seekRequest} />;
 }
 
-function ExpoVideoPlayer({ uri }: { uri: string }) {
+function ExpoVideoPlayer({
+  uri,
+  onProgress,
+  seekRequest,
+}: {
+  uri: string;
+  onProgress?: (p: VideoProgress) => void;
+  seekRequest?: VideoSeekRequest | null;
+}) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
   });
+  const onProgressRef = useRef(onProgress);
+  onProgressRef.current = onProgress;
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -82,12 +110,23 @@ function ExpoVideoPlayer({ uri }: { uri: string }) {
   useEffect(() => {
     const id = setInterval(() => {
       if (scrubRef.current != null) return;
-      setCurrentTime(player.currentTime ?? 0);
-      setDuration(player.duration ?? 0);
+      const ct = player.currentTime ?? 0;
+      const d = player.duration ?? 0;
+      setCurrentTime(ct);
+      setDuration(d);
       setPlaying(player.playing);
+      onProgressRef.current?.({ currentTime: ct, duration: d, playing: player.playing });
     }, 500);
     return () => clearInterval(id);
   }, [player]);
+
+  // Bam 1 buoc tap o man hinh cha -> tua video toi dung giay do va phat tiep.
+  useEffect(() => {
+    if (!seekRequest) return;
+    player.currentTime = seekRequest.time;
+    player.play();
+    setPlaying(true);
+  }, [seekRequest, player]);
 
   const timeFromX = (x: number): number => {
     const d = durationRef.current;
@@ -175,7 +214,7 @@ function ExpoVideoPlayer({ uri }: { uri: string }) {
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: '#000' },
-  video: { width: '100%', height: 220 },
+  video: { width: '100%', aspectRatio: 16 / 9 },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',

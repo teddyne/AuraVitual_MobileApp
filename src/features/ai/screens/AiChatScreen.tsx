@@ -28,9 +28,12 @@ import {
   loadChatUsage,
   recordChatUsage,
   sendAiChat,
+  todayKey,
   type AiChatContext,
   type AiChatMessage,
 } from '../aiChatService';
+import { getNutritionDay } from '../../../api/nutritionApi';
+import { getWorkoutLogsForDate } from '../../../api/workoutApi';
 import { ChatBubble } from '../../../components/ai/ChatBubble';
 import { aiErrorMessageKey } from '../../../api/aiClient';
 import { s } from './AiChatScreen.styles';
@@ -57,9 +60,11 @@ const scrollRef = useRef<ScrollViewInstance | null>(null);
     if (!user?.id) return;
     (async () => {
       try {
-        const [profile, metric] = await Promise.all([
+        const [profile, metric, nutrition, logs] = await Promise.all([
           getProfile(user.id),
           getTodayMetric(user.id).catch(() => null),
+          getNutritionDay(user.id, todayKey()).catch(() => null),
+          getWorkoutLogsForDate(user.id, todayKey()).catch(() => null),
         ]);
         const p: Profile | null = profile;
         setCtx({
@@ -72,6 +77,10 @@ const scrollRef = useRef<ScrollViewInstance | null>(null);
           stepsToday: metric?.steps,
           sleepToday: metric?.sleep_hours,
           waterToday: metric?.water_ml,
+          caloriesToday: nutrition?.totalKcal ?? null,
+          caloriesBurnedToday: logs
+            ? logs.reduce((s, l) => s + (l.kcal || 0), 0)
+            : null,
         });
       } catch {
         // Không tải được hồ sơ thì chat offline vẫn trả lời chung được.

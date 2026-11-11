@@ -2,10 +2,15 @@
 // AuraVital — WorkoutPlayerScreen.tsx (Trình phát bài tập)
 // Route params: { postId: string }.
 // Cần cài: npx expo install expo-video expo-keep-awake
+//
+// Video là nguồn thật duy nhất: nút phát + thanh tua nằm trong chính
+// trình phát video, bước tập hiện tại suy ra từ thời gian phát của
+// video (start_at_sec từng bước). Đồng hồ đếm bước riêng + nút tua
+// ±10s cũ đã bỏ vì trùng với điều khiển của video.
 // =====================================================================
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, PanResponder, RefreshControl, ScrollView, Text,
+  ActivityIndicator, Image, RefreshControl, ScrollView, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -19,7 +24,7 @@ import {
 } from '../../../utils/saved/savedPosts';
 import { useSettings } from '../../../context/SettingsContext';
 import { useSubscription } from '../../../context/SubscriptionContext';
-import { VideoPlayer } from '../../../components/workout/VideoPlayer';
+import { VideoPlayer, type VideoProgress } from '../../../components/workout/VideoPlayer';
 import { fmtClock } from '../../../utils/workout/workoutFormat';
 import { styles } from './WorkoutPlayerScreen.styles';
 
@@ -35,16 +40,14 @@ export default function WorkoutPlayerScreen() {
   const [steps, setSteps] = useState<WorkoutStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // Một mốc thời gian duy nhất (giây từ đầu bài) thay cho 2 state
-  // bước + giây-trong-bước: tránh việc cập nhật lồng nhau trong updater
-  // của setState, vốn có thể nhảy bước khi StrictMode gọi updater 2 lần.
-  const [elapsedTotal, setElapsedTotal] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [finished, setFinished] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Thời gian phát hiện tại của video (VideoPlayer báo về 500ms/lần).
+  const [videoTime, setVideoTime] = useState(0);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  // Yêu cầu tua video tới giây X (bấm 1 bước tập ở danh sách bên dưới).
+  const [seekReq, setSeekReq] = useState<{ time: number; nonce: number } | null>(null);
 
   // Dấu lưu: đọc lúc mở màn + mỗi lần quay lại.
   const refreshSaved = useCallback(async () => {
@@ -61,7 +64,7 @@ export default function WorkoutPlayerScreen() {
     setSaved(await toggleSavedPost('workout', postId));
   };
 
-  // Tải lại khi kéo refresh (không reset bộ đếm đang chạy).
+  // Tải lại khi kéo refresh.
   const load = useCallback(async () => {
     try {
       if (!postId) throw new Error(t('workout.player.missingPostId'));
@@ -84,100 +87,48 @@ export default function WorkoutPlayerScreen() {
 
   const totalSec = useMemo(() => steps.reduce((sum, s) => sum + (s.duration_sec || 0), 0), [steps]);
 
-  // Bước hiện tại suy ra từ elapsedTotal, không lưu state riêng.
+  // Giây bắt đầu của 1 bước TRÊN VIDEO (start_at_sec trong DB; bài cũ
+  // chưa có thì tính dồn từ thời lượng các bước trước).
+  const stepStartAt = useCallback((idx: number): number => {
+    const s = steps[idx];
+    if (!s) return 0;
+    if (s.start_at_sec != null) return s.start_at_sec;
+    let acc = 0;
+    for (let i = 0; i < idx; i++) acc += steps[i].duration_sec || 0;
+    return acc;
+  }, [steps]);
+
+  // Bước hiện tại suy ra từ thời gian phát của video.
   const stepIdx = useMemo(() => {
     if (steps.length === 0) return 0;
-    let acc = 0;
+    let cur = 0;
     for (let i = 0; i < steps.length; i++) {
-      acc += steps[i].duration_sec || 0;
-      if (elapsedTotal < acc) return i;
+      if (videoTime >= stepStartAt(i)) cur = i;
+      else break;
     }
-    return steps.length - 1;
-  }, [steps, elapsedTotal]);
+    return cur;
+  }, [steps, videoTime, stepStartAt]);
 
-  useEffect(() => {
-    if (!playing || finished || steps.length === 0) return;
-    timerRef.current = setInterval(() => {
-      setElapsedTotal((prev) => {
-        if (prev + 1 >= totalSec) {
-          setFinished(true);
-          setPlaying(false);
-          return totalSec;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [playing, finished, steps, totalSec]);
+  // Video báo tiến độ → màn hình cập nhật bước hiện tại theo.
+  const handleVideoProgress = useCallback((p: VideoProgress) => {
+    setVideoTime(p.currentTime);
+    setVideoPlaying(p.playing);
+  }, []);
 
-  const seek = (delta: number) => {
+  // Bấm 1 bước tập → video nhảy tới đúng phút của bước đó và phát tiếp.
+  // Video tua tự do được nên không còn khóa bước như trước.
+  const seekToStep = (idx: number) => {
     if (steps.length === 0) return;
-    setElapsedTotal((prev) => Math.max(0, Math.min(totalSec, prev + delta)));
+    setSeekReq({ time: stepStartAt(idx), nonce: Date.now() });
   };
 
-  const goToStep = (idx: number) => {
-    if (idx > stepIdx && !finished) {
-      Alert.alert(t('workout.player.lockedTitle'), t('workout.player.lockedBody'));
-      return;
-    }
-    let start = 0;
-    for (let i = 0; i < idx && i < steps.length; i++) start += steps[i].duration_sec || 0;
-    setElapsedTotal(start);
-    setFinished(false);
-  };
+  // Hết bước cuối cùng = tập xong (phần outro sau đó không tính).
+  const lastStepEnd = steps.length > 0
+    ? stepStartAt(steps.length - 1) + (steps[steps.length - 1].duration_sec || 0)
+    : 0;
+  const finished = lastStepEnd > 0 && videoTime >= lastStepEnd;
 
-  // Kéo thanh tiến trình bước tập: đổi elapsedTotal trực tiếp.
-  // Tôn trọng khóa bước như goToStep: không nhảy tới bước chưa mở.
-  // PanResponder chỉ tạo 1 lần nên handler đọc hàm mới nhất qua ref
-  // (tránh kẹt stepIdx/totalSec của lần render đầu).
-  const stepTrackWidth = useRef(0);
-  const stepLockAlerted = useRef(false);
-  const scrubStep = (x: number, isGrant: boolean) => {
-    if (totalSec <= 0 || stepTrackWidth.current <= 0 || steps.length === 0)
-      return;
-    if (isGrant) stepLockAlerted.current = false;
-    const ratio = Math.max(0, Math.min(1, x / stepTrackWidth.current));
-    const target = ratio * totalSec;
-    let acc = 0;
-    let targetIdx = steps.length - 1;
-    for (let i = 0; i < steps.length; i++) {
-      acc += steps[i].duration_sec || 0;
-      if (target < acc) {
-        targetIdx = i;
-        break;
-      }
-    }
-    if (targetIdx > stepIdx && !finished) {
-      if (!stepLockAlerted.current) {
-        stepLockAlerted.current = true;
-        Alert.alert(
-          t('workout.player.lockedTitle'),
-          t('workout.player.lockedBody'),
-        );
-      }
-      return;
-    }
-    setElapsedTotal(Math.floor(target));
-    setFinished(false);
-  };
-  const scrubStepRef = useRef(scrubStep);
-  scrubStepRef.current = scrubStep;
-  const stepPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) =>
-        scrubStepRef.current(evt.nativeEvent.locationX, true),
-      onPanResponderMove: (evt) =>
-        scrubStepRef.current(evt.nativeEvent.locationX, false),
-      onPanResponderRelease: () => {},
-      onPanResponderTerminate: () => {},
-    }),
-  ).current;
-
-  const finishMinutes = totalSec > 0 ? Math.max(1, Math.round(totalSec / 60)) : post?.duration_min ?? 15;
+  const finishMinutes = post?.duration_min ?? (totalSec > 0 ? Math.max(1, Math.round(totalSec / 60)) : 15);
 
   if (loading) {
     return (
@@ -199,7 +150,7 @@ export default function WorkoutPlayerScreen() {
   }
 
   // Gói Free: không phát video, hiện màn khóa + nút sang xem các gói.
-  // Mọi logic tải bài, bước tập, bộ đếm bên trên vẫn giữ nguyên.
+  // Mọi logic tải bài, bước tập bên trên vẫn giữ nguyên.
   if (!canWorkout) {
     return (
       <SafeAreaProvider>
@@ -221,7 +172,6 @@ export default function WorkoutPlayerScreen() {
   }
 
   const curStep = steps[stepIdx];
-  const progressPct = totalSec > 0 ? (elapsedTotal / totalSec) * 100 : 0;
 
   return (
     <SafeAreaProvider>
@@ -244,8 +194,7 @@ export default function WorkoutPlayerScreen() {
       <View style={{ position: 'relative' }}>
         {post.video_url ? (
           <View style={styles.videoWrap}>
-            <VideoPlayer uri={post.video_url} />
-            <Text style={styles.videoNote}>{t('workout.player.sampleVideo')}</Text>
+            <VideoPlayer uri={post.video_url} onProgress={handleVideoProgress} seekRequest={seekReq} />
           </View>
         ) : post.cover_url && !imgError ? (
           <Image source={{ uri: post.cover_url }} style={styles.cover} onError={() => setImgError(true)} />
@@ -263,50 +212,6 @@ export default function WorkoutPlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Thanh tiến trình của bộ đếm bước tập */}
-      <View style={styles.playerBar}>
-        <TouchableOpacity style={styles.seekBtn} onPress={() => seek(-10)}>
-          <Text style={styles.seekText}>↺ 10</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bigPlay}
-          onPress={() => {
-            if (finished) {
-              setElapsedTotal(0);
-              setFinished(false);
-              setPlaying(true);
-            } else {
-              setPlaying((v) => !v);
-            }
-          }}
-        >
-          <Ionicons name={playing ? 'pause' : 'play'} size={28} color="#fff" style={{ marginLeft: playing ? 0 : 3 }} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.seekBtn} onPress={() => seek(10)}>
-          <Text style={styles.seekText}>10 ↻</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.timeRow}>
-        <Text style={styles.timeText}>{fmtClock(elapsedTotal)}</Text>
-        <Text style={styles.timeText}>{fmtClock(totalSec)}</Text>
-      </View>
-      {/* Thanh tiến trình bước tập: bấm hoặc kéo ngang để tua. */}
-      <View
-        style={styles.barHit}
-        onLayout={(e) => {
-          stepTrackWidth.current = e.nativeEvent.layout.width;
-        }}
-        {...stepPan.panHandlers}
-      >
-        <View style={styles.barTrack}>
-          <View
-            style={[styles.barFill, { width: `${Math.min(100, progressPct)}%` }]}
-          />
-          <View
-            style={[styles.barThumb, { left: `${Math.min(100, progressPct)}%` }]}
-          />
-        </View>
-      </View>
       {curStep && !finished && (
         <Text style={styles.nowPlaying}>{t('workout.player.nowPlaying', { title: curStep.title })}</Text>
       )}
@@ -348,15 +253,15 @@ export default function WorkoutPlayerScreen() {
           <TouchableOpacity
             key={s.id}
             style={[styles.stepRow, isCurrent && styles.stepCurrent]}
-            onPress={() => goToStep(idx)}
+            onPress={() => seekToStep(idx)}
           >
             <View style={[styles.stepPlay, isCurrent && styles.stepPlayActive]}>
               {isDone && !isCurrent ? (
                 <Ionicons name="checkmark" size={18} color="#2E7D32" />
               ) : isCurrent ? (
-                <Ionicons name={playing ? 'pause' : 'play'} size={18} color="#fff" />
+                <Ionicons name={videoPlaying ? 'pause' : 'play'} size={18} color="#fff" />
               ) : (
-                <Ionicons name="lock-closed" size={16} color="#8A968E" />
+                <Ionicons name="play" size={18} color="#8A968E" />
               )}
             </View>
             <View style={{ flex: 1 }}>
@@ -380,7 +285,8 @@ export default function WorkoutPlayerScreen() {
           if (finished || steps.length === 0) {
             navigation.navigate('WorkoutLog', { postId: post.id, minutes: finishMinutes });
           } else {
-            setPlaying(true);
+            // Bắt đầu lại từ đầu video.
+            setSeekReq({ time: 0, nonce: Date.now() });
           }
         }}
       >

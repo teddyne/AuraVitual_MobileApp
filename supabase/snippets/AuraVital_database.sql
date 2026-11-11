@@ -1156,3 +1156,40 @@ create policy cycles_read_shared on public.cycles for select to authenticated
     where fl.owner_id = cycles.user_id
       and fl.viewer_id = (select auth.uid())
   ));
+
+
+
+UPDATE public.posts
+SET video_url = 'https://tzubghomkogmendtxgfk.supabase.co/storage/v1/object/public/workout-videos/giancobuoisang-10phut.mp4',
+    body = 'Video 10 phút giãn cơ buổi sáng của Coach Sky: các động tác giãn cơ nhẹ nhàng giúp giảm stress, làm được vào buổi sáng hoặc sau khi tập xong.',
+    kcal_estimate = 25
+WHERE title = 'Bài tập giãn cơ 10 phút buổi sáng';
+
+
+
+INSERT INTO public.workout_steps (post_id, step_order, title, instruction, duration_sec, start_at_sec)
+SELECT p.id, v.step_order, v.title, v.instruction, v.duration_sec, v.start_at_sec
+FROM public.posts p
+JOIN (VALUES
+  ('Bài tập giãn cơ 10 phút buổi sáng', 1, 'Hít thở thiền định', 'Ngồi thẳng lưng, hít sâu bằng mũi rồi thở chậm bằng miệng.', 45, 22),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 2, 'Giãn vùng cơ lưng xô cổ', 'Kéo giãn lưng xô và cổ, giữ vai thả lỏng.', 73, 68),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 3, 'Giãn vùng cơ xung quanh cổ', 'Xoay cổ chậm rãi, nghiêng đầu sang hai bên.', 62, 142),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 4, 'Giãn vùng cơ cổ tay', 'Xoay cổ tay, duỗi và gập bàn tay nhẹ nhàng.', 55, 205),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 5, 'Giãn vùng cơ lưng xô và hông', 'Vươn tay nghiêng người, mở rộng lưng xô và hông.', 62, 261),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 6, 'Giãn vùng cơ mông đùi', 'Gập người kéo giãn mông và đùi sau, giữ lưng thẳng.', 170, 324),
+  ('Bài tập giãn cơ 10 phút buổi sáng', 7, 'Giãn vùng cơ vai tay và lưng xô', 'Xoay vai, vươn tay qua đầu, giãn vai và lưng xô.', 76, 495)
+) AS v(post_title, step_order, title, instruction, duration_sec, start_at_sec)
+  ON p.title = v.post_title
+WHERE p.topic = 'workout'
+ON CONFLICT (post_id, step_order) DO UPDATE SET
+  title = EXCLUDED.title,
+  instruction = EXCLUDED.instruction,
+  duration_sec = EXCLUDED.duration_sec,
+  start_at_sec = EXCLUDED.start_at_sec;
+
+-- Kiểm tra (phải ra đúng 7 dòng, tổng duration_sec = 543 giây = 9:03;
+-- 22 giây đầu và ~37 giây cuối video là mở đầu / kết thúc, không phải động tác):
+SELECT step_order, title, duration_sec, start_at_sec
+FROM public.workout_steps
+WHERE post_id = (SELECT id FROM public.posts WHERE title = 'Bài tập giãn cơ 10 phút buổi sáng')
+ORDER BY step_order;

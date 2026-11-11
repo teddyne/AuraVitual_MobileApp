@@ -10,10 +10,11 @@ export function makeStyles(theme: any) {
       marginVertical: 8,
     },
     tab: {
-      flex: 1,
+      flexShrink: 0,
       backgroundColor: theme.cardAlt,
       borderRadius: 999,
       paddingVertical: 10,
+      paddingHorizontal: 16,
       alignItems: 'center',
     },
     tabActive: { backgroundColor: theme.primaryDark },

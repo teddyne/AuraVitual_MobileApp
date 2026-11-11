@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../auth/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
 import { AppHeader } from '../../../components/ui/AppHeader';
+import { AppIcon } from '../../../components/ui/AppIcon';
 import { IconBadge } from '../../../components/ui/IconBadge';
 import {
   formatNumber,
@@ -31,7 +32,6 @@ import { styles } from './HealthDataScreen.styles';
 // DB thật (health_metrics, meals, cycles, profiles). Chỉ số nào DB
 // không có (ví dụ huyết áp — bảng health_metrics không có cột đó) thì
 // KHÔNG hiện hàng, chứ không bịa số. Chỉ số có cột nhưng hôm nay chưa
-// ghi thì hiện "Chưa có dữ liệu".
 type Row = {
   id: string;
   icon: any;
@@ -182,9 +182,14 @@ export default function HealthDataScreen() {
   ];
 
   const q = query.trim().toLowerCase();
-  const visible = q
+  const filtered = q
     ? rows.filter((r) => r.label.toLowerCase().includes(q))
     : rows;
+  // Chỉ số có dữ liệu lên trên, chưa có dữ liệu xuống dưới; giữ
+  // nguyên thứ tự gốc trong từng nhóm (sort ổn định).
+  const visible = [...filtered].sort(
+    (a, b) => (a.value == null ? 1 : 0) - (b.value == null ? 1 : 0),
+  );
 
   if (loading) {
     return (
@@ -217,7 +222,7 @@ export default function HealthDataScreen() {
           }
         >
           <View style={styles.searchBox}>
-            <Ionicons name='search-outline' size={20} color='#888' />
+            <AppIcon name='search-outline' size={20} tone='muted' />
             <TextInput
               style={styles.searchInput}
               value={query}
