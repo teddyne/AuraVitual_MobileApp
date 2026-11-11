@@ -1370,7 +1370,7 @@ export const en = {
   aiChat: {
     title: 'Chat with assistant',
     hello:
-      'Hello! I am the AuraVital assistant. Ask me about calories, steps, sleep, water or workouts.',
+      'Hello! I am the AuraVital assistant. Ask me about your health (calories, steps, sleep, water, workouts), food facts, or any other health question.',
     online: 'AI online',
     offline: 'Answering from your data',
     placeholder: 'Type a question...',

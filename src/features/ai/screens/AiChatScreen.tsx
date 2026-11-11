@@ -1,8 +1,8 @@
 // Màn Trò chuyện với trợ lý — mở từ Cài đặt > Trò chuyện.
 // Gói Free: 5 tin/ngày, hết thì mời nâng cấp lên Pro. Gói Pro / Family:
-// không giới hạn. Khi chưa có key Gemini thì trợ lý vẫn trả lời
-// bằng luật trên dữ liệu thật (xem aiChatService.ts).
-
+// không giới hạn. Trợ lý gọi Gemini qua proxy Edge Function 'ai-chat'
+// (key chỉ nằm trong secret của project). Khi proxy chưa sẵn sàng thì
+// trợ lý vẫn trả lời bằng luật trên dữ liệu thật (xem aiChatService.ts).
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -46,9 +46,10 @@ export default function AiChatScreen({ navigation }: any) {
   const [sending, setSending] = useState(false);
   const [usage, setUsage] = useState(0);
   const [ctx, setCtx] = useState<AiChatContext>({});
-  const [online, setOnline] = useState(
-    !!process.env.EXPO_PUBLIC_GEMINI_API_KEY,
-  );
+  // Mặc định coi như trực tuyến (proxy Edge Function); lần trả lời đầu
+  // sẽ sửa lại nếu proxy chưa deploy / chưa đặt secret.
+  const [online, setOnline] = useState(true);
+
 const scrollRef = useRef<ScrollViewInstance | null>(null);
 
   useEffect(() => {
@@ -108,13 +109,6 @@ const scrollRef = useRef<ScrollViewInstance | null>(null);
       );
     }
   };
-
-  const quickReplies = [
-    t('aiChat.quickCalories'),
-    t('aiChat.quickSteps'),
-    t('aiChat.quickSleep'),
-    t('aiChat.quickWorkout'),
-  ];
 
   return (
     <SafeAreaProvider>
@@ -177,19 +171,6 @@ const scrollRef = useRef<ScrollViewInstance | null>(null);
               </TouchableOpacity>
             </View>
           )}
-
-          <View style={s.quickRow}>
-            {quickReplies.map((q) => (
-              <TouchableOpacity
-                key={q}
-                style={[s.quickChip, { borderColor: theme.border, backgroundColor: theme.card }]}
-                onPress={() => send(q)}
-                disabled={sending || limitReached}
-              >
-                <Text style={[s.quickText, { color: theme.primaryDark }]}>{q}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
 
           <View style={s.inputRow}>
             <TextInput

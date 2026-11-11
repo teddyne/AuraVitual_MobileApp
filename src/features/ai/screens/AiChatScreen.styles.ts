@@ -20,9 +20,6 @@ export const s = StyleSheet.create({
   bubbleRowTheir: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleText: { fontSize: 15, lineHeight: 21 },
-  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
-  quickChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
-  quickText: { fontSize: 13, fontWeight: '700' },
   limitCard: {
     marginHorizontal: 16,
     marginBottom: 8,

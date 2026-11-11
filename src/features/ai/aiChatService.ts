@@ -1,12 +1,15 @@
 // Trợ lý AI trong Cài đặt: trả lời từ dữ liệu thật của người dùng
 // (profiles + health_metrics hôm nay), không tự bịa số liệu.
-// - Có EXPO_PUBLIC_GEMINI_API_KEY: gọi Gemini qua src/lib/aiClient.ts.
-// - Không có key: trả lời bằng luật (rule-based) ngay trên máy, vẫn
-//   dùng đúng mục tiêu và chỉ số hôm nay đã tải được. Khi không có dữ
-//   liệu thì nói rõ "chưa có dữ liệu", không đoán.
+// - Ưu tiên proxy: app gọi Edge Function 'ai-chat' qua
+//   supabase.functions.invoke — key Gemini chỉ nằm trong secret
+//   GEMINI_API_KEY của project, không bao giờ vào app.
+// - Proxy chưa sẵn sàng (chưa deploy / chưa đặt secret / lỗi mạng):
+//   trả lời bằng luật (rule-based) ngay trên máy, vẫn dùng đúng mục
+//   tiêu và chỉ số hôm nay đã tải được. Khi không có dữ liệu thì nói
+//   rõ "chưa có dữ liệu", không đoán.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateGeminiText } from '../../api/aiClient';
+import { supabase } from '../../api/supabase';
 import type { Locale } from '../../i18n/translations';
 
 export type AiChatMessage = { role: 'user' | 'assistant'; text: string };
@@ -52,6 +55,7 @@ function buildSystemPrompt(ctx: AiChatContext, locale: Locale): string {
   return (
     `Bạn là trợ lý sức khỏe AuraVital, trả lời ngắn gọn, thực tế bằng ` +
     `${locale === 'en' ? 'tiếng Anh' : 'tiếng Việt'} cho ${name}. ` +
+    `Trả lời bằng văn bản thuần, không dùng định dạng Markdown (không dùng **, *, #). ` +
     `Chỉ dùng các số liệu sau (lấy từ database thật của người dùng), ` +
     `không bịa thêm số liệu. Nếu một chỉ số chưa có thì nói rõ là chưa ` +
     `có dữ liệu và gợi ý cách ghi nhận, không đoán con số.\n` +
@@ -106,7 +110,13 @@ export function answerOffline(
       ? `Cycle tracking is in the Cycle tab, based on the dates you logged in the cycles table.`
       : `Theo dõi chu kỳ nằm ở tab Chu kỳ, tính theo ngày bạn đã ghi trong bảng cycles.`;
   }
-  if (/(chào|hello|hi\b)/.test(m)) {
+  const tokens = m.split(/[\s,.!?;:()]+/);
+  if (
+    tokens.includes('chào') ||
+    tokens.includes('hello') ||
+    tokens.includes('hi') ||
+    tokens.includes('hey')
+  ) {
     return en
       ? `Hello${name}! Ask me about calories, steps, sleep, water or workouts — I answer from your real data.`
       : `Chào${name}! Bạn hỏi mình về calo, bước chân, giấc ngủ, nước uống hay bài tập nhé — mình trả lời theo dữ liệu thật của bạn.`;
@@ -116,24 +126,39 @@ export function answerOffline(
     : `Mình giúp được về calo, bước chân, giấc ngủ, nước uống, chu kỳ và bài tập — theo mục tiêu và dữ liệu hôm nay của bạn. Bạn muốn xem gì?`;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **đậm** → đậm
+    .replace(/(^|\n)\s*\*\s+/g, '$1• ') // đầu dòng * → •
+    .replace(/\*([^*]+)\*/g, '$1') // *nghiêng* → nghiêng
+    .replace(/(^|\n)\s*#{1,6}\s+/g, '$1') // # tiêu đề → thường
+    .replace(/`([^`]+)`/g, '$1') // `code` → code
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export async function sendAiChat(
   history: AiChatMessage[],
   ctx: AiChatContext,
   locale: Locale,
 ): Promise<{ text: string; online: boolean }> {
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
   const lastUser = [...history].reverse().find((m) => m.role === 'user');
-  if (!apiKey || !lastUser) {
-    return { text: answerOffline(lastUser?.text ?? '', ctx, locale), online: false };
+  // 1) Ưu tiên proxy: Edge Function 'ai-chat' giữ key Gemini phía
+  // server, app chỉ gửi tin nhắn + system prompt (kèm số liệu thật).
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-chat', {
+      body: {
+        messages: history.slice(-8),
+        systemPrompt: buildSystemPrompt(ctx, locale),
+      },
+    });
+    if (!error && data?.text) {
+      return { text: stripMarkdown(String(data.text)), online: true };
+    }
+
+  } catch {
+    // Rớt xuống trả lời offline bên dưới.
   }
-  const transcript = history
-    .slice(-8)
-    .map((m) => `${m.role === 'user' ? 'Người dùng' : 'Trợ lý'}: ${m.text}`)
-    .join('\n');
-  const text = await generateGeminiText(
-    apiKey,
-    `${transcript}\nTrợ lý:`,
-    buildSystemPrompt(ctx, locale),
-  );
-  return { text, online: true };
+  // 2) Proxy chưa sẵn sàng: trả lời bằng luật trên dữ liệu thật.
+  return { text: answerOffline(lastUser?.text ?? '', ctx, locale), online: false };
 }
