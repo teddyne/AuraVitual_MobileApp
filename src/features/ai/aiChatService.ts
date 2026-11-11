@@ -23,6 +23,8 @@ export type AiChatContext = {
   stepsToday?: number | null;
   sleepToday?: number | null;
   waterToday?: number | null;
+  caloriesToday?: number | null;
+  caloriesBurnedToday?: number | null;
   weightKg?: number | null;
 };
 
@@ -56,6 +58,8 @@ function buildSystemPrompt(ctx: AiChatContext, locale: Locale): string {
     `Bạn là trợ lý sức khỏe AuraVital, trả lời ngắn gọn, thực tế bằng ` +
     `${locale === 'en' ? 'tiếng Anh' : 'tiếng Việt'} cho ${name}. ` +
     `Trả lời bằng văn bản thuần, không dùng định dạng Markdown (không dùng **, *, #). ` +
+    `Trình bày gọn: mỗi ý một dòng, dùng gạch đầu dòng - cho danh sách. ` +
+    `Luôn kết thúc bằng câu 'Kết quả chỉ là gợi ý sức khỏe chung, không thay thế tư vấn y tế.' ở một dòng riêng. ` +
     `Chỉ dùng các số liệu sau (lấy từ database thật của người dùng), ` +
     `không bịa thêm số liệu. Nếu một chỉ số chưa có thì nói rõ là chưa ` +
     `có dữ liệu và gợi ý cách ghi nhận, không đoán con số.\n` +
@@ -65,7 +69,7 @@ function buildSystemPrompt(ctx: AiChatContext, locale: Locale): string {
     `- Mục tiêu ngủ/ngày: ${ctx.sleepGoalHours ?? 'chưa có dữ liệu'} giờ\n` +
     `- Hôm nay: bước ${fmt(ctx.stepsToday, 'bước')}, ` +
     `ngủ ${ctx.sleepToday ?? 'chưa có dữ liệu'} giờ, ` +
-    `nước ${fmt(ctx.waterToday, 'ml')}, cân nặng ${fmt(ctx.weightKg, 'kg')}.\n` +
+    `nước ${fmt(ctx.waterToday, 'ml')}, calo nạp ${fmt(ctx.caloriesToday, 'kcal')}, calo tiêu hao ${fmt(ctx.caloriesBurnedToday, 'kcal')}, cân nặng ${fmt(ctx.weightKg, 'kg')}.\n` +
     `Kết quả chỉ là gợi ý sức khỏe chung, không thay thế tư vấn y tế.`
   );
 }
@@ -133,6 +137,7 @@ function stripMarkdown(text: string): string {
     .replace(/\*([^*]+)\*/g, '$1') // *nghiêng* → nghiêng
     .replace(/(^|\n)\s*#{1,6}\s+/g, '$1') // # tiêu đề → thường
     .replace(/`([^`]+)`/g, '$1') // `code` → code
+    .replace(/([^\n])\s*(Kết quả chỉ là gợi ý sức khỏe chung, không thay thế tư vấn y tế\.)/g, '$1\n\n$2') // câu lưu ý luôn ở dòng riêng cuối câu trả lời
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

@@ -517,7 +517,12 @@ export default function AddMealScreen({ navigation, route }: any) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View style={s.tabs}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={s.tabs}
+          >
             {MEAL_ORDER.map((type) => (
               <TouchableOpacity
                 key={type}
@@ -536,7 +541,7 @@ export default function AddMealScreen({ navigation, route }: any) {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           <View style={s.searchBox}>
             <AppIcon name='search-outline' size={20} tone='muted' />

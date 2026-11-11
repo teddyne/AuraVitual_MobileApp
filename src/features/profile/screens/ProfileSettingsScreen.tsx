@@ -644,7 +644,6 @@ export default function ProfileSettingsScreen({ navigation }: any) {
             theme={theme}
             dark={isDark}
             icon='headset-outline'
-            solid
             title={t('settings.chat')}
             sub={t('settings.chatDesc')}
             onPress={goAiChat}
