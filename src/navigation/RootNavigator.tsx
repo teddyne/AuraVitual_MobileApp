@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import OnboardingScreen from '../features/auth/screens/OnboardingScreen';
 import LoginScreen from '../features/auth/screens/LoginScreen';
@@ -30,15 +31,65 @@ import AiChatScreen from '../features/ai/screens/AiChatScreen';
 import PlansScreen from '../features/subscription/screens/PlansScreen';
 import SubscriptionCheckoutScreen from '../features/subscription/screens/SubscriptionCheckoutScreen';
 import type { RootStackParamList } from '../types/navigation';
+import { useAuth } from '../features/auth/AuthContext';
+import { navigationRef } from './navigationRef';
+import { getPendingDeepLink } from './pendingDeepLink';
+import { colors } from '../theme/colors';
 
-// Type params đã dời sang src/types/navigation.ts để tránh màn hình
-// import ngược file Navigator (circular dependency). Re-export lại
-// để code cũ import từ đây vẫn chạy.
 export type { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
+  const { user, loading } = useAuth();
+  const restoredRef = useRef(false);
+  const [retryTick, setRetryTick] = useState(0);
+
+  useEffect(() => {
+    if (loading || restoredRef.current) return;
+    console.log(
+      '[Nav] gate chay: user=',
+      user?.email ?? null,
+      'route hien tai=',
+      navigationRef.getCurrentRoute()?.name,
+      'ready=',
+      navigationRef.isReady(),
+    );
+
+    if (!navigationRef.isReady()) {
+      const t = setTimeout(() => setRetryTick((x) => x + 1), 200);
+      return () => clearTimeout(t);
+    }
+    restoredRef.current = true;
+    const pendingUrl = getPendingDeepLink();
+    if (pendingUrl && pendingUrl.includes('ResetPassword')) return;
+    if (user && navigationRef.getCurrentRoute()?.name === 'Onboarding') {
+      navigationRef.reset({ index: 0, routes: [{ name: 'Main' }] });
+    }
+  }, [loading, user, retryTick]);
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.white,
+        }}
+      >
+        <Text style={{ fontSize: 26, fontWeight: '700', color: colors.ink }}>
+          Aura<Text style={{ color: colors.sageDark }}>Vital</Text>
+        </Text>
+        <ActivityIndicator
+          size='large'
+          color={colors.sageDark}
+          style={{ marginTop: 24 }}
+        />
+      </View>
+    );
+  }
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name='Onboarding' component={OnboardingScreen} />

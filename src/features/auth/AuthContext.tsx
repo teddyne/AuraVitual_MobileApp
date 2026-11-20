@@ -8,10 +8,7 @@ import React, {
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../api/supabase';
-import {
-  SESSION_KEY,
-  SESSION_USER_KEY,
-} from '../../utils/health/sleepSession';
+import { SESSION_KEY, SESSION_USER_KEY } from '../../utils/health/sleepSession';
 import { translate } from '../../i18n/locale';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -69,16 +66,47 @@ function toAppUser(u: SupabaseUser): AppUser {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ? toAppUser(data.session.user) : null);
+    let mounted = true;
+    console.log('[Auth] khoi phuc phien...');
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!mounted) return;
+        console.log(
+          '[Auth] getSession:',
+          data.session
+            ? `co session, user=${data.session.user.email}`
+            : 'KHONG co session',
+        );
+        const keys = await AsyncStorage.getAllKeys();
+        console.log(
+          '[Auth] AsyncStorage keys:',
+          keys.filter((k) => k.includes('sb-')),
+        );
+        setUser(data.session?.user ? toAppUser(data.session.user) : null);
+      })
+      .catch((e) => {
+        console.log('[Auth] getSession LOI:', e?.message);
+        if (mounted) setUser(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(
+        '[Auth] onAuthStateChange:',
+        event,
+        session ? session.user.email : 'null',
+      );
+      if (!mounted) return;
+      setUser(session?.user ? toAppUser(session.user) : null);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ? toAppUser(session.user) : null);
-    });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const register: AuthValue['register'] = async (name, email, password) => {
