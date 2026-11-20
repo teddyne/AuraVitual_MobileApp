@@ -143,12 +143,10 @@ export default function ProfileSettingsScreen({ navigation }: any) {
     if (res.canceled || !res.assets?.[0]) return;
     try {
       setUploadingAvatar(true);
-      const filePath = `${user.id}.jpg`;
-      try {
-        await supabase.storage.from('avatars').remove([filePath]);
-      } catch {
-        // bỏ qua
-      }
+      const filePath = `${user.id}-${Date.now()}.jpg`;
+      const oldPath = profile?.avatar_url
+        ? profile.avatar_url.split('/avatars/')[1]?.split('?')[0]
+        : undefined;
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -184,8 +182,15 @@ export default function ProfileSettingsScreen({ navigation }: any) {
       }
       const { data } = supabase.storage
         .from('avatars')
-        .getPublicUrl(`${user.id}.jpg`);
+        .getPublicUrl(filePath);
       await updateAvatarUrl(user.id, data.publicUrl);
+      if (oldPath && oldPath !== filePath) {
+        try {
+          await supabase.storage.from('avatars').remove([oldPath]);
+        } catch {
+          // bỏ qua
+        }
+      }
       setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
       setAvatarBroken(false);
       setAvatarTick((t) => t + 1);
